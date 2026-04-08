@@ -21,13 +21,15 @@ fun ChannelListScreen(
     serverId: String,
     state: ChannelUiState,
     onCreateChannel: (name: String, type: String) -> Unit,
+    onCreateAgent: (name: String, description: String, prompt: String, model: String) -> Unit,
     onChannelClick: (channelId: String) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToAgents: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
+    var showCreateAgentDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -36,7 +38,11 @@ fun ChannelListScreen(
                 actions = { IconButton(onClick = onNavigateToAgents) { Icon(Icons.Default.SmartToy, contentDescription = "Agents") } }
             )
         },
-        floatingActionButton = { FloatingActionButton(onClick = { showCreateDialog = true }) { Icon(Icons.Default.Add, contentDescription = "Create") } }
+        floatingActionButton = {
+            FloatingActionButton(onClick = {
+                if (selectedTab == 0) showCreateDialog = true else showCreateAgentDialog = true
+            }) { Icon(Icons.Default.Add, contentDescription = "Create") }
+        }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             TabRow(selectedTabIndex = selectedTab) {
@@ -81,6 +87,16 @@ fun ChannelListScreen(
                 },
                 confirmButton = { Button(onClick = { if (name.isNotBlank()) { onCreateChannel(name, if (selectedTab == 0) "text" else "agent"); showCreateDialog = false } }, enabled = name.isNotBlank()) { Text("Create") } },
                 dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") } }
+            )
+        }
+
+        if (showCreateAgentDialog) {
+            com.slock.app.ui.agent.CreateAgentDialog(
+                onDismiss = { showCreateAgentDialog = false },
+                onCreate = { name, desc, prompt, model ->
+                    onCreateAgent(name, desc, prompt, model)
+                    showCreateAgentDialog = false
+                }
             )
         }
     }

@@ -7,7 +7,7 @@ data class Agent(
     val name: String,
     val description: String,
     val prompt: String,
-    val model: String = "gpt-4",
+    val model: String = "claude-sonnet-4-20250514",
     val avatar: String? = null,
     val status: String = "stopped",
     @SerializedName("createdAt")
@@ -18,7 +18,7 @@ data class CreateAgentRequest(
     val name: String,
     val description: String,
     val prompt: String,
-    val model: String = "gpt-4",
+    val model: String = "claude-sonnet-4-20250514",
     val avatar: String? = null
 )
 

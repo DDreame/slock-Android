@@ -10,6 +10,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
+import android.net.Uri
+import com.google.gson.Gson
+import com.slock.app.data.model.Message
 import com.slock.app.ui.auth.LoginScreen
 import com.slock.app.ui.auth.RegisterScreen
 import com.slock.app.ui.auth.ForgotPasswordScreen
@@ -22,6 +25,10 @@ import com.slock.app.ui.message.MessageListScreen
 import com.slock.app.ui.message.MessageViewModel
 import com.slock.app.ui.agent.AgentListScreen
 import com.slock.app.ui.agent.AgentViewModel
+import com.slock.app.ui.task.TaskListScreen
+import com.slock.app.ui.task.TaskViewModel
+import com.slock.app.ui.thread.ThreadReplyScreen
+import com.slock.app.ui.thread.ThreadReplyViewModel
 
 /**
  * Navigation routes
@@ -34,6 +41,8 @@ object Routes {
     const val CHANNEL_LIST = "server/{serverId}/channels"
     const val MESSAGES = "channel/{channelId}/messages"
     const val AGENT_LIST = "agents"
+    const val THREAD_REPLY = "thread/{threadChannelId}/reply/{parentMessageJson}"
+    const val TASK_LIST = "channel/{channelId}/tasks"
 }
 
 /**
@@ -129,17 +138,19 @@ fun SlockNavHost(
         composable(Routes.CHANNEL_LIST) { backStackEntry ->
             val serverId = backStackEntry.arguments?.getString("serverId") ?: return@composable
             val viewModel: ChannelViewModel = hiltViewModel()
+            val agentViewModel: AgentViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
-            
+
             // Load channels when entering
             androidx.compose.runtime.LaunchedEffect(serverId) {
                 viewModel.loadChannels(serverId)
             }
-            
+
             ChannelListScreen(
                 serverId = serverId,
                 state = state,
                 onCreateChannel = viewModel::createChannel,
+                onCreateAgent = agentViewModel::createAgent,
                 onChannelClick = { channelId ->
                     navController.navigate("channel/$channelId/messages")
                 },
@@ -166,7 +177,11 @@ fun SlockNavHost(
                 state = state,
                 onSendMessage = viewModel::sendMessage,
                 onLoadMore = viewModel::loadMoreMessages,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToThread = { threadChannelId, parentMessage ->
+                    val parentJson = Uri.encode(com.google.gson.Gson().toJson(parentMessage))
+                    navController.navigate("thread/$threadChannelId/reply/$parentJson")
+                }
             )
         }
         
@@ -174,14 +189,61 @@ fun SlockNavHost(
         composable(Routes.AGENT_LIST) {
             val viewModel: AgentViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
-            
+
             AgentListScreen(
                 state = state,
                 onCreateAgent = viewModel::createAgent,
                 onStartAgent = viewModel::startAgent,
                 onStopAgent = viewModel::stopAgent,
+                onResetAgent = viewModel::resetAgent,
                 onDeleteAgent = viewModel::deleteAgent,
                 onAgentClick = { /* Navigate to agent detail */ },
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Task List Screen
+        composable(Routes.TASK_LIST) { backStackEntry ->
+            val channelId = backStackEntry.arguments?.getString("channelId") ?: return@composable
+            val viewModel: TaskViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+
+            androidx.compose.runtime.LaunchedEffect(channelId) {
+                viewModel.loadTasks(channelId)
+            }
+
+            TaskListScreen(
+                channelId = channelId,
+                state = state,
+                onCreateTask = viewModel::createTask,
+                onUpdateStatus = viewModel::updateTaskStatus,
+                onDeleteTask = viewModel::deleteTask,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Thread Reply Screen
+        composable(
+            Routes.THREAD_REPLY,
+            arguments = listOf(
+                navArgument("threadChannelId") { type = NavType.StringType },
+                navArgument("parentMessageJson") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val threadChannelId = backStackEntry.arguments?.getString("threadChannelId") ?: return@composable
+            val parentMessageJson = backStackEntry.arguments?.getString("parentMessageJson") ?: return@composable
+            val parentMessage = Gson().fromJson(Uri.decode(parentMessageJson), Message::class.java)
+            val viewModel: ThreadReplyViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+
+            androidx.compose.runtime.LaunchedEffect(threadChannelId) {
+                viewModel.loadThread(parentMessage, threadChannelId)
+            }
+
+            ThreadReplyScreen(
+                state = state,
+                onSendReply = viewModel::sendReply,
+                onLoadMore = viewModel::loadMoreReplies,
                 onNavigateBack = { navController.popBackStack() }
             )
         }

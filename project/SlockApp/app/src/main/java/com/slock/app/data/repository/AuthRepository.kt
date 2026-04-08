@@ -66,7 +66,9 @@ class AuthRepositoryImpl @Inject constructor(
             }
             val response = apiService.refreshToken(RefreshTokenRequest(refreshToken))
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val authResponse = response.body()!!
+                saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                Result.success(authResponse)
             } else {
                 Result.failure(Exception("Refresh failed: ${response.code()}"))
             }

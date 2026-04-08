@@ -22,6 +22,7 @@ fun AgentListScreen(
     onCreateAgent: (name: String, description: String, prompt: String, model: String) -> Unit,
     onStartAgent: (agentId: String) -> Unit,
     onStopAgent: (agentId: String) -> Unit,
+    onResetAgent: (agentId: String) -> Unit,
     onDeleteAgent: (agentId: String) -> Unit,
     onAgentClick: (agentId: String) -> Unit,
     onNavigateBack: () -> Unit
@@ -49,7 +50,15 @@ fun AgentListScreen(
                 }
                 else -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.agents) { agent ->
-                        AgentCard(agent, onAgentClick, onStartAgent, onStopAgent, onDeleteAgent)
+                        AgentCard(
+                            agent = agent,
+                            onClick = onAgentClick,
+                            onStart = onStartAgent,
+                            onStop = onStopAgent,
+                            onReset = onResetAgent,
+                            onDelete = onDeleteAgent,
+                            activity = state.agentActivities[agent.id]
+                        )
                     }
                 }
             }
@@ -63,7 +72,15 @@ fun AgentListScreen(
 }
 
 @Composable
-fun AgentCard(agent: Agent, onClick: (String) -> Unit, onStart: (String) -> Unit, onStop: (String) -> Unit, onDelete: (String) -> Unit) {
+fun AgentCard(
+    agent: Agent,
+    onClick: (String) -> Unit,
+    onStart: (String) -> Unit,
+    onStop: (String) -> Unit,
+    onReset: (String) -> Unit,
+    onDelete: (String) -> Unit,
+    activity: String? = null
+) {
     Card(modifier = Modifier.fillMaxWidth().clickable { onClick(agent.id) }) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -81,14 +98,22 @@ fun AgentCard(agent: Agent, onClick: (String) -> Unit, onStart: (String) -> Unit
                     Text(agent.status.uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
             }
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(8.dp))
             Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.secondaryContainer) {
                 Text(agent.model, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 12.sp)
+            }
+            if (!activity.isNullOrEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.tertiaryContainer) {
+                    Text(activity, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 12.sp, maxLines = 2)
+                }
             }
             Spacer(modifier = Modifier.height(12.dp))
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = { onDelete(agent.id) }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Delete") }
-                Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(4.dp))
+                TextButton(onClick = { onReset(agent.id) }) { Icon(Icons.Default.Refresh, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Reset") }
+                Spacer(Modifier.width(4.dp))
                 if (agent.status == "running") OutlinedButton(onClick = { onStop(agent.id) }) { Icon(Icons.Default.Stop, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Stop") }
                 else Button(onClick = { onStart(agent.id) }) { Icon(Icons.Default.PlayArrow, null, Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text("Start") }
             }
@@ -96,13 +121,16 @@ fun AgentCard(agent: Agent, onClick: (String) -> Unit, onStart: (String) -> Unit
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateAgentDialog(onDismiss: () -> Unit, onCreate: (name: String, desc: String, prompt: String, model: String) -> Unit) {
+    val modelOptions = listOf("claude-sonnet-4-20250514", "claude-haiku-4-5-20251001", "claude-opus-4-20250514")
     var name by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
-    var model by remember { mutableStateOf("gpt-4") }
-    
+    var selectedModel by remember { mutableStateOf(modelOptions[0]) }
+    var modelExpanded by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Create AI Agent") },
@@ -110,9 +138,23 @@ fun CreateAgentDialog(onDismiss: () -> Unit, onCreate: (name: String, desc: Stri
             OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = desc, onValueChange = { desc = it }, label = { Text("Description") }, singleLine = true, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = prompt, onValueChange = { prompt = it }, label = { Text("System Prompt") }, minLines = 3, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(value = model, onValueChange = { model = it }, label = { Text("Model") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+            ExposedDropdownMenuBox(expanded = modelExpanded, onExpandedChange = { modelExpanded = it }) {
+                OutlinedTextField(
+                    value = selectedModel,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Model") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = modelExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(expanded = modelExpanded, onDismissRequest = { modelExpanded = false }) {
+                    modelOptions.forEach { model ->
+                        DropdownMenuItem(text = { Text(model) }, onClick = { selectedModel = model; modelExpanded = false })
+                    }
+                }
+            }
         }},
-        confirmButton = { Button(onClick = { if (name.isNotBlank() && prompt.isNotBlank()) onCreate(name, desc, prompt, model) }, enabled = name.isNotBlank() && prompt.isNotBlank()) { Text("Create") } },
+        confirmButton = { Button(onClick = { if (name.isNotBlank() && prompt.isNotBlank()) onCreate(name, desc, prompt, selectedModel) }, enabled = name.isNotBlank() && prompt.isNotBlank()) { Text("Create") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
 }

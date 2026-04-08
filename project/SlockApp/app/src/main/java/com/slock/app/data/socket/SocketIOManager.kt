@@ -17,8 +17,9 @@ import javax.inject.Singleton
  */
 @Singleton
 class SocketIOManager @Inject constructor(
-    private val tokenProvider: () -> String?
+    private val secureTokenStorage: com.slock.app.data.local.SecureTokenStorage
 ) {
+    private val tokenProvider: () -> String? = { secureTokenStorage.accessToken }
     companion object {
         private const val TAG = "SocketIOManager"
         private const val BASE_URL = "https://api.slock.ai"

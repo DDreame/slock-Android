@@ -16,7 +16,11 @@ data class Message(
     @SerializedName("createdAt")
     val createdAt: String,
     @SerializedName("updatedAt")
-    val updatedAt: String? = null
+    val updatedAt: String? = null,
+    @SerializedName("threadId")
+    val threadId: String? = null,
+    @SerializedName("parentChannelId")
+    val parentChannelId: String? = null
 )
 
 data class Attachment(
@@ -44,4 +48,38 @@ data class Thread(
     val parentMessageId: String,
     @SerializedName("parentChannelId")
     val parentChannelId: String
+)
+
+data class Task(
+    val id: String,
+    @SerializedName("channelId")
+    val channelId: String,
+    val title: String,
+    val description: String? = null,
+    val status: String = "todo",
+    @SerializedName("createdBy")
+    val createdBy: String,
+    @SerializedName("assigneeId")
+    val assigneeId: String? = null,
+    @SerializedName("messageId")
+    val messageId: String? = null,
+    @SerializedName("createdAt")
+    val createdAt: String,
+    @SerializedName("updatedAt")
+    val updatedAt: String? = null
+)
+
+data class CreateTaskRequest(
+    @SerializedName("channelId")
+    val channelId: String,
+    val title: String,
+    val description: String? = null,
+    @SerializedName("assigneeId")
+    val assigneeId: String? = null,
+    @SerializedName("messageId")
+    val messageId: String? = null
+)
+
+data class UpdateTaskStatusRequest(
+    val status: String
 )

@@ -1,29 +1,32 @@
 package com.slock.app.data.repository
 
 import com.slock.app.data.api.ApiService
+import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.model.*
 import javax.inject.Inject
 
 interface ChannelRepository {
-    suspend fun getChannels(): Result<List<Channel>>
-    suspend fun createChannel(name: String, type: String = "text"): Result<Channel>
-    suspend fun updateChannel(channelId: String, name: String): Result<Channel>
-    suspend fun deleteChannel(channelId: String): Result<Unit>
-    suspend fun joinChannel(channelId: String): Result<Unit>
-    suspend fun leaveChannel(channelId: String): Result<Unit>
-    suspend fun markChannelRead(channelId: String, seq: Long): Result<Unit>
-    suspend fun getDMs(): Result<List<Channel>>
-    suspend fun createDM(userId: String): Result<Channel>
-    suspend fun getChannelMembers(channelId: String): Result<List<ChannelMember>>
-    suspend fun getUnreadChannels(): Result<List<Channel>>
+    suspend fun getChannels(serverId: String): Result<List<Channel>>
+    suspend fun createChannel(serverId: String, name: String, type: String = "text"): Result<Channel>
+    suspend fun updateChannel(serverId: String, channelId: String, name: String): Result<Channel>
+    suspend fun deleteChannel(serverId: String, channelId: String): Result<Unit>
+    suspend fun joinChannel(serverId: String, channelId: String): Result<Unit>
+    suspend fun leaveChannel(serverId: String, channelId: String): Result<Unit>
+    suspend fun markChannelRead(serverId: String, channelId: String, seq: Long): Result<Unit>
+    suspend fun getDMs(serverId: String): Result<List<Channel>>
+    suspend fun createDM(serverId: String, userId: String): Result<Channel>
+    suspend fun getChannelMembers(serverId: String, channelId: String): Result<List<ChannelMember>>
+    suspend fun getUnreadChannels(serverId: String): Result<List<Channel>>
 }
 
 class ChannelRepositoryImpl @Inject constructor(
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    private val activeServerHolder: ActiveServerHolder
 ) : ChannelRepository {
 
-    override suspend fun getChannels(): Result<List<Channel>> {
+    override suspend fun getChannels(serverId: String): Result<List<Channel>> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.getChannels()
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -35,8 +38,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createChannel(name: String, type: String): Result<Channel> {
+    override suspend fun createChannel(serverId: String, name: String, type: String): Result<Channel> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.createChannel(CreateChannelRequest(name, type))
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -48,8 +52,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun updateChannel(channelId: String, name: String): Result<Channel> {
+    override suspend fun updateChannel(serverId: String, channelId: String, name: String): Result<Channel> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.updateChannel(channelId, UpdateChannelRequest(name))
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -61,8 +66,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun deleteChannel(channelId: String): Result<Unit> {
+    override suspend fun deleteChannel(serverId: String, channelId: String): Result<Unit> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.deleteChannel(channelId)
             if (response.isSuccessful) {
                 Result.success(Unit)
@@ -74,8 +80,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun joinChannel(channelId: String): Result<Unit> {
+    override suspend fun joinChannel(serverId: String, channelId: String): Result<Unit> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.joinChannel(channelId)
             if (response.isSuccessful) {
                 Result.success(Unit)
@@ -87,8 +94,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun leaveChannel(channelId: String): Result<Unit> {
+    override suspend fun leaveChannel(serverId: String, channelId: String): Result<Unit> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.leaveChannel(channelId)
             if (response.isSuccessful) {
                 Result.success(Unit)
@@ -100,8 +108,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun markChannelRead(channelId: String, seq: Long): Result<Unit> {
+    override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long): Result<Unit> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.markChannelRead(channelId, MarkReadRequest(seq))
             if (response.isSuccessful) {
                 Result.success(Unit)
@@ -113,8 +122,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getDMs(): Result<List<Channel>> {
+    override suspend fun getDMs(serverId: String): Result<List<Channel>> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.getDMs()
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -126,8 +136,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createDM(userId: String): Result<Channel> {
+    override suspend fun createDM(serverId: String, userId: String): Result<Channel> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.createDM(CreateDMRequest(userId))
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -139,8 +150,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getChannelMembers(channelId: String): Result<List<ChannelMember>> {
+    override suspend fun getChannelMembers(serverId: String, channelId: String): Result<List<ChannelMember>> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.getChannelMembers(channelId)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
@@ -152,8 +164,9 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getUnreadChannels(): Result<List<Channel>> {
+    override suspend fun getUnreadChannels(serverId: String): Result<List<Channel>> {
         return try {
+            activeServerHolder.serverId = serverId
             val response = apiService.getUnreadChannels()
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)

@@ -10,6 +10,10 @@ import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.repository.MessageRepositoryImpl
 import com.slock.app.data.repository.ServerRepository
 import com.slock.app.data.repository.ServerRepositoryImpl
+import com.slock.app.data.repository.TaskRepository
+import com.slock.app.data.repository.TaskRepositoryImpl
+import com.slock.app.data.repository.ThreadRepository
+import com.slock.app.data.repository.ThreadRepositoryImpl
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -39,4 +43,12 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindAgentRepository(impl: AgentRepositoryImpl): AgentRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindTaskRepository(impl: TaskRepositoryImpl): TaskRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindThreadRepository(impl: ThreadRepositoryImpl): ThreadRepository
 }

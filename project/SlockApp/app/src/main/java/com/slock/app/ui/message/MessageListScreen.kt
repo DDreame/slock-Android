@@ -22,10 +22,11 @@ fun MessageListScreen(
     state: MessageUiState,
     onSendMessage: (String) -> Unit,
     onLoadMore: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onNavigateToThread: (threadChannelId: String, parentMessage: Message) -> Unit
 ) {
     var text by remember { mutableStateOf("") }
-    
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -45,7 +46,11 @@ fun MessageListScreen(
                         shape = RoundedCornerShape(24.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    FilledIconButton(onClick = { if (text.isNotBlank()) { onSendMessage(text); text = "" } }, enabled = text.isNotBlank()) {
+                    IconButton(
+                        onClick = { if (text.isNotBlank()) { onSendMessage(text); text = "" } },
+                        enabled = text.isNotBlank(),
+                        modifier = Modifier.size(48.dp)
+                    ) {
                         Icon(Icons.Default.Send, contentDescription = "Send")
                     }
                 }
@@ -62,7 +67,12 @@ fun MessageListScreen(
                 }
                 else -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp), reverseLayout = true) {
                     items(state.messages) { message ->
-                        MessageBubble(message)
+                        MessageBubble(
+                            message = message,
+                            onThreadClick = if (message.threadId != null) {
+                                { onNavigateToThread(message.threadId, message) }
+                            } else null
+                        )
                     }
                 }
             }
@@ -71,12 +81,32 @@ fun MessageListScreen(
 }
 
 @Composable
-fun MessageBubble(message: Message) {
+fun MessageBubble(message: Message, onThreadClick: (() -> Unit)? = null) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(message.userId, fontSize = 12.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.primary)
-        Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant, modifier = Modifier.widthIn(max = 280.dp)) {
-            Text(message.content, modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp))
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
+            modifier = Modifier.widthIn(max = 280.dp)
+        ) {
+            Text(
+                message.content,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            )
         }
-        Text(message.createdAt.substringAfter("T").take(5), fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                message.createdAt.split("T").getOrNull(1)?.take(5) ?: message.createdAt,
+                fontSize = 10.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (message.threadId != null) {
+                Spacer(modifier = Modifier.width(8.dp))
+                TextButton(onClick = onThreadClick ?: {}, modifier = Modifier.padding(0.dp)) {
+                    Icon(Icons.Default.Reply, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Text("Thread", fontSize = 10.sp)
+                }
+            }
+        }
     }
 }

@@ -2,6 +2,7 @@ package com.slock.app.di
 
 import com.slock.app.data.api.ApiService
 import com.slock.app.data.api.AuthInterceptor
+import com.slock.app.data.api.ServerIdInterceptor
 import com.slock.app.data.api.TokenRefreshInterceptor
 import dagger.Module
 import dagger.Provides
@@ -36,9 +37,11 @@ object NetworkModule {
     fun provideOkHttpClient(
         loggingInterceptor: HttpLoggingInterceptor,
         authInterceptor: AuthInterceptor,
+        serverIdInterceptor: ServerIdInterceptor,
         tokenRefreshInterceptor: TokenRefreshInterceptor
     ): OkHttpClient {
         return OkHttpClient.Builder()
+            .addInterceptor(serverIdInterceptor)
             .addInterceptor(authInterceptor)
             .addInterceptor(tokenRefreshInterceptor)
             .addInterceptor(loggingInterceptor)
