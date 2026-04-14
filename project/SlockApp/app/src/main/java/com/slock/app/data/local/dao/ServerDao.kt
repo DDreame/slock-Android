@@ -9,6 +9,9 @@ interface ServerDao {
     @Query("SELECT * FROM servers ORDER BY createdAt DESC")
     fun getAllServers(): Flow<List<ServerEntity>>
 
+    @Query("SELECT * FROM servers ORDER BY createdAt DESC")
+    suspend fun getAllServersSync(): List<ServerEntity>
+
     @Query("SELECT * FROM servers WHERE id = :serverId")
     suspend fun getServerById(serverId: String): ServerEntity?
 

@@ -18,6 +18,7 @@ import javax.inject.Inject
 data class MessageUiState(
     val messages: List<Message> = emptyList(),
     val channelId: String = "",
+    val channelName: String = "",
     val isLoading: Boolean = false,
     val isSending: Boolean = false,
     val error: String? = null
@@ -41,60 +42,81 @@ class MessageViewModel @Inject constructor(
 
     private fun observeSocketEvents() {
         socketEventsJob = viewModelScope.launch {
-            socketIOManager.events.collect { event ->
-                when (event) {
-                    is SocketIOManager.SocketEvent.MessageNew -> {
-                        val data = event.data
-                        if (data.channelId == _state.value.channelId) {
-                            _state.update { current ->
-                                val newMessage = Message(
-                                    id = data.id,
-                                    channelId = data.channelId,
-                                    content = data.content,
-                                    userId = data.userId,
-                                    agentId = data.agentId,
-                                    createdAt = data.createdAt
-                                )
-                                val exists = current.messages.any { it.id == newMessage.id }
-                                if (!exists) {
-                                    current.copy(messages = listOf(newMessage) + current.messages)
-                                } else current
+            try {
+                socketIOManager.events.collect { event ->
+                    when (event) {
+                        is SocketIOManager.SocketEvent.MessageNew -> {
+                            val data = event.data
+                            if (data.channelId == _state.value.channelId) {
+                                _state.update { current ->
+                                    val newMessage = Message(
+                                        id = data.id,
+                                        channelId = data.channelId,
+                                        content = data.content,
+                                        senderId = data.senderId,
+                                        senderName = data.senderName,
+                                        senderType = data.senderType,
+                                        createdAt = data.createdAt
+                                    )
+                                    val exists = current.messages.any { it.id == newMessage.id }
+                                    if (!exists) {
+                                        current.copy(messages = listOf(newMessage) + current.messages)
+                                    } else current
+                                }
                             }
                         }
-                    }
-                    is SocketIOManager.SocketEvent.ThreadUpdated -> {
-                        // Thread reply was updated - could trigger a refresh
-                        val threadChannelId = event.data.channelId
-                        val parentChannelId = event.data.parentChannelId
-                        if (parentChannelId == _state.value.channelId) {
-                            // Reload messages in this channel to get updated thread info
-                            loadMessages(_state.value.channelId)
+                        is SocketIOManager.SocketEvent.ThreadUpdated -> {
+                            val parentChannelId = event.data.parentChannelId
+                            if (parentChannelId == _state.value.channelId) {
+                                loadMessages(_state.value.channelId)
+                            }
                         }
+                        else -> { /* ignore */ }
                     }
-                    else -> { /* ignore */ }
                 }
+            } catch (e: Exception) {
+                // Prevent socket errors from crashing the app
             }
         }
     }
 
     fun loadMessages(channelId: String) {
+        val serverId = activeServerHolder.serverId
+        if (serverId.isNullOrBlank()) {
+            _state.update { it.copy(channelId = channelId, isLoading = false, error = "Server not selected") }
+            return
+        }
         viewModelScope.launch {
-            _state.update { it.copy(channelId = channelId, isLoading = true) }
-            messageRepository.getMessages(activeServerHolder.serverId ?: "", channelId).fold(
+            _state.update { it.copy(channelId = channelId, isLoading = it.messages.isEmpty(), error = null) }
+            // Get cached data first
+            messageRepository.getMessages(serverId, channelId).fold(
                 onSuccess = { messages ->
-                    _state.update { it.copy(messages = messages, isLoading = false) }
+                    _state.update { it.copy(messages = messages.reversed(), isLoading = false) }
                 },
                 onFailure = { error ->
                     _state.update { it.copy(isLoading = false, error = error.message) }
                 }
             )
+            // Then refresh from cloud (cloud always wins)
+            messageRepository.refreshMessages(serverId, channelId).fold(
+                onSuccess = { messages ->
+                    _state.update { it.copy(messages = messages.reversed()) }
+                },
+                onFailure = { /* keep cached data */ }
+            )
+            socketIOManager.joinChannel(channelId)
         }
     }
 
     fun sendMessage(content: String) {
+        val serverId = activeServerHolder.serverId
+        if (serverId.isNullOrBlank()) {
+            _state.update { it.copy(error = "Server not selected") }
+            return
+        }
         viewModelScope.launch {
-            _state.update { it.copy(isSending = true) }
-            messageRepository.sendMessage(activeServerHolder.serverId ?: "", _state.value.channelId, content).fold(
+            _state.update { it.copy(isSending = true, error = null) }
+            messageRepository.sendMessage(serverId, _state.value.channelId, content).fold(
                 onSuccess = { message ->
                     _state.update { it.copy(messages = listOf(message) + it.messages, isSending = false) }
                 },
@@ -112,5 +134,9 @@ class MessageViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         socketEventsJob?.cancel()
+        val channelId = _state.value.channelId
+        if (channelId.isNotBlank()) {
+            socketIOManager.leaveChannel(channelId)
+        }
     }
 }

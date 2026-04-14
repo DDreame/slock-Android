@@ -58,7 +58,8 @@ class AgentViewModel @Inject constructor(
                         }
                     }
                     is SocketIOManager.SocketEvent.AgentCreated -> {
-                        loadAgents()
+                        val serverId = activeServerHolder.serverId ?: return@collect
+                        loadAgents(serverId)
                     }
                     else -> { /* ignore */ }
                 }
@@ -71,14 +72,40 @@ class AgentViewModel @Inject constructor(
         socketEventsJob?.cancel()
     }
 
-    fun loadAgents() {
-        val serverId = activeServerHolder.serverId ?: return
+    private var currentServerId: String? = null
+
+    fun loadAgents(serverId: String) {
+        currentServerId = serverId
+        activeServerHolder.serverId = serverId
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true) }
+            _state.update { it.copy(isLoading = it.agents.isEmpty(), error = null) }
+            // Get cached data first
             agentRepository.getAgents(serverId).fold(
-                onSuccess = { agents -> _state.update { it.copy(agents = agents, isLoading = false) } },
+                onSuccess = { agents ->
+                    val activities = agents.mapNotNull { agent ->
+                        agent.activity?.let { agent.id to it }
+                    }.toMap()
+                    _state.update { it.copy(agents = agents, agentActivities = it.agentActivities + activities, isLoading = false) }
+                },
                 onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
             )
+            // Then refresh from cloud
+            agentRepository.refreshAgents(serverId).fold(
+                onSuccess = { agents ->
+                    val activities = agents.mapNotNull { agent ->
+                        agent.activity?.let { agent.id to it }
+                    }.toMap()
+                    _state.update { it.copy(agents = agents, agentActivities = it.agentActivities + activities, error = null) }
+                },
+                onFailure = { /* keep cached data */ }
+            )
+        }
+    }
+
+    fun retryIfEmpty() {
+        val serverId = currentServerId ?: activeServerHolder.serverId ?: return
+        if (_state.value.agents.isEmpty() && !_state.value.isLoading) {
+            loadAgents(serverId)
         }
     }
 
@@ -97,7 +124,7 @@ class AgentViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.startAgent(serverId, agentId).fold(
-                onSuccess = { _state.update { it.copy(agents = it.agents.map { a -> if (a.id == agentId) a.copy(status = "running") else a }) } },
+                onSuccess = { _state.update { it.copy(agents = it.agents.map { a -> if (a.id == agentId) a.copy(status = "active") else a }) } },
                 onFailure = { }
             )
         }
@@ -128,6 +155,18 @@ class AgentViewModel @Inject constructor(
         viewModelScope.launch {
             agentRepository.deleteAgent(serverId, agentId).fold(
                 onSuccess = { _state.update { it.copy(agents = it.agents.filter { a -> a.id != agentId }) } },
+                onFailure = { }
+            )
+        }
+    }
+
+    fun updateAgent(agentId: String, name: String?, description: String?, prompt: String?) {
+        val serverId = activeServerHolder.serverId ?: return
+        viewModelScope.launch {
+            agentRepository.updateAgent(serverId, agentId, name, description, prompt).fold(
+                onSuccess = { updatedAgent ->
+                    _state.update { it.copy(agents = it.agents.map { a -> if (a.id == agentId) updatedAgent else a }) }
+                },
                 onFailure = { }
             )
         }

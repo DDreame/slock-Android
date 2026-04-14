@@ -27,8 +27,10 @@ data class MarkReadRequest(
 )
 
 data class CreateDMRequest(
+    @SerializedName("agentId")
+    val agentId: String? = null,
     @SerializedName("userId")
-    val userId: String
+    val userId: String? = null
 )
 
 data class ChannelMember(

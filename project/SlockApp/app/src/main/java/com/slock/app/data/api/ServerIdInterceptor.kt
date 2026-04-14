@@ -1,5 +1,6 @@
 package com.slock.app.data.api
 
+import android.util.Log
 import com.slock.app.data.local.ActiveServerHolder
 import okhttp3.Interceptor
 import okhttp3.Response
@@ -26,6 +27,9 @@ class ServerIdInterceptor @Inject constructor(
         }
 
         val serverId = activeServerHolder.serverId
+        if (serverId == null) {
+            Log.w("ServerIdInterceptor", "serverId is NULL for path=$path — request will lack X-Server-Id header")
+        }
         val newRequest = if (serverId != null) {
             originalRequest.newBuilder()
                 .header("X-Server-Id", serverId)

@@ -21,13 +21,11 @@ fun ChannelListScreen(
     serverId: String,
     state: ChannelUiState,
     onCreateChannel: (name: String, type: String) -> Unit,
-    onCreateAgent: (name: String, description: String, prompt: String, model: String) -> Unit,
     onChannelClick: (channelId: String) -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToAgents: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
-    var showCreateAgentDialog by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
 
     Scaffold(
@@ -40,7 +38,7 @@ fun ChannelListScreen(
         },
         floatingActionButton = {
             FloatingActionButton(onClick = {
-                if (selectedTab == 0) showCreateDialog = true else showCreateAgentDialog = true
+                if (selectedTab == 0) showCreateDialog = true else onNavigateToAgents()
             }) { Icon(Icons.Default.Add, contentDescription = "Create") }
         }
     ) { padding ->
@@ -49,7 +47,7 @@ fun ChannelListScreen(
                 Tab(selected = selectedTab == 0, onClick = { selectedTab = 0 }, text = { Text("Text") }, icon = { Icon(Icons.Default.Tag, null) })
                 Tab(selected = selectedTab == 1, onClick = { selectedTab = 1 }, text = { Text("Agents") }, icon = { Icon(Icons.Default.SmartToy, null) })
             }
-            
+
             when {
                 state.isLoading -> Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
                 else -> {
@@ -74,7 +72,7 @@ fun ChannelListScreen(
                 }
             }
         }
-        
+
         if (showCreateDialog) {
             var name by remember { mutableStateOf("") }
             AlertDialog(
@@ -87,16 +85,6 @@ fun ChannelListScreen(
                 },
                 confirmButton = { Button(onClick = { if (name.isNotBlank()) { onCreateChannel(name, if (selectedTab == 0) "text" else "agent"); showCreateDialog = false } }, enabled = name.isNotBlank()) { Text("Create") } },
                 dismissButton = { TextButton(onClick = { showCreateDialog = false }) { Text("Cancel") } }
-            )
-        }
-
-        if (showCreateAgentDialog) {
-            com.slock.app.ui.agent.CreateAgentDialog(
-                onDismiss = { showCreateAgentDialog = false },
-                onCreate = { name, desc, prompt, model ->
-                    onCreateAgent(name, desc, prompt, model)
-                    showCreateAgentDialog = false
-                }
             )
         }
     }

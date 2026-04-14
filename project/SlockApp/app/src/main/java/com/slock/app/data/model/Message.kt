@@ -3,25 +3,31 @@ package com.slock.app.data.model
 import com.google.gson.annotations.SerializedName
 
 data class Message(
-    val id: String,
+    val id: String = "",
     @SerializedName("channelId")
-    val channelId: String,
-    val content: String,
-    @SerializedName("userId")
-    val userId: String,
-    @SerializedName("agentId")
-    val agentId: String? = null,
+    val channelId: String = "",
+    val content: String = "",
+    @SerializedName("senderId")
+    val senderId: String = "",
+    @SerializedName("senderName")
+    val senderName: String = "",
+    @SerializedName("senderType")
+    val senderType: String = "",
+    @SerializedName("messageType")
+    val messageType: String = "",
     val attachments: List<Attachment> = emptyList(),
     val seq: Long = 0,
     @SerializedName("createdAt")
-    val createdAt: String,
+    val createdAt: String = "",
     @SerializedName("updatedAt")
     val updatedAt: String? = null,
-    @SerializedName("threadId")
-    val threadId: String? = null,
-    @SerializedName("parentChannelId")
-    val parentChannelId: String? = null
-)
+    @SerializedName("threadChannelId")
+    val threadChannelId: String? = null,
+    @SerializedName("parentMessageId")
+    val parentMessageId: String? = null
+) {
+    val isAgent: Boolean get() = senderType == "agent"
+}
 
 data class Attachment(
     val id: String,
@@ -53,18 +59,18 @@ data class Thread(
 data class Task(
     val id: String,
     @SerializedName("channelId")
-    val channelId: String,
-    val title: String,
+    val channelId: String = "",
+    val title: String = "",
     val description: String? = null,
     val status: String = "todo",
     @SerializedName("createdBy")
-    val createdBy: String,
+    val createdBy: String = "",
     @SerializedName("assigneeId")
     val assigneeId: String? = null,
     @SerializedName("messageId")
     val messageId: String? = null,
     @SerializedName("createdAt")
-    val createdAt: String,
+    val createdAt: String = "",
     @SerializedName("updatedAt")
     val updatedAt: String? = null
 )

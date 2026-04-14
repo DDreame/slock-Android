@@ -16,6 +16,7 @@ data class AuthUiState(
     val password: String = "",
     val name: String = "",
     val isLoading: Boolean = false,
+    val isCheckingSession: Boolean = true,
     val error: String? = null,
     val isLoggedIn: Boolean = false,
     val resetEmailSent: Boolean = false
@@ -25,10 +26,22 @@ data class AuthUiState(
 class AuthViewModel @Inject constructor(
     private val authRepository: AuthRepository
 ) : ViewModel() {
-    
+
     private val _state = MutableStateFlow(AuthUiState())
     val state: StateFlow<AuthUiState> = _state.asStateFlow()
-    
+
+    init {
+        checkExistingSession()
+    }
+
+    fun checkExistingSession() {
+        viewModelScope.launch {
+            authRepository.isLoggedIn().collect { loggedIn ->
+                _state.update { it.copy(isLoggedIn = loggedIn, isCheckingSession = false) }
+            }
+        }
+    }
+
     fun onNameChange(name: String) = _state.update { it.copy(name = name, error = null) }
     fun onEmailChange(email: String) = _state.update { it.copy(email = email, error = null) }
     fun onPasswordChange(password: String) = _state.update { it.copy(password = password, error = null) }

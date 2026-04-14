@@ -98,14 +98,14 @@ interface ApiService {
         @Query("limit") limit: Int = 50,
         @Query("before") before: String? = null,
         @Query("after") after: String? = null
-    ): Response<List<Message>>
+    ): Response<MessagesResponse>
 
     @GET("messages/search")
     suspend fun searchMessages(
         @Query("query") query: String,
         @Query("serverId") searchServerId: String? = null,
         @Query("channelId") channelId: String? = null
-    ): Response<List<Message>>
+    ): Response<SearchMessagesResponse>
 
     // Agents (X-Server-Id header added automatically by ServerIdInterceptor)
     @GET("agents")
@@ -133,23 +133,26 @@ interface ApiService {
     suspend fun resetAgent(@Path("agentId") agentId: String, @Body request: ResetAgentRequest): Response<Unit>
 
     // Threads (X-Server-Id header added automatically by ServerIdInterceptor)
+    @GET("channels/threads/followed")
+    suspend fun getFollowedThreads(): Response<FollowedThreadsResponse>
+
     @GET("threads/channel/{channelId}")
     suspend fun getThreadMessages(
         @Path("channelId") channelId: String,
         @Query("limit") limit: Int = 50,
         @Query("before") before: String? = null
-    ): Response<List<Message>>
+    ): Response<MessagesResponse>
 
     @GET("threads/{threadId}/messages")
     suspend fun getThreadReplies(
         @Path("threadId") threadId: String,
         @Query("limit") limit: Int = 50,
         @Query("before") before: String? = null
-    ): Response<List<Message>>
+    ): Response<MessagesResponse>
 
     // Tasks (X-Server-Id header added automatically by ServerIdInterceptor)
     @GET("tasks/channel/{channelId}")
-    suspend fun getTasks(@Path("channelId") channelId: String): Response<List<Task>>
+    suspend fun getTasks(@Path("channelId") channelId: String): Response<TasksResponse>
 
     @POST("tasks")
     suspend fun createTask(@Body request: CreateTaskRequest): Response<Task>

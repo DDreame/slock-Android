@@ -1,77 +1,46 @@
 package com.slock.app.ui.theme
 
 import android.app.Activity
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-private val DarkColorScheme = darkColorScheme(
-    primary = PrimaryDark,
-    secondary = SecondaryDark,
-    tertiary = SecondaryDark,
-    background = BackgroundDark,
-    surface = SurfaceDark,
-    onPrimary = BackgroundDark,
-    onSecondary = BackgroundDark,
-    onTertiary = BackgroundDark,
-    onBackground = OnSurfaceDark,
-    onSurface = OnSurfaceDark,
-    onSurfaceVariant = OnSurfaceVariantDark,
-    error = ErrorDark,
-    onError = BackgroundDark,
-    outline = OutlineDark,
-    surfaceVariant = SurfaceVariantDark
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Primary,
-    secondary = Secondary,
-    tertiary = Secondary,
-    background = BackgroundLight,
-    surface = SurfaceLight,
-    onPrimary = BackgroundLight,
-    onSecondary = BackgroundLight,
-    onTertiary = BackgroundLight,
-    onBackground = OnSurfaceLight,
-    onSurface = OnSurfaceLight,
-    onSurfaceVariant = OnSurfaceVariantLight,
+private val NeoColorScheme = lightColorScheme(
+    primary = Yellow,
+    onPrimary = Black,
+    secondary = Cyan,
+    onSecondary = Black,
+    tertiary = Pink,
+    onTertiary = Black,
+    background = Cream,
+    onBackground = Black,
+    surface = White,
+    onSurface = Black,
+    onSurfaceVariant = TextSecondary,
     error = Error,
-    onError = BackgroundLight,
-    outline = Outline,
-    surfaceVariant = SurfaceVariant
+    onError = White,
+    outline = BorderBlack,
+    surfaceVariant = Cream
 )
 
 @Composable
 fun SlockAppTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
-    }
+    val colorScheme = NeoColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
             window.statusBarColor = colorScheme.background.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = true
         }
     }
 

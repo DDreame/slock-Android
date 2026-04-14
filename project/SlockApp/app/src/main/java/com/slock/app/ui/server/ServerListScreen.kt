@@ -23,8 +23,7 @@ fun ServerListScreen(
     onCreateServer: (name: String, slug: String) -> Unit,
     onDeleteServer: (serverId: String) -> Unit,
     onServerClick: (serverId: String) -> Unit,
-    onLogout: () -> Unit,
-    onNavigateToAgents: () -> Unit
+    onLogout: () -> Unit
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     
@@ -33,7 +32,6 @@ fun ServerListScreen(
             TopAppBar(
                 title = { Text("Your Servers") },
                 actions = {
-                    IconButton(onClick = onNavigateToAgents) { Icon(Icons.Default.SmartToy, contentDescription = "Agents") }
                     IconButton(onClick = onLogout) { Icon(Icons.Default.Logout, contentDescription = "Logout") }
                 }
             )

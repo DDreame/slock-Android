@@ -22,18 +22,31 @@ data class ServerUiState(
 class ServerViewModel @Inject constructor(
     private val serverRepository: ServerRepository
 ) : ViewModel() {
-    
+
     private val _state = MutableStateFlow(ServerUiState())
     val state: StateFlow<ServerUiState> = _state.asStateFlow()
-    
+
+    var selectedServerId: String? = null
+        private set
+
+    fun selectServer(serverId: String) {
+        selectedServerId = serverId
+    }
+
     init { loadServers() }
     
     fun loadServers() {
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update { it.copy(isLoading = it.servers.isEmpty(), error = null) }
+            // Get cached data first (instant)
             serverRepository.getServers().fold(
                 onSuccess = { servers -> _state.update { it.copy(servers = servers, isLoading = false) } },
                 onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
+            )
+            // Then refresh from cloud (cloud always wins)
+            serverRepository.refreshServers().fold(
+                onSuccess = { servers -> _state.update { it.copy(servers = servers) } },
+                onFailure = { /* keep cached data on network failure */ }
             )
         }
     }

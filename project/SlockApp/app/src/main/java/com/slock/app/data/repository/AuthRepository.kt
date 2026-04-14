@@ -28,12 +28,23 @@ class AuthRepositoryImpl @Inject constructor(
         secureTokenStorage.saveTokens(accessToken, refreshToken)
     }
 
+    private suspend fun fetchAndCacheUser() {
+        try {
+            val response = apiService.getMe()
+            if (response.isSuccessful && response.body() != null) {
+                val user = response.body()!!
+                secureTokenStorage.saveUser(user.id, user.name)
+            }
+        } catch (_: Exception) { }
+    }
+
     override suspend fun login(email: String, password: String): Result<AuthResponse> {
         return try {
             val response = apiService.login(LoginRequest(email, password))
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                fetchAndCacheUser()
                 Result.success(authResponse)
             } else {
                 Result.failure(Exception("Login failed: ${response.code()}"))
@@ -49,6 +60,7 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                fetchAndCacheUser()
                 Result.success(authResponse)
             } else {
                 Result.failure(Exception("Register failed: ${response.code()}"))
@@ -95,7 +107,9 @@ class AuthRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getMe()
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val user = response.body()!!
+                secureTokenStorage.saveUser(user.id, user.name)
+                Result.success(user)
             } else {
                 Result.failure(Exception("Get user failed: ${response.code()}"))
             }
@@ -144,6 +158,10 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override fun isLoggedIn(): Flow<Boolean> = flow {
-        emit(secureTokenStorage.hasTokens())
+        val hasTokens = secureTokenStorage.hasTokens()
+        if (hasTokens && secureTokenStorage.userId == null) {
+            fetchAndCacheUser()
+        }
+        emit(hasTokens)
     }
 }

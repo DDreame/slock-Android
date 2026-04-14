@@ -60,8 +60,9 @@ class SocketIOManager @Inject constructor(
         val id: String,
         val channelId: String,
         val content: String,
-        val userId: String,
-        val agentId: String? = null,
+        val senderId: String = "",
+        val senderName: String = "",
+        val senderType: String = "",
         val seq: Long,
         val createdAt: String
     )
@@ -241,8 +242,9 @@ class SocketIOManager @Inject constructor(
                         id = data.optString("id"),
                         channelId = data.optString("channelId"),
                         content = data.optString("content"),
-                        userId = data.optString("userId"),
-                        agentId = data.optString("agentId").takeIf { it.isNotEmpty() },
+                        senderId = data.optString("senderId"),
+                        senderName = data.optString("senderName"),
+                        senderType = data.optString("senderType"),
                         seq = data.optLong("seq"),
                         createdAt = data.optString("createdAt")
                     )

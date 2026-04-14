@@ -2,11 +2,16 @@ package com.slock.app.data.repository
 
 import com.slock.app.data.api.ApiService
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.dao.ChannelDao
+import com.slock.app.data.local.toEntity
+import com.slock.app.data.local.toModel
 import com.slock.app.data.model.*
+import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 
 interface ChannelRepository {
     suspend fun getChannels(serverId: String): Result<List<Channel>>
+    suspend fun refreshChannels(serverId: String): Result<List<Channel>>
     suspend fun createChannel(serverId: String, name: String, type: String = "text"): Result<Channel>
     suspend fun updateChannel(serverId: String, channelId: String, name: String): Result<Channel>
     suspend fun deleteChannel(serverId: String, channelId: String): Result<Unit>
@@ -14,24 +19,53 @@ interface ChannelRepository {
     suspend fun leaveChannel(serverId: String, channelId: String): Result<Unit>
     suspend fun markChannelRead(serverId: String, channelId: String, seq: Long): Result<Unit>
     suspend fun getDMs(serverId: String): Result<List<Channel>>
-    suspend fun createDM(serverId: String, userId: String): Result<Channel>
+    suspend fun createDM(serverId: String, agentId: String? = null, userId: String? = null): Result<Channel>
     suspend fun getChannelMembers(serverId: String, channelId: String): Result<List<ChannelMember>>
     suspend fun getUnreadChannels(serverId: String): Result<List<Channel>>
 }
 
 class ChannelRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
-    private val activeServerHolder: ActiveServerHolder
+    private val activeServerHolder: ActiveServerHolder,
+    private val channelDao: ChannelDao
 ) : ChannelRepository {
 
     override suspend fun getChannels(serverId: String): Result<List<Channel>> {
+        activeServerHolder.serverId = serverId
+        // Return cache for instant UI. ViewModel calls refreshChannels() separately.
+        val cached = try {
+            channelDao.getChannelsByServer(serverId).firstOrNull()?.map { it.toModel() } ?: emptyList()
+        } catch (e: Exception) { emptyList() }
+
+        if (cached.isNotEmpty()) {
+            return Result.success(cached)
+        }
+
+        return try {
+            val response = apiService.getChannels()
+            if (response.isSuccessful && response.body() != null) {
+                val channels = response.body()!!
+                channelDao.insertChannels(channels.map { it.toEntity(serverId) })
+                Result.success(channels)
+            } else {
+                Result.failure(Exception("Get channels failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun refreshChannels(serverId: String): Result<List<Channel>> {
         return try {
             activeServerHolder.serverId = serverId
             val response = apiService.getChannels()
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val channels = response.body()!!
+                channelDao.deleteChannelsByServer(serverId)
+                channelDao.insertChannels(channels.map { it.toEntity(serverId) })
+                Result.success(channels)
             } else {
-                Result.failure(Exception("Get channels failed: ${response.code()}"))
+                Result.failure(Exception("Refresh channels failed: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
@@ -43,7 +77,9 @@ class ChannelRepositoryImpl @Inject constructor(
             activeServerHolder.serverId = serverId
             val response = apiService.createChannel(CreateChannelRequest(name, type))
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val channel = response.body()!!
+                channelDao.insertChannel(channel.toEntity(serverId))
+                Result.success(channel)
             } else {
                 Result.failure(Exception("Create channel failed: ${response.code()}"))
             }
@@ -57,7 +93,9 @@ class ChannelRepositoryImpl @Inject constructor(
             activeServerHolder.serverId = serverId
             val response = apiService.updateChannel(channelId, UpdateChannelRequest(name))
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val channel = response.body()!!
+                channelDao.insertChannel(channel.toEntity(serverId))
+                Result.success(channel)
             } else {
                 Result.failure(Exception("Update channel failed: ${response.code()}"))
             }
@@ -71,6 +109,7 @@ class ChannelRepositoryImpl @Inject constructor(
             activeServerHolder.serverId = serverId
             val response = apiService.deleteChannel(channelId)
             if (response.isSuccessful) {
+                channelDao.deleteChannelById(channelId)
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("Delete channel failed: ${response.code()}"))
@@ -136,10 +175,10 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun createDM(serverId: String, userId: String): Result<Channel> {
+    override suspend fun createDM(serverId: String, agentId: String?, userId: String?): Result<Channel> {
         return try {
             activeServerHolder.serverId = serverId
-            val response = apiService.createDM(CreateDMRequest(userId))
+            val response = apiService.createDM(CreateDMRequest(agentId = agentId, userId = userId))
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!)
             } else {

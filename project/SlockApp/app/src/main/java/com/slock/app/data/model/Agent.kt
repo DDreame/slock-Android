@@ -5,13 +5,16 @@ import com.google.gson.annotations.SerializedName
 data class Agent(
     val id: String,
     val name: String,
-    val description: String,
-    val prompt: String,
+    val description: String = "",
+    val prompt: String = "",
     val model: String = "claude-sonnet-4-20250514",
     val avatar: String? = null,
     val status: String = "stopped",
+    val activity: String? = null,
+    @SerializedName("activityDetail")
+    val activityDetail: String? = null,
     @SerializedName("createdAt")
-    val createdAt: String
+    val createdAt: String = ""
 )
 
 data class CreateAgentRequest(

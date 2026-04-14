@@ -3,9 +3,11 @@ package com.slock.app.di
 import android.content.Context
 import androidx.room.Room
 import com.slock.app.data.local.AppDatabase
+import com.slock.app.data.local.dao.AgentDao
 import com.slock.app.data.local.dao.ChannelDao
 import com.slock.app.data.local.dao.MessageDao
 import com.slock.app.data.local.dao.ServerDao
+import com.slock.app.data.local.dao.TaskDao
 import com.slock.app.data.local.dao.UserDao
 import dagger.Module
 import dagger.Provides
@@ -54,5 +56,17 @@ object DatabaseModule {
     @Singleton
     fun provideUserDao(database: AppDatabase): UserDao {
         return database.userDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAgentDao(database: AppDatabase): AgentDao {
+        return database.agentDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideTaskDao(database: AppDatabase): TaskDao {
+        return database.taskDao()
     }
 }

@@ -20,6 +20,8 @@ class SecureTokenStorage @Inject constructor(
         private const val PREFS_NAME = "slock_secure_prefs"
         private const val KEY_ACCESS_TOKEN = "access_token"
         private const val KEY_REFRESH_TOKEN = "refresh_token"
+        private const val KEY_USER_ID = "user_id"
+        private const val KEY_USER_NAME = "user_name"
     }
 
     private val masterKey = MasterKey.Builder(context)
@@ -44,14 +46,29 @@ class SecureTokenStorage @Inject constructor(
         get() = securePrefs.getString(KEY_REFRESH_TOKEN, null)
         set(value) = securePrefs.edit().putString(KEY_REFRESH_TOKEN, value).apply()
 
+    var userId: String?
+        get() = securePrefs.getString(KEY_USER_ID, null)
+        set(value) = securePrefs.edit().putString(KEY_USER_ID, value).apply()
+
+    var userName: String?
+        get() = securePrefs.getString(KEY_USER_NAME, null)
+        set(value) = securePrefs.edit().putString(KEY_USER_NAME, value).apply()
+
     fun saveTokens(accessToken: String, refreshToken: String) {
         this.accessToken = accessToken
         this.refreshToken = refreshToken
     }
 
+    fun saveUser(id: String, name: String) {
+        this.userId = id
+        this.userName = name
+    }
+
     fun clearTokens() {
         accessToken = null
         refreshToken = null
+        userId = null
+        userName = null
     }
 
     fun hasTokens(): Boolean = !accessToken.isNullOrEmpty()
