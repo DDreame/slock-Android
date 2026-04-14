@@ -99,9 +99,6 @@ class SocketNotificationService : Service() {
     private suspend fun handleNewMessage(data: SocketIOManager.MessageNewData) {
         Log.d(TAG, "handleNewMessage: channelId=${data.channelId}, senderId=${data.senderId}, senderName=${data.senderName}, foreground=${lifecycleTracker.isAppInForeground}")
 
-        // Don't show notification if app is in foreground
-        if (lifecycleTracker.isAppInForeground) return
-
         // Don't notify for own messages (skip filter if userId not cached)
         val currentUserId = secureTokenStorage.userId
         if (currentUserId != null && data.senderId == currentUserId) return

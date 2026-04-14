@@ -32,7 +32,7 @@ class SocketIOManager @Inject constructor(
     private val _connectionState = MutableSharedFlow<ConnectionState>(replay = 1)
     val connectionState: Flow<ConnectionState> = _connectionState.asSharedFlow()
 
-    private val _events = MutableSharedFlow<SocketEvent>(replay = 0)
+    private val _events = MutableSharedFlow<SocketEvent>(replay = 0, extraBufferCapacity = 64)
     val events: Flow<SocketEvent> = _events.asSharedFlow()
 
     // Event class for unified event handling
