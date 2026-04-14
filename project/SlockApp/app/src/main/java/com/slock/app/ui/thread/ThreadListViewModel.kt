@@ -2,6 +2,7 @@ package com.slock.app.ui.thread
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.model.Message
 import com.slock.app.data.model.ThreadSummary
@@ -71,22 +72,47 @@ class ThreadListViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = it.threads.isEmpty(), error = null) }
 
-            // Build name lookup from members and agents
+            // Build name lookup from server members and agents
             val nameLookup = mutableMapOf<String, String>()
+
+            // 1. Server members — map userId -> name using all available name fields
             try {
                 val membersResponse = apiService.getServerMembers(serverId)
                 if (membersResponse.isSuccessful && membersResponse.body() != null) {
                     membersResponse.body()!!.forEach { member ->
-                        member.user?.let { nameLookup[member.userId] = it.name }
+                        val resolvedName = member.user?.name
+                            ?: member.displayName
+                            ?: member.name
+                        if (resolvedName != null) {
+                            nameLookup[member.userId] = resolvedName
+                            // Also map by user.id in case it differs from member.userId
+                            member.user?.let { nameLookup[it.id] = resolvedName }
+                        }
                     }
                 }
-            } catch (_: Exception) { }
+                Log.d("ThreadListVM", "Members lookup: ${nameLookup.size} entries")
+            } catch (e: Exception) {
+                Log.e("ThreadListVM", "Failed to load members for name lookup", e)
+            }
+
+            // 2. Agents — use refreshAgents to ensure fresh data from API
             try {
-                agentRepository.getAgents(serverId).fold(
-                    onSuccess = { agents -> agents.forEach { nameLookup[it.id] = it.name } },
-                    onFailure = { }
+                agentRepository.refreshAgents(serverId).fold(
+                    onSuccess = { agents ->
+                        agents.forEach { nameLookup[it.id] = it.name }
+                        Log.d("ThreadListVM", "Agents lookup: added ${agents.size} agents")
+                    },
+                    onFailure = {
+                        // Fallback to cache
+                        agentRepository.getAgents(serverId).fold(
+                            onSuccess = { agents -> agents.forEach { nameLookup[it.id] = it.name } },
+                            onFailure = { }
+                        )
+                    }
                 )
-            } catch (_: Exception) { }
+            } catch (e: Exception) {
+                Log.e("ThreadListVM", "Failed to load agents for name lookup", e)
+            }
 
             threadRepository.getFollowedThreads(serverId).fold(
                 onSuccess = { summaries ->
@@ -96,7 +122,10 @@ class ThreadListViewModel @Inject constructor(
                         .map { summary ->
                             val senderName = summary.parentMessageSenderName
                                 ?: nameLookup[summary.parentMessageSenderId]
-                                ?: if (summary.parentMessageSenderType == "agent") "Agent" else "User"
+                                ?: run {
+                                    Log.w("ThreadListVM", "Unresolved sender: id=${summary.parentMessageSenderId}, type=${summary.parentMessageSenderType}, lookup keys=${nameLookup.keys}")
+                                    if (summary.parentMessageSenderType == "agent") "Agent" else "User"
+                                }
                             ThreadItem(
                                 parentMessage = Message(
                                     id = summary.parentMessageId,

@@ -21,7 +21,10 @@ data class Member(
     @SerializedName("userId")
     val userId: String,
     val role: String,
-    val user: User? = null
+    val user: User? = null,
+    val name: String? = null,
+    @SerializedName("displayName")
+    val displayName: String? = null
 )
 
 data class UpdateMemberRoleRequest(
