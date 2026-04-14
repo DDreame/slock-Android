@@ -90,17 +90,13 @@ class AuthRepositoryImpl @Inject constructor(
     }
 
     override suspend fun logout(): Result<Unit> {
-        return try {
-            val response = apiService.logout()
-            if (response.isSuccessful) {
-                secureTokenStorage.clearTokens()
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Logout failed: ${response.code()}"))
-            }
-        } catch (e: Exception) {
-            Result.failure(e)
+        try {
+            apiService.logout()
+        } catch (_: Exception) {
+            // Ignore API errors — always clear local tokens
         }
+        secureTokenStorage.clearTokens()
+        return Result.success(Unit)
     }
 
     override suspend fun getMe(): Result<User> {

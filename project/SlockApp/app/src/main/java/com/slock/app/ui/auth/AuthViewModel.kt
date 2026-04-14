@@ -75,4 +75,12 @@ class AuthViewModel @Inject constructor(
             )
         }
     }
+
+    fun logout(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            authRepository.logout()
+            _state.update { it.copy(isLoggedIn = false) }
+            onComplete()
+        }
+    }
 }

@@ -156,6 +156,7 @@ fun SlockNavHost(
             val agentViewModel: AgentViewModel = hiltViewModel()
             val threadListViewModel: ThreadListViewModel = hiltViewModel()
             val serverTasksViewModel: ServerTasksViewModel = hiltViewModel()
+            val authViewModel: AuthViewModel = hiltViewModel()
 
             val serverState by serverViewModel.state.collectAsState()
             val channelState by channelViewModel.state.collectAsState()
@@ -209,9 +210,11 @@ fun SlockNavHost(
                 onCreateChannel = channelViewModel::createChannel,
                 onCreateServer = serverViewModel::createServer,
                 onLogout = {
-                    SocketNotificationService.stop(context)
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(0) { inclusive = true }
+                    authViewModel.logout {
+                        SocketNotificationService.stop(context)
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
                 },
                 onTabSelected = { tab ->
