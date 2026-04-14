@@ -9,6 +9,9 @@ interface ChannelDao {
     @Query("SELECT * FROM channels WHERE serverId = :serverId ORDER BY createdAt ASC")
     fun getChannelsByServer(serverId: String): Flow<List<ChannelEntity>>
 
+    @Query("SELECT id FROM channels WHERE serverId = :serverId")
+    suspend fun getChannelIdsByServer(serverId: String): List<String>
+
     @Query("SELECT * FROM channels WHERE id = :channelId")
     suspend fun getChannelById(channelId: String): ChannelEntity?
 

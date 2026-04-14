@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -79,6 +80,25 @@ class SocketNotificationService : Service() {
         if (!socketManager.isConnected()) {
             val serverId = activeServerHolder.serverId
             socketManager.connect(serverId)
+            // After connection established, join all cached channels
+            joinCachedChannels(serverId)
+        }
+    }
+
+    private fun joinCachedChannels(serverId: String?) {
+        if (serverId.isNullOrBlank()) return
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                // Wait for socket to connect before joining channels
+                socketManager.connectionState.first { it == SocketIOManager.ConnectionState.CONNECTED }
+                val channelIds = channelDao.getChannelIdsByServer(serverId)
+                Log.d(TAG, "Joining ${channelIds.size} cached channels after connect")
+                channelIds.forEach { channelId ->
+                    socketManager.joinChannel(channelId)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to join cached channels", e)
+            }
         }
     }
 
