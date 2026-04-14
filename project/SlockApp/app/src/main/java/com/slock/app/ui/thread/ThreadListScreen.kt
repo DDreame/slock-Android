@@ -36,7 +36,7 @@ fun ThreadListScreen(
         }
 
         // Content
-        Box(modifier = Modifier.weight(1f)) {
+        Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 state.isLoading -> {
                     CircularProgressIndicator(
