@@ -134,11 +134,33 @@ class ThreadReplyViewModel @Inject constructor(
 
     fun sendReply(content: String) {
         if (_state.value.isSending) return
+        val pendingId = "pending-${System.currentTimeMillis()}"
+        val pendingMessage = Message(
+            id = pendingId,
+            channelId = _state.value.threadChannelId,
+            content = content,
+            senderName = "You",
+            senderType = "user",
+            createdAt = java.time.Instant.now().toString()
+        )
         viewModelScope.launch {
-            _state.update { it.copy(isSending = true) }
+            _state.update { it.copy(isSending = true, replies = it.replies + pendingMessage) }
             messageRepository.sendMessage(activeServerHolder.serverId ?: "", _state.value.threadChannelId, content).fold(
-                onSuccess = { message -> _state.update { it.copy(replies = it.replies + message, isSending = false) } },
-                onFailure = { err -> _state.update { it.copy(isSending = false, error = err.message) } }
+                onSuccess = { message ->
+                    _state.update { current ->
+                        val updated = current.replies.map { if (it.id == pendingId) message else it }
+                        current.copy(replies = updated, isSending = false)
+                    }
+                },
+                onFailure = { err ->
+                    _state.update { current ->
+                        current.copy(
+                            replies = current.replies.filter { it.id != pendingId },
+                            isSending = false,
+                            error = err.message
+                        )
+                    }
+                }
             )
         }
     }

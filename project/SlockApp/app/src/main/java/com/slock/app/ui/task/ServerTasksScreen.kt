@@ -43,6 +43,7 @@ fun ServerTasksScreen(
     onUpdateStatus: (taskId: String, status: String) -> Unit,
     onDeleteTask: (taskId: String) -> Unit,
     onNavigateBack: () -> Unit,
+    onRetry: () -> Unit = {},
     showHeader: Boolean = true
 ) {
     Column(
@@ -65,25 +66,11 @@ fun ServerTasksScreen(
                     )
                 }
                 state.error != null && state.tasks.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(text = "\u26A0", fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Failed to load tasks",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Black
-                        )
-                        Text(
-                            state.error ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Pink,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
+                    NeoErrorState(
+                        message = "任务加载失败",
+                        modifier = Modifier.align(Alignment.Center),
+                        onRetry = onRetry
+                    )
                 }
                 state.tasks.isEmpty() && !state.isLoading -> {
                     Column(

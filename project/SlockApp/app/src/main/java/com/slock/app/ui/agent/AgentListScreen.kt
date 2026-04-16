@@ -46,6 +46,7 @@ fun AgentListScreen(
     onDmAgent: (agentId: String) -> Unit,
     onAgentClick: (agentId: String) -> Unit,
     onNavigateBack: () -> Unit,
+    onRetry: () -> Unit = {},
     showHeader: Boolean = true
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
@@ -81,27 +82,11 @@ fun AgentListScreen(
                     )
                 }
                 state.error != null && state.agents.isEmpty() -> {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(text = "\u26A0", fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Failed to load agents",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Black
-                        )
-                        Text(
-                            state.error ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Pink,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
+                    NeoErrorState(
+                        message = "Agent 加载失败",
+                        modifier = Modifier.align(Alignment.Center),
+                        onRetry = onRetry
+                    )
                 }
                 state.agents.isEmpty() -> {
                     Column(

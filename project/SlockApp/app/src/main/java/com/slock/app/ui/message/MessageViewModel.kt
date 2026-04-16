@@ -115,14 +115,33 @@ class MessageViewModel @Inject constructor(
             _state.update { it.copy(error = "Server not selected") }
             return
         }
+        // Optimistic UI: add pending message immediately
+        val pendingId = "pending-${System.currentTimeMillis()}"
+        val pendingMessage = Message(
+            id = pendingId,
+            channelId = _state.value.channelId,
+            content = content,
+            senderName = "You",
+            senderType = "user",
+            createdAt = java.time.Instant.now().toString()
+        )
         viewModelScope.launch {
-            _state.update { it.copy(isSending = true, error = null) }
+            _state.update { it.copy(isSending = true, error = null, messages = listOf(pendingMessage) + it.messages) }
             messageRepository.sendMessage(serverId, _state.value.channelId, content).fold(
                 onSuccess = { message ->
-                    _state.update { it.copy(messages = listOf(message) + it.messages, isSending = false) }
+                    _state.update { current ->
+                        val updated = current.messages.map { if (it.id == pendingId) message else it }
+                        current.copy(messages = updated, isSending = false)
+                    }
                 },
                 onFailure = { error ->
-                    _state.update { it.copy(isSending = false, error = error.message) }
+                    _state.update { current ->
+                        current.copy(
+                            messages = current.messages.filter { it.id != pendingId },
+                            isSending = false,
+                            error = error.message
+                        )
+                    }
                 }
             )
         }

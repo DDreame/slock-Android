@@ -12,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -63,32 +64,11 @@ fun MessageListScreen(
                     )
                 }
                 state.error != null -> {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "\u26A0", fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Failed to load messages",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Black
-                        )
-                        Text(
-                            state.error ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Pink,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        NeoButton(
-                            text = "RETRY",
-                            onClick = { onLoadMore() },
-                            modifier = Modifier.padding(horizontal = 48.dp)
-                        )
-                    }
+                    NeoErrorState(
+                        message = "消息加载失败",
+                        modifier = Modifier.align(Alignment.Center),
+                        onRetry = { onLoadMore() }
+                    )
                 }
                 state.messages.isEmpty() -> {
                     Column(
@@ -213,12 +193,15 @@ private fun NeoMessage(
     onThreadClick: (() -> Unit)? = null
 ) {
     val isAgent = message.isAgent
+    val isPending = message.id.startsWith("pending-")
     val accentColor = if (isAgent) Orange else Cyan
+    val alpha = if (isPending) 0.5f else 1f
     var showMenu by remember { mutableStateOf(false) }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(alpha)
             .height(IntrinsicSize.Min)
             .combinedClickable(
                 onClick = { },
@@ -295,6 +278,16 @@ private fun NeoMessage(
                 color = Color(0xFF222222),
                 lineHeight = 21.sp
             )
+
+            // Sending indicator
+            if (isPending) {
+                Text(
+                    text = "发送中...",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
 
             // Task badge
             if (message.isTask) {

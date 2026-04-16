@@ -166,7 +166,9 @@ class ChannelRepositoryImpl @Inject constructor(
             activeServerHolder.serverId = serverId
             val response = apiService.getDMs()
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val dms = response.body()!!
+                channelDao.insertChannels(dms.map { it.toEntity(serverId) })
+                Result.success(dms)
             } else {
                 Result.failure(Exception("Get DMs failed: ${response.code()}"))
             }

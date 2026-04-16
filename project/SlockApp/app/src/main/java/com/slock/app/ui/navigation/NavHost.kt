@@ -233,6 +233,7 @@ fun SlockNavHost(
                             navController.navigate("thread/$threadChannelId/reply/$parentJson?channelName=$encodedChName")
                         },
                         onNavigateBack = { },
+                        onRetry = { selectedServer?.id?.let { threadListViewModel.loadThreads(it) } },
                         showHeader = false
                     )
                 },
@@ -260,6 +261,7 @@ fun SlockNavHost(
                         },
                         onAgentClick = { },
                         onNavigateBack = { },
+                        onRetry = { selectedServer?.id?.let { agentViewModel.loadAgents(it) } },
                         showHeader = false
                     )
                 },
@@ -270,6 +272,7 @@ fun SlockNavHost(
                         onUpdateStatus = serverTasksViewModel::updateTaskStatus,
                         onDeleteTask = serverTasksViewModel::deleteTask,
                         onNavigateBack = { },
+                        onRetry = { selectedServer?.id?.let { serverTasksViewModel.loadAllTasks(it) } },
                         showHeader = false
                     )
                 }
@@ -341,7 +344,8 @@ fun SlockNavHost(
                     )
                 },
                 onAgentClick = { },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onRetry = { viewModel.loadAgents(serverId) }
             )
         }
 
@@ -362,7 +366,8 @@ fun SlockNavHost(
                     val encodedChName = Uri.encode(channelName)
                     navController.navigate("thread/$threadChannelId/reply/$parentJson?channelName=$encodedChName")
                 },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onRetry = { viewModel.loadThreads(serverId) }
             )
         }
 
@@ -381,7 +386,8 @@ fun SlockNavHost(
                 onToggleGroup = viewModel::toggleGroup,
                 onUpdateStatus = viewModel::updateTaskStatus,
                 onDeleteTask = viewModel::deleteTask,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onRetry = { viewModel.loadAllTasks(serverId) }
             )
         }
 

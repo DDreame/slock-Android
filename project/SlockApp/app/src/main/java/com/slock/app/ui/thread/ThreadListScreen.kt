@@ -23,6 +23,7 @@ fun ThreadListScreen(
     state: ThreadListUiState,
     onThreadClick: (threadChannelId: String, parentMessage: com.slock.app.data.model.Message, channelName: String) -> Unit,
     onNavigateBack: () -> Unit,
+    onRetry: () -> Unit = {},
     showHeader: Boolean = true
 ) {
     Column(
@@ -45,26 +46,11 @@ fun ThreadListScreen(
                     )
                 }
                 state.error != null -> {
-                    Column(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = "\u26A0", fontSize = 48.sp)
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Failed to load threads",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Black
-                        )
-                        Text(
-                            state.error ?: "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = Pink,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
-                    }
+                    NeoErrorState(
+                        message = "讨论加载失败",
+                        modifier = Modifier.align(Alignment.Center),
+                        onRetry = onRetry
+                    )
                 }
                 state.threads.isEmpty() -> {
                     Column(

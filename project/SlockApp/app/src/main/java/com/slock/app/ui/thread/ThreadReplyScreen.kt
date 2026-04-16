@@ -10,6 +10,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -383,10 +384,13 @@ private fun RepliesDivider(count: Int) {
 @Composable
 private fun ThreadReply(message: Message) {
     val isAgent = message.isAgent
+    val isPending = message.id.startsWith("pending-")
+    val alpha = if (isPending) 0.5f else 1f
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .alpha(alpha)
             .padding(horizontal = 16.dp, vertical = 7.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -447,6 +451,15 @@ private fun ThreadReply(message: Message) {
                 color = Color(0xFF222222),
                 lineHeight = 21.sp
             )
+
+            if (isPending) {
+                Text(
+                    text = "发送中...",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = TextMuted,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
     }
 }
