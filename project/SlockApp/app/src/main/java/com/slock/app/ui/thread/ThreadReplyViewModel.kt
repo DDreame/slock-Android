@@ -6,6 +6,7 @@ import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.repository.ThreadRepository
+import com.slock.app.data.api.ApiService
 import com.slock.app.data.socket.SocketIOManager
 import android.util.Log
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -30,6 +31,7 @@ data class ThreadReplyUiState(
 class ThreadReplyViewModel @Inject constructor(
     private val threadRepository: ThreadRepository,
     private val messageRepository: MessageRepository,
+    private val apiService: ApiService,
     private val socketManager: SocketIOManager,
     private val activeServerHolder: ActiveServerHolder
 ) : ViewModel() {
@@ -84,27 +86,48 @@ class ThreadReplyViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = it.replies.isEmpty()) }
 
-            // Primary: use standard messages endpoint (matches JS frontend: GET /messages/channel/${threadChannelId})
-            messageRepository.refreshMessages(serverId, threadChannelId).fold(
-                onSuccess = { replies ->
-                    Log.d("ThreadReplyVM", "refreshMessages success: ${replies.size} replies")
-                    _state.update { it.copy(replies = replies, isLoading = false) }
-                },
-                onFailure = { err ->
-                    Log.e("ThreadReplyVM", "refreshMessages failed, trying thread endpoint", err)
-                    // Fallback: use thread-specific endpoint (GET /threads/{threadId}/messages)
-                    threadRepository.getThreadReplies(serverId, threadChannelId).fold(
-                        onSuccess = { replies ->
-                            Log.d("ThreadReplyVM", "getThreadReplies success: ${replies.size} replies")
-                            _state.update { it.copy(replies = replies, isLoading = false) }
-                        },
-                        onFailure = { err2 ->
-                            Log.e("ThreadReplyVM", "getThreadReplies also failed", err2)
-                            _state.update { it.copy(isLoading = false, error = err2.message) }
-                        }
-                    )
+            // Try wrapped format first: GET /messages/channel/{id} → { messages: [...] }
+            var replies: List<Message>? = null
+            try {
+                val response = apiService.getMessages(threadChannelId)
+                if (response.isSuccessful && response.body() != null) {
+                    val msgs = response.body()!!.messages
+                    if (msgs.isNotEmpty()) {
+                        replies = msgs
+                        Log.d("ThreadReplyVM", "getMessages wrapped: ${msgs.size} replies")
+                    }
                 }
-            )
+            } catch (e: Exception) {
+                Log.w("ThreadReplyVM", "getMessages wrapped failed", e)
+            }
+
+            // Fallback: response may be plain array (JS does: it.messages ?? it)
+            if (replies == null) {
+                try {
+                    val response = apiService.getMessagesRaw(threadChannelId)
+                    if (response.isSuccessful && response.body() != null) {
+                        replies = response.body()!!
+                        Log.d("ThreadReplyVM", "getMessagesRaw array: ${replies.size} replies")
+                    }
+                } catch (e: Exception) {
+                    Log.w("ThreadReplyVM", "getMessagesRaw failed", e)
+                }
+            }
+
+            // Final fallback: thread-specific endpoint
+            if (replies == null) {
+                threadRepository.getThreadReplies(serverId, threadChannelId).fold(
+                    onSuccess = { r ->
+                        replies = r
+                        Log.d("ThreadReplyVM", "getThreadReplies: ${r.size} replies")
+                    },
+                    onFailure = { err ->
+                        Log.e("ThreadReplyVM", "All endpoints failed", err)
+                    }
+                )
+            }
+
+            _state.update { it.copy(replies = replies ?: emptyList(), isLoading = false, error = if (replies == null) "Failed to load replies" else null) }
             socketManager.joinChannel(threadChannelId)
         }
     }

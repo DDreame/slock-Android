@@ -100,6 +100,13 @@ interface ApiService {
         @Query("after") after: String? = null
     ): Response<MessagesResponse>
 
+    // Some endpoints may return plain array instead of { messages: [...] }
+    @GET("messages/channel/{channelId}")
+    suspend fun getMessagesRaw(
+        @Path("channelId") channelId: String,
+        @Query("limit") limit: Int = 50
+    ): Response<List<Message>>
+
     @GET("messages/search")
     suspend fun searchMessages(
         @Query("query") query: String,
