@@ -117,7 +117,7 @@ class ThreadListViewModel @Inject constructor(
             threadRepository.getFollowedThreads(serverId).fold(
                 onSuccess = { summaries ->
                     val threads = summaries
-                        .filter { it.threadChannelId.isNotBlank() }
+                        .filter { it.threadChannelId?.isNotBlank() == true }
                         .sortedByDescending { it.lastReplyAt ?: "" }
                         .map { summary ->
                             val senderName = summary.parentMessageSenderName
@@ -135,8 +135,8 @@ class ThreadListViewModel @Inject constructor(
                                     senderName = senderName,
                                     senderType = summary.parentMessageSenderType
                                 ),
-                                channelName = summary.channelName,
-                                threadChannelId = summary.threadChannelId,
+                                channelName = summary.channelName.orEmpty(),
+                                threadChannelId = summary.threadChannelId.orEmpty(),
                                 replyCount = summary.replyCount,
                                 lastActivity = summary.lastReplyAt ?: ""
                             )

@@ -38,15 +38,15 @@ data class FollowedThreadsResponse(
  * Thread summary from followed threads API
  */
 data class ThreadSummary(
-    val threadChannelId: String = "",
-    val parentMessageId: String = "",
-    val parentChannelId: String = "",
-    val parentMessageSenderId: String = "",
-    val parentMessageSenderType: String = "",
+    val threadChannelId: String? = null,
+    val parentMessageId: String? = null,
+    val parentChannelId: String? = null,
+    val parentMessageSenderId: String? = null,
+    val parentMessageSenderType: String? = null,
     val parentMessageSenderName: String? = null,
-    val parentMessagePreview: String = "",
+    val parentMessagePreview: String? = null,
     val replyCount: Int = 0,
     val lastReplyAt: String? = null,
     val unreadCount: Int = 0,
-    val channelName: String = ""
+    val channelName: String? = null
 )
