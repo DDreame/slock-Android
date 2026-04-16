@@ -38,8 +38,8 @@ fun MessageEntity.toModel() = Message(
 
 // Agent
 fun Agent.toEntity(serverId: String) = AgentEntity(
-    id = id, serverId = serverId, name = name, description = description,
-    prompt = prompt, model = model, avatar = avatar, status = status,
+    id = id, serverId = serverId, name = name, description = description ?: "",
+    prompt = prompt ?: "", model = model, avatar = avatar, status = status,
     activity = activity, activityDetail = activityDetail, createdAt = createdAt
 )
 

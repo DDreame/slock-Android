@@ -403,7 +403,7 @@ private fun NeoAgentCard(
                 }
 
                 Text(
-                    text = agent.description,
+                    text = agent.description ?: "",
                     fontSize = 12.sp,
                     color = TextMuted,
                     maxLines = 1,
