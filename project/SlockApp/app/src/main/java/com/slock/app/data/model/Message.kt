@@ -24,9 +24,20 @@ data class Message(
     @SerializedName("threadChannelId")
     val threadChannelId: String? = null,
     @SerializedName("parentMessageId")
-    val parentMessageId: String? = null
+    val parentMessageId: String? = null,
+    @SerializedName("replyCount")
+    val replyCount: Int = 0,
+    @SerializedName("lastReplyAt")
+    val lastReplyAt: String? = null,
+    @SerializedName("taskNumber")
+    val taskNumber: Int? = null,
+    @SerializedName("taskStatus")
+    val taskStatus: String? = null,
+    @SerializedName("taskClaimedByName")
+    val taskClaimedByName: String? = null
 ) {
     val isAgent: Boolean get() = senderType == "agent"
+    val isTask: Boolean get() = taskNumber != null
 }
 
 data class Attachment(

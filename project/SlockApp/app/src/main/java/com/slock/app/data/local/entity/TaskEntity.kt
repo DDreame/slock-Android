@@ -11,13 +11,13 @@ import androidx.room.PrimaryKey
 data class TaskEntity(
     @PrimaryKey
     val id: String,
-    val channelId: String = "",
-    val title: String = "",
+    val channelId: String? = null,
+    val title: String? = null,
     val description: String? = null,
-    val status: String = "todo",
-    val createdBy: String = "",
+    val status: String? = null,
+    val createdBy: String? = null,
     val assigneeId: String? = null,
     val messageId: String? = null,
-    val createdAt: String = "",
+    val createdAt: String? = null,
     val updatedAt: String? = null
 )

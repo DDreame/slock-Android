@@ -9,7 +9,8 @@ fun Server.toEntity() = ServerEntity(
 )
 
 fun ServerEntity.toModel() = Server(
-    id = id, name = name, slug = slug, role = role, createdAt = createdAt
+    id = id, name = name.orEmpty(), slug = slug.orEmpty(),
+    role = role.orEmpty(), createdAt = createdAt.orEmpty()
 )
 
 // Channel
@@ -18,7 +19,8 @@ fun Channel.toEntity(serverId: String) = ChannelEntity(
 )
 
 fun ChannelEntity.toModel() = Channel(
-    id = id, serverId = serverId, name = name, type = type, seq = seq, createdAt = createdAt
+    id = id, serverId = serverId.orEmpty(), name = name.orEmpty(),
+    type = type.orEmpty(), seq = seq, createdAt = createdAt.orEmpty()
 )
 
 // Message
@@ -26,27 +28,31 @@ fun Message.toEntity() = MessageEntity(
     id = id, channelId = channelId, content = content,
     senderId = senderId, senderType = senderType, senderName = senderName,
     seq = seq, createdAt = createdAt, updatedAt = updatedAt,
-    threadId = threadChannelId, attachments = "[]"
+    threadId = threadChannelId, taskNumber = taskNumber, taskStatus = taskStatus,
+    replyCount = replyCount, attachments = "[]"
 )
 
 fun MessageEntity.toModel() = Message(
-    id = id, channelId = channelId, content = content,
-    senderId = senderId, senderName = senderName, senderType = senderType,
-    seq = seq, createdAt = createdAt, updatedAt = updatedAt,
-    threadChannelId = threadId
+    id = id, channelId = channelId.orEmpty(), content = content.orEmpty(),
+    senderId = senderId.orEmpty(), senderName = senderName.orEmpty(),
+    senderType = senderType.orEmpty(),
+    seq = seq, createdAt = createdAt.orEmpty(), updatedAt = updatedAt,
+    threadChannelId = threadId, taskNumber = taskNumber, taskStatus = taskStatus,
+    replyCount = replyCount
 )
 
 // Agent
 fun Agent.toEntity(serverId: String) = AgentEntity(
-    id = id, serverId = serverId, name = name, description = description ?: "",
-    prompt = prompt ?: "", model = model, avatar = avatar, status = status,
+    id = id, serverId = serverId, name = name, description = description,
+    prompt = prompt, model = model, avatar = avatar, status = status,
     activity = activity, activityDetail = activityDetail, createdAt = createdAt
 )
 
 fun AgentEntity.toModel() = Agent(
-    id = id, name = name, description = description, prompt = prompt,
-    model = model, avatar = avatar, status = status, activity = activity,
-    activityDetail = activityDetail, createdAt = createdAt
+    id = id, name = name.orEmpty(), description = description,
+    prompt = prompt, model = model.orEmpty(), avatar = avatar,
+    status = status.orEmpty(), activity = activity,
+    activityDetail = activityDetail, createdAt = createdAt.orEmpty()
 )
 
 // Task
@@ -57,7 +63,8 @@ fun Task.toEntity() = TaskEntity(
 )
 
 fun TaskEntity.toModel() = Task(
-    id = id, channelId = channelId, title = title, description = description,
-    status = status, createdBy = createdBy, assigneeId = assigneeId,
-    messageId = messageId, createdAt = createdAt, updatedAt = updatedAt
+    id = id, channelId = channelId.orEmpty(), title = title.orEmpty(),
+    description = description, status = status.orEmpty(),
+    createdBy = createdBy.orEmpty(), assigneeId = assigneeId,
+    messageId = messageId, createdAt = createdAt.orEmpty(), updatedAt = updatedAt
 )

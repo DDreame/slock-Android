@@ -296,6 +296,43 @@ private fun NeoMessage(
                 lineHeight = 21.sp
             )
 
+            // Task badge
+            if (message.isTask) {
+                Spacer(modifier = Modifier.height(6.dp))
+                val (badgeColor, statusLabel) = when (message.taskStatus) {
+                    "in_progress" -> Cyan to "In Progress"
+                    "in_review" -> Lavender to "In Review"
+                    "done" -> Lime to "Done"
+                    else -> Orange to "Todo"
+                }
+                Row(
+                    modifier = Modifier
+                        .background(badgeColor)
+                        .border(1.5.dp, Black, RectangleShape)
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = "\uD83D\uDCCB #${message.taskNumber}",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Black
+                    )
+                    Text(
+                        text = statusLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Black
+                    )
+                    if (!message.taskClaimedByName.isNullOrBlank()) {
+                        Text(
+                            text = "@${message.taskClaimedByName}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary
+                        )
+                    }
+                }
+            }
+
             // Thread preview
             if (message.threadChannelId != null && onThreadClick != null) {
                 Spacer(modifier = Modifier.height(8.dp))
@@ -307,8 +344,14 @@ private fun NeoMessage(
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    val count = message.replyCount
+                    val replyText = if (count > 0) {
+                        "$count ${if (count == 1) "reply" else "replies"}"
+                    } else {
+                        "replies"
+                    }
                     Text(
-                        text = "\uD83D\uDCAC replies",
+                        text = "\uD83D\uDCAC $replyText",
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                         color = Black
                     )

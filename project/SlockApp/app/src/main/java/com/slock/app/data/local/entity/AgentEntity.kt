@@ -11,14 +11,14 @@ import androidx.room.PrimaryKey
 data class AgentEntity(
     @PrimaryKey
     val id: String,
-    val serverId: String = "",
-    val name: String = "",
+    val serverId: String? = null,
+    val name: String? = null,
     val description: String? = null,
     val prompt: String? = null,
-    val model: String = "claude-sonnet-4-20250514",
+    val model: String? = null,
     val avatar: String? = null,
-    val status: String = "stopped",
+    val status: String? = null,
     val activity: String? = null,
     val activityDetail: String? = null,
-    val createdAt: String = ""
+    val createdAt: String? = null
 )

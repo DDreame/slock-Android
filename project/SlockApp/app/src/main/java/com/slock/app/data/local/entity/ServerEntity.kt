@@ -7,8 +7,8 @@ import androidx.room.PrimaryKey
 data class ServerEntity(
     @PrimaryKey
     val id: String,
-    val name: String,
-    val slug: String,
-    val role: String = "member",
-    val createdAt: String
+    val name: String? = null,
+    val slug: String? = null,
+    val role: String? = null,
+    val createdAt: String? = null
 )

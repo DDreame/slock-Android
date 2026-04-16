@@ -20,16 +20,17 @@ import androidx.room.PrimaryKey
 data class MessageEntity(
     @PrimaryKey
     val id: String,
-    val channelId: String = "",
-    val content: String = "",
-    val senderId: String = "",
-    val senderType: String = "", // "user" or "agent"
-    val senderName: String = "",
+    val channelId: String? = null,
+    val content: String? = null,
+    val senderId: String? = null,
+    val senderType: String? = null,
+    val senderName: String? = null,
     val seq: Long = 0,
-    val createdAt: String = "",
+    val createdAt: String? = null,
     val updatedAt: String? = null,
     val threadId: String? = null,
     val taskStatus: String? = null,
     val taskNumber: Int? = null,
-    val attachments: String = "[]" // JSON array stored as string
+    val replyCount: Int = 0,
+    val attachments: String? = null
 )
