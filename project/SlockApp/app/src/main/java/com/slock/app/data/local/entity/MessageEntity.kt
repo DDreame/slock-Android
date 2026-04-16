@@ -20,13 +20,13 @@ import androidx.room.PrimaryKey
 data class MessageEntity(
     @PrimaryKey
     val id: String,
-    val channelId: String,
-    val content: String,
-    val senderId: String,
-    val senderType: String, // "user" or "agent"
-    val senderName: String,
-    val seq: Long,
-    val createdAt: String,
+    val channelId: String = "",
+    val content: String = "",
+    val senderId: String = "",
+    val senderType: String = "", // "user" or "agent"
+    val senderName: String = "",
+    val seq: Long = 0,
+    val createdAt: String = "",
     val updatedAt: String? = null,
     val threadId: String? = null,
     val taskStatus: String? = null,

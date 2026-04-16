@@ -20,11 +20,11 @@ import androidx.room.PrimaryKey
 data class ChannelEntity(
     @PrimaryKey
     val id: String,
-    val serverId: String,
-    val name: String,
+    val serverId: String = "",
+    val name: String = "",
     val type: String = "text",
     val seq: Long = 0,
-    val createdAt: String,
+    val createdAt: String = "",
     val description: String? = null,
     val joined: Boolean = true
 )

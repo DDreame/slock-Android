@@ -11,8 +11,8 @@ import androidx.room.PrimaryKey
 data class AgentEntity(
     @PrimaryKey
     val id: String,
-    val serverId: String,
-    val name: String,
+    val serverId: String = "",
+    val name: String = "",
     val description: String? = null,
     val prompt: String? = null,
     val model: String = "claude-sonnet-4-20250514",
@@ -20,5 +20,5 @@ data class AgentEntity(
     val status: String = "stopped",
     val activity: String? = null,
     val activityDetail: String? = null,
-    val createdAt: String
+    val createdAt: String = ""
 )
