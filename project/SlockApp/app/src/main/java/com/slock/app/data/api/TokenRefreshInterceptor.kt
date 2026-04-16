@@ -77,7 +77,7 @@ class TokenRefreshInterceptor @Inject constructor(
                         val body = response.body?.string()
                         if (body != null) {
                             val authResponse = gson.fromJson(body, AuthResponse::class.java)
-                            secureTokenStorage.saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                            secureTokenStorage.saveTokens(authResponse.accessToken.orEmpty(), authResponse.refreshToken.orEmpty())
                             return@withLock true
                         }
                     }

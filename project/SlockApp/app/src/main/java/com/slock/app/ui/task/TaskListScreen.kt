@@ -141,9 +141,9 @@ fun TaskListScreen(
                                             "in_review" -> "done"
                                             else -> null
                                         }
-                                        nextStatus?.let { onUpdateStatus(task.id, it) }
+                                        nextStatus?.let { onUpdateStatus(task.id.orEmpty(), it) }
                                     },
-                                    onDelete = { onDeleteTask(task.id) }
+                                    onDelete = { onDeleteTask(task.id.orEmpty()) }
                                 )
                             }
 
@@ -322,7 +322,7 @@ private fun NeoTaskCard(
         Column(modifier = Modifier.padding(14.dp)) {
             // Title
             Text(
-                text = task.title,
+                text = task.title.orEmpty(),
                 style = MaterialTheme.typography.titleSmall.copy(
                     fontWeight = FontWeight.Bold
                 ),
@@ -334,7 +334,7 @@ private fun NeoTaskCard(
             // Description
             if (!task.description.isNullOrBlank()) {
                 Text(
-                    text = task.description,
+                    text = task.description.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted,
                     maxLines = 2,
@@ -359,7 +359,7 @@ private fun NeoTaskCard(
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 ) {
                     Text(
-                        text = task.status.uppercase().replace("_", " "),
+                        text = task.status.orEmpty().uppercase().replace("_", " "),
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = Black

@@ -96,13 +96,13 @@ fun MessageListScreen(
                         reverseLayout = true
                     ) {
                         items(state.messages) { message ->
-                            if (message.senderType == "system") {
-                                SystemMessageDivider(message.content)
+                            if (message.senderType.orEmpty() == "system") {
+                                SystemMessageDivider(message.content.orEmpty())
                             } else {
                                 NeoMessage(
                                     message = message,
                                     onThreadClick = if (message.threadChannelId != null) {
-                                        { onNavigateToThread(message.threadChannelId, message) }
+                                        { onNavigateToThread(message.threadChannelId!!, message) }
                                     } else null
                                 )
                             }
@@ -182,7 +182,7 @@ private fun NeoMessage(
     onThreadClick: (() -> Unit)? = null
 ) {
     val isAgent = message.isAgent
-    val isPending = message.id.startsWith("pending-")
+    val isPending = message.id.orEmpty().startsWith("pending-")
     val accentColor = if (isAgent) Orange else Cyan
     val alpha = if (isPending) 0.5f else 1f
     var showMenu by remember { mutableStateOf(false) }
@@ -220,7 +220,7 @@ private fun NeoMessage(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = message.senderName.ifEmpty { "Unknown" }.take(1).uppercase(),
+                text = message.senderName.orEmpty().ifEmpty { "Unknown" }.take(1).uppercase(),
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 color = Black
@@ -235,7 +235,7 @@ private fun NeoMessage(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = message.senderName.ifEmpty { "Unknown" },
+                    text = message.senderName.orEmpty().ifEmpty { "Unknown" },
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     color = Black
                 )
@@ -267,7 +267,7 @@ private fun NeoMessage(
             Spacer(modifier = Modifier.height(3.dp))
 
             // Message content with markdown rendering
-            NeoMessageContent(content = message.content)
+            NeoMessageContent(content = message.content.orEmpty())
 
             // Sending indicator
             if (isPending) {
@@ -359,7 +359,7 @@ private fun NeoMessage(
             onPinMessage = { showMenu = false /* TODO: Pin message */ },
             onSaveMessage = { showMenu = false /* TODO: Save message */ },
             onCopy = {
-                clipboardManager.setText(AnnotatedString(message.content))
+                clipboardManager.setText(AnnotatedString(message.content.orEmpty()))
                 showMenu = false
             }
         )

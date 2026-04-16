@@ -31,6 +31,8 @@ import com.slock.app.ui.message.MessageListScreen
 import com.slock.app.ui.message.MessageViewModel
 import com.slock.app.ui.agent.AgentListScreen
 import com.slock.app.ui.agent.AgentViewModel
+import com.slock.app.ui.agent.AgentDetailScreen
+import com.slock.app.ui.agent.AgentDetailViewModel
 import com.slock.app.ui.member.MembersListScreen
 import com.slock.app.ui.member.MembersViewModel
 import com.slock.app.ui.task.TaskListScreen
@@ -53,6 +55,8 @@ object Routes {
     const val THREAD_LIST = "server/{serverId}/threads"
     const val THREAD_REPLY = "thread/{threadChannelId}/reply/{parentMessageJson}?channelName={threadChannelName}"
     const val TASK_LIST = "server/{serverId}/tasks"
+    const val AGENT_DETAIL = "agent/{agentId}"
+    fun agentDetailRoute(agentId: String) = "agent/$agentId"
 }
 
 @Composable
@@ -199,13 +203,13 @@ fun SlockNavHost(
                     val server = toSelect ?: serverState.servers.first()
                     if (selectedServer?.id != server.id) {
                         selectedServer = server
-                        serverViewModel.selectServer(server.id)
-                        channelViewModel.loadChannels(server.id)
+                        serverViewModel.selectServer(server.id.orEmpty())
+                        channelViewModel.loadChannels(server.id.orEmpty())
                         channelViewModel.loadDMs()
-                        agentViewModel.loadAgents(server.id)
-                        membersViewModel.loadMembers(server.id)
-                        threadListViewModel.loadThreads(server.id)
-                        serverTasksViewModel.loadAllTasks(server.id)
+                        agentViewModel.loadAgents(server.id.orEmpty())
+                        membersViewModel.loadMembers(server.id.orEmpty())
+                        threadListViewModel.loadThreads(server.id.orEmpty())
+                        serverTasksViewModel.loadAllTasks(server.id.orEmpty())
                     }
                 }
             }
@@ -218,13 +222,13 @@ fun SlockNavHost(
                 isReconnecting = connectionState == com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTING,
                 onServerSelect = { server ->
                     selectedServer = server
-                    serverViewModel.selectServer(server.id)
-                    channelViewModel.loadChannels(server.id)
+                    serverViewModel.selectServer(server.id.orEmpty())
+                    channelViewModel.loadChannels(server.id.orEmpty())
                     channelViewModel.loadDMs()
-                    agentViewModel.loadAgents(server.id)
-                    membersViewModel.loadMembers(server.id)
-                    threadListViewModel.loadThreads(server.id)
-                    serverTasksViewModel.loadAllTasks(server.id)
+                    agentViewModel.loadAgents(server.id.orEmpty())
+                    membersViewModel.loadMembers(server.id.orEmpty())
+                    threadListViewModel.loadThreads(server.id.orEmpty())
+                    serverTasksViewModel.loadAllTasks(server.id.orEmpty())
                 },
                 onChannelClick = { channelId, channelName ->
                     val encodedName = Uri.encode(channelName)
@@ -266,7 +270,11 @@ fun SlockNavHost(
                 membersContent = {
                     MembersListScreen(
                         state = membersState,
-                        onMemberClick = { /* TODO: navigate to member/agent detail */ },
+                        onMemberClick = { member ->
+                            if (member.isAgent) {
+                                navController.navigate(Routes.agentDetailRoute(member.id))
+                            }
+                        },
                         onNavigateBack = { },
                         onRetry = { selectedServer?.id?.let { membersViewModel.loadMembers(it) } },
                         showHeader = false
@@ -424,6 +432,26 @@ fun SlockNavHost(
                 onSendReply = viewModel::sendReply,
                 onLoadMore = viewModel::loadMoreReplies,
                 onNavigateBack = { navController.popBackStack() }
+            )
+        }
+
+        // Agent Detail Screen
+        composable(
+            Routes.AGENT_DETAIL,
+            arguments = listOf(
+                navArgument("agentId") { type = NavType.StringType }
+            )
+        ) {
+            val viewModel: AgentDetailViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+
+            AgentDetailScreen(
+                state = state,
+                onNavigateBack = { navController.popBackStack() },
+                onStartAgent = viewModel::startAgent,
+                onStopAgent = viewModel::stopAgent,
+                onDmClick = { /* TODO: DM navigation */ },
+                onRetry = viewModel::retry
             )
         }
     }

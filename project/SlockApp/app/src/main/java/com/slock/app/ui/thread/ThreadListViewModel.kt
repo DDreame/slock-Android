@@ -84,9 +84,9 @@ class ThreadListViewModel @Inject constructor(
                             ?: member.displayName
                             ?: member.name
                         if (resolvedName != null) {
-                            nameLookup[member.userId] = resolvedName
+                            nameLookup[member.userId.orEmpty()] = resolvedName
                             // Also map by user.id in case it differs from member.userId
-                            member.user?.let { nameLookup[it.id] = resolvedName }
+                            member.user?.let { nameLookup[it.id.orEmpty()] = resolvedName }
                         }
                     }
                 }
@@ -99,13 +99,13 @@ class ThreadListViewModel @Inject constructor(
             try {
                 agentRepository.refreshAgents(serverId).fold(
                     onSuccess = { agents ->
-                        agents.forEach { nameLookup[it.id] = it.name }
+                        agents.forEach { nameLookup[it.id.orEmpty()] = it.name.orEmpty() }
                         Log.d("ThreadListVM", "Agents lookup: added ${agents.size} agents")
                     },
                     onFailure = {
                         // Fallback to cache
                         agentRepository.getAgents(serverId).fold(
-                            onSuccess = { agents -> agents.forEach { nameLookup[it.id] = it.name } },
+                            onSuccess = { agents -> agents.forEach { nameLookup[it.id.orEmpty()] = it.name.orEmpty() } },
                             onFailure = { }
                         )
                     }
@@ -128,8 +128,8 @@ class ThreadListViewModel @Inject constructor(
                                 }
                             ThreadItem(
                                 parentMessage = Message(
-                                    id = summary.parentMessageId,
-                                    channelId = summary.parentChannelId,
+                                    id = summary.parentMessageId.orEmpty(),
+                                    channelId = summary.parentChannelId.orEmpty(),
                                     content = summary.parentMessagePreview,
                                     senderId = summary.parentMessageSenderId,
                                     senderName = senderName,

@@ -263,7 +263,7 @@ private fun OriginalMessageCard(message: Message) {
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = message.senderName.ifEmpty { "Unknown" }.take(1).uppercase(),
+                    text = message.senderName.orEmpty().ifEmpty { "Unknown" }.take(1).uppercase(),
                     fontWeight = FontWeight.Bold,
                     fontSize = 14.sp,
                     color = Black
@@ -277,7 +277,7 @@ private fun OriginalMessageCard(message: Message) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = message.senderName.ifEmpty { "Unknown" },
+                        text = message.senderName.orEmpty().ifEmpty { "Unknown" },
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                         color = Black
                     )
@@ -309,7 +309,7 @@ private fun OriginalMessageCard(message: Message) {
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Message text
-                NeoMessageContent(content = message.content)
+                NeoMessageContent(content = message.content.orEmpty())
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -367,7 +367,7 @@ private fun RepliesDivider(count: Int) {
 @Composable
 private fun ThreadReply(message: Message) {
     val isAgent = message.isAgent
-    val isPending = message.id.startsWith("pending-")
+    val isPending = message.id.orEmpty().startsWith("pending-")
     val alpha = if (isPending) 0.5f else 1f
 
     Row(
@@ -386,7 +386,7 @@ private fun ThreadReply(message: Message) {
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = message.senderName.ifEmpty { "Unknown" }.take(1).uppercase(),
+                text = message.senderName.orEmpty().ifEmpty { "Unknown" }.take(1).uppercase(),
                 fontWeight = FontWeight.Bold,
                 fontSize = 12.sp,
                 color = Black
@@ -400,7 +400,7 @@ private fun ThreadReply(message: Message) {
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = message.senderName.ifEmpty { "Unknown" },
+                    text = message.senderName.orEmpty().ifEmpty { "Unknown" },
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                     color = Black
                 )
@@ -431,7 +431,7 @@ private fun ThreadReply(message: Message) {
 
             Spacer(modifier = Modifier.height(3.dp))
 
-            NeoMessageContent(content = message.content)
+            NeoMessageContent(content = message.content.orEmpty())
 
             if (isPending) {
                 Text(
@@ -519,14 +519,14 @@ private fun buildParticipantList(state: ThreadReplyUiState): List<Participant> {
     val participants = mutableListOf<Participant>()
 
     state.parentMessage?.let { msg ->
-        if (seen.add(msg.senderId)) {
-            participants.add(Participant(msg.senderName.ifEmpty { "?" }.take(1).uppercase(), msg.isAgent))
+        if (seen.add(msg.senderId.orEmpty())) {
+            participants.add(Participant(msg.senderName.orEmpty().ifEmpty { "?" }.take(1).uppercase(), msg.isAgent))
         }
     }
 
     state.replies.forEach { reply ->
-        if (seen.add(reply.senderId)) {
-            participants.add(Participant(reply.senderName.ifEmpty { "?" }.take(1).uppercase(), reply.isAgent))
+        if (seen.add(reply.senderId.orEmpty())) {
+            participants.add(Participant(reply.senderName.orEmpty().ifEmpty { "?" }.take(1).uppercase(), reply.isAgent))
         }
     }
 

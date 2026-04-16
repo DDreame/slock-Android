@@ -99,12 +99,12 @@ class MembersViewModel @Inject constructor(
                             ?: "Unknown"
                         memberItems.add(
                             MemberItem(
-                                id = member.id,
+                                id = member.id.orEmpty(),
                                 name = displayName,
-                                role = member.role,
+                                role = member.role.orEmpty(),
                                 isAgent = false,
                                 isOnline = false, // No presence API yet
-                                subtitle = member.role.replaceFirstChar { it.uppercase() }
+                                subtitle = member.role.orEmpty().replaceFirstChar { it.uppercase() }
                             )
                         )
                     }
@@ -123,8 +123,8 @@ class MembersViewModel @Inject constructor(
                         val subtitle = buildAgentSubtitle(agent)
                         memberItems.add(
                             MemberItem(
-                                id = agent.id,
-                                name = agent.name,
+                                id = agent.id.orEmpty(),
+                                name = agent.name.orEmpty(),
                                 role = "agent",
                                 isAgent = true,
                                 isOnline = isActive,
@@ -146,8 +146,8 @@ class MembersViewModel @Inject constructor(
                         val nonAgentMembers = current.members.filter { !it.isAgent }
                         val freshAgents = agents.map { agent ->
                             MemberItem(
-                                id = agent.id,
-                                name = agent.name,
+                                id = agent.id.orEmpty(),
+                                name = agent.name.orEmpty(),
                                 role = "agent",
                                 isAgent = true,
                                 isOnline = agent.status == "active",

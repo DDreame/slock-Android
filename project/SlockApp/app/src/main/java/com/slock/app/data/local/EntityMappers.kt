@@ -5,7 +5,7 @@ import com.slock.app.data.model.*
 
 // Server
 fun Server.toEntity() = ServerEntity(
-    id = id, name = name, slug = slug, role = role, createdAt = createdAt
+    id = id.orEmpty(), name = name, slug = slug, role = role, createdAt = createdAt
 )
 
 fun ServerEntity.toModel() = Server(
@@ -15,7 +15,7 @@ fun ServerEntity.toModel() = Server(
 
 // Channel
 fun Channel.toEntity(serverId: String) = ChannelEntity(
-    id = id, serverId = serverId, name = name, type = type, seq = seq, createdAt = createdAt
+    id = id.orEmpty(), serverId = serverId, name = name, type = type, seq = seq, createdAt = createdAt
 )
 
 fun ChannelEntity.toModel() = Channel(
@@ -25,7 +25,7 @@ fun ChannelEntity.toModel() = Channel(
 
 // Message
 fun Message.toEntity() = MessageEntity(
-    id = id, channelId = channelId, content = content,
+    id = id.orEmpty(), channelId = channelId, content = content,
     senderId = senderId, senderType = senderType, senderName = senderName,
     seq = seq, createdAt = createdAt, updatedAt = updatedAt,
     threadId = threadChannelId, taskNumber = taskNumber, taskStatus = taskStatus,
@@ -43,7 +43,7 @@ fun MessageEntity.toModel() = Message(
 
 // Agent
 fun Agent.toEntity(serverId: String) = AgentEntity(
-    id = id, serverId = serverId, name = name, description = description,
+    id = id.orEmpty(), serverId = serverId, name = name, description = description,
     prompt = prompt, model = model, avatar = avatar, status = status,
     activity = activity, activityDetail = activityDetail, createdAt = createdAt
 )
@@ -57,7 +57,7 @@ fun AgentEntity.toModel() = Agent(
 
 // Task
 fun Task.toEntity() = TaskEntity(
-    id = id, channelId = channelId, title = title, description = description,
+    id = id.orEmpty(), channelId = channelId, title = title, description = description,
     status = status, createdBy = createdBy, assigneeId = assigneeId,
     messageId = messageId, createdAt = createdAt, updatedAt = updatedAt
 )

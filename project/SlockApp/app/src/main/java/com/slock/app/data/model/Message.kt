@@ -3,22 +3,22 @@ package com.slock.app.data.model
 import com.google.gson.annotations.SerializedName
 
 data class Message(
-    val id: String = "",
+    val id: String? = null,
     @SerializedName("channelId")
-    val channelId: String = "",
-    val content: String = "",
+    val channelId: String? = null,
+    val content: String? = null,
     @SerializedName("senderId")
-    val senderId: String = "",
+    val senderId: String? = null,
     @SerializedName("senderName")
-    val senderName: String = "",
+    val senderName: String? = null,
     @SerializedName("senderType")
-    val senderType: String = "",
+    val senderType: String? = null,
     @SerializedName("messageType")
-    val messageType: String = "",
+    val messageType: String? = null,
     val attachments: List<Attachment> = emptyList(),
     val seq: Long = 0,
     @SerializedName("createdAt")
-    val createdAt: String = "",
+    val createdAt: String? = null,
     @SerializedName("updatedAt")
     val updatedAt: String? = null,
     @SerializedName("threadChannelId")
@@ -41,10 +41,10 @@ data class Message(
 }
 
 data class Attachment(
-    val id: String = "",
-    val name: String = "",
-    val url: String = "",
-    val type: String = ""
+    val id: String? = null,
+    val name: String? = null,
+    val url: String? = null,
+    val type: String? = null
 )
 
 data class SendMessageRequest(
@@ -58,30 +58,30 @@ data class SendMessageRequest(
 )
 
 data class Thread(
-    val id: String,
+    val id: String? = null,
     @SerializedName("channelId")
-    val channelId: String,
+    val channelId: String? = null,
     @SerializedName("parentMessageId")
-    val parentMessageId: String,
+    val parentMessageId: String? = null,
     @SerializedName("parentChannelId")
-    val parentChannelId: String
+    val parentChannelId: String? = null
 )
 
 data class Task(
-    val id: String,
+    val id: String? = null,
     @SerializedName("channelId")
-    val channelId: String = "",
-    val title: String = "",
+    val channelId: String? = null,
+    val title: String? = null,
     val description: String? = null,
-    val status: String = "todo",
+    val status: String? = null,
     @SerializedName("createdBy")
-    val createdBy: String = "",
+    val createdBy: String? = null,
     @SerializedName("assigneeId")
     val assigneeId: String? = null,
     @SerializedName("messageId")
     val messageId: String? = null,
     @SerializedName("createdAt")
-    val createdAt: String = "",
+    val createdAt: String? = null,
     @SerializedName("updatedAt")
     val updatedAt: String? = null
 )

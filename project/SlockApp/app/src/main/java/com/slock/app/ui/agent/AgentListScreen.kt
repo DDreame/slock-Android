@@ -67,8 +67,8 @@ fun AgentListScreen(
 
         // Quick actions bar
         QuickActionsBar(
-            onResumeAll = { state.agents.filter { it.status != "active" }.forEach { onStartAgent(it.id) } },
-            onStopAll = { state.agents.filter { it.status == "active" }.forEach { onStopAgent(it.id) } },
+            onResumeAll = { state.agents.filter { it.status != "active" }.forEach { onStartAgent(it.id.orEmpty()) } },
+            onStopAll = { state.agents.filter { it.status == "active" }.forEach { onStopAgent(it.id.orEmpty()) } },
             onRefresh = { /* TODO: Refresh status */ }
         )
 
@@ -126,9 +126,9 @@ fun AgentListScreen(
                             items(activeAgents) { agent ->
                                 NeoAgentCard(
                                     agent = agent,
-                                    activity = state.agentActivities[agent.id],
-                                    onDm = { onDmAgent(agent.id) },
-                                    onToggle = { onStopAgent(agent.id) },
+                                    activity = state.agentActivities[agent.id.orEmpty()],
+                                    onDm = { onDmAgent(agent.id.orEmpty()) },
+                                    onToggle = { onStopAgent(agent.id.orEmpty()) },
                                     onConfig = { showSettingsAgent = agent }
                                 )
                             }
@@ -140,9 +140,9 @@ fun AgentListScreen(
                             items(inactiveAgents) { agent ->
                                 NeoAgentCard(
                                     agent = agent,
-                                    activity = state.agentActivities[agent.id],
-                                    onDm = { onDmAgent(agent.id) },
-                                    onToggle = { onStartAgent(agent.id) },
+                                    activity = state.agentActivities[agent.id.orEmpty()],
+                                    onDm = { onDmAgent(agent.id.orEmpty()) },
+                                    onToggle = { onStartAgent(agent.id.orEmpty()) },
                                     onConfig = { showSettingsAgent = agent }
                                 )
                             }
@@ -178,11 +178,11 @@ fun AgentListScreen(
             onDismiss = { showSettingsAgent = null },
             onSave = { _, _, _, _ ->
                 // TODO: effort, wakeOnMessage, hibernateIdle not yet supported by API
-                onUpdateAgent(agent.id, null, null, null)
+                onUpdateAgent(agent.id.orEmpty(), null, null, null)
                 showSettingsAgent = null
             },
             onDelete = {
-                onDeleteAgent(agent.id)
+                onDeleteAgent(agent.id.orEmpty())
                 showSettingsAgent = null
             }
         )
@@ -292,9 +292,9 @@ private fun NeoAgentCard(
     val isThinking = activity?.contains("Thinking") == true || activity == "thinking"
     val avatarColor = when {
         !isRunning -> Color(0xFFEEEEEE)
-        agent.name.startsWith("Z", ignoreCase = true) -> Cyan
-        agent.name.startsWith("X", ignoreCase = true) -> Orange
-        agent.name.startsWith("J", ignoreCase = true) -> Lavender
+        agent.name.orEmpty().startsWith("Z", ignoreCase = true) -> Cyan
+        agent.name.orEmpty().startsWith("X", ignoreCase = true) -> Orange
+        agent.name.orEmpty().startsWith("J", ignoreCase = true) -> Lavender
         else -> Cyan
     }
 
@@ -331,7 +331,7 @@ private fun NeoAgentCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = agent.name.take(1).uppercase(),
+                        text = agent.name.orEmpty().take(1).uppercase(),
                         fontWeight = FontWeight.Bold,
                         fontSize = 20.sp,
                         color = Black
@@ -346,7 +346,7 @@ private fun NeoAgentCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = agent.name,
+                        text = agent.name.orEmpty(),
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp,
                         color = Black
@@ -359,7 +359,7 @@ private fun NeoAgentCard(
                             .padding(horizontal = 6.dp, vertical = 1.dp)
                     ) {
                         Text(
-                            text = getModelShortName(agent.model),
+                            text = getModelShortName(agent.model.orEmpty()),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = SpaceMono,
@@ -625,7 +625,7 @@ private fun AgentSettingsSheet(
 ) {
     val modelOptions = listOf("Opus", "Sonnet", "Haiku")
     val modelApiNames = listOf("claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-haiku-4-5-20251001")
-    var selectedModel by remember { mutableStateOf(getModelShortName(agent.model)) }
+    var selectedModel by remember { mutableStateOf(getModelShortName(agent.model.orEmpty())) }
     var selectedEffort by remember { mutableStateOf("High") }
     var wakeOnMessage by remember { mutableStateOf(true) }
     var hibernateIdle by remember { mutableStateOf(true) }
@@ -720,7 +720,7 @@ private fun AgentSettingsSheet(
 
             // Save button
             NeoButton(text = "SAVE CHANGES", onClick = {
-                val modelApiName = modelApiNames.getOrElse(modelOptions.indexOf(selectedModel)) { agent.model }
+                val modelApiName = modelApiNames.getOrElse(modelOptions.indexOf(selectedModel)) { agent.model.orEmpty() }
                 onSave(modelApiName, selectedEffort, wakeOnMessage, hibernateIdle)
                 onDismiss()
             })

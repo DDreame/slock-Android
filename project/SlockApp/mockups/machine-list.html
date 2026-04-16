@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Machine Management - Slock Mobile</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Space Grotesk', sans-serif; background: #fff8e7; max-width: 400px; margin: 0 auto; min-height: 100vh; }
+
+  .header { background: #FFD700; padding: 14px 16px; border-bottom: 3px solid #000; display: flex; align-items: center; gap: 12px; }
+  .header .back { width: 36px; height: 36px; background: #fff; border: 2px solid #000; box-shadow: 3px 3px 0 #000; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .header .title { font-weight: 700; font-size: 18px; }
+
+  .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: rgba(0,0,0,0.5); padding: 16px 16px 8px; }
+
+  .machine-card { margin: 0 16px 10px; border: 2px solid #000; background: #fff; box-shadow: 4px 4px 0 #000; }
+  .machine-card .top-strip { height: 4px; }
+  .machine-card .top-strip.connected { background: #a6ff00; }
+  .machine-card .top-strip.offline { background: rgba(0,0,0,0.2); }
+  .machine-card .body { padding: 14px; }
+
+  .machine-header { display: flex; align-items: center; gap: 10px; }
+  .machine-icon { width: 40px; height: 40px; border: 2px solid #000; background: #FFD700; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+  .machine-name { font-weight: 700; font-size: 15px; }
+  .machine-status { display: flex; align-items: center; gap: 4px; font-size: 11px; margin-top: 2px; }
+  .machine-status .dot { width: 8px; height: 8px; border: 1px solid #000; }
+  .machine-status .dot.green { background: #a6ff00; }
+  .machine-status .dot.gray { background: #ccc; }
+
+  .machine-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .meta-tag { font-family: 'Space Mono', monospace; font-size: 10px; padding: 2px 6px; border: 1px solid #000; background: #fff8e7; font-weight: 700; }
+
+  .machine-agents { margin-top: 10px; border-top: 1px solid rgba(0,0,0,0.1); padding-top: 8px; }
+  .machine-agents-label { font-size: 10px; font-weight: 700; color: rgba(0,0,0,0.4); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+  .agent-chip { display: inline-flex; align-items: center; gap: 4px; border: 1px solid #000; background: #ff9f43; padding: 2px 8px; margin-right: 4px; margin-bottom: 4px; font-size: 11px; font-weight: 700; }
+  .agent-chip .mini-dot { width: 6px; height: 6px; border: 1px solid #000; background: #a6ff00; }
+
+  .add-machine { margin: 0 16px 16px; border: 2px dashed rgba(0,0,0,0.3); padding: 16px; text-align: center; font-weight: 700; font-size: 13px; color: rgba(0,0,0,0.4); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="back">&larr;</div>
+  <div class="title">Machines</div>
+</div>
+
+<div class="section-label">Connected &middot; 2</div>
+
+<!-- Machine 1: Connected with agents -->
+<div class="machine-card">
+  <div class="top-strip connected"></div>
+  <div class="body">
+    <div class="machine-header">
+      <div class="machine-icon">&#128187;</div>
+      <div>
+        <div class="machine-name">prod-gpu-01</div>
+        <div class="machine-status">
+          <div class="dot green"></div>
+          <span style="color: #a6ff00; font-weight:700;">Connected</span>
+          <span style="color:rgba(0,0,0,0.3); margin-left:4px;">12h uptime</span>
+        </div>
+      </div>
+    </div>
+    <div class="machine-meta">
+      <span class="meta-tag">CUDA 12.1</span>
+      <span class="meta-tag">A100 80GB</span>
+      <span class="meta-tag">Ubuntu 22.04</span>
+    </div>
+    <div class="machine-agents">
+      <div class="machine-agents-label">Running Agents</div>
+      <span class="agent-chip"><span class="mini-dot"></span> CodeReviewer</span>
+      <span class="agent-chip"><span class="mini-dot"></span> DataPipeline</span>
+    </div>
+  </div>
+</div>
+
+<!-- Machine 2: Connected, no agents -->
+<div class="machine-card">
+  <div class="top-strip connected"></div>
+  <div class="body">
+    <div class="machine-header">
+      <div class="machine-icon">&#128187;</div>
+      <div>
+        <div class="machine-name">dev-server-02</div>
+        <div class="machine-status">
+          <div class="dot green"></div>
+          <span style="color: #a6ff00; font-weight:700;">Connected</span>
+          <span style="color:rgba(0,0,0,0.3); margin-left:4px;">3d uptime</span>
+        </div>
+      </div>
+    </div>
+    <div class="machine-meta">
+      <span class="meta-tag">Node 20</span>
+      <span class="meta-tag">16GB RAM</span>
+    </div>
+    <div class="machine-agents">
+      <div class="machine-agents-label">Running Agents</div>
+      <span style="font-size:11px; color:rgba(0,0,0,0.3);">No agents running</span>
+    </div>
+  </div>
+</div>
+
+<div class="section-label">Offline &middot; 1</div>
+
+<!-- Machine 3: Offline -->
+<div class="machine-card">
+  <div class="top-strip offline"></div>
+  <div class="body" style="opacity: 0.5;">
+    <div class="machine-header">
+      <div class="machine-icon" style="background:#ccc;">&#128187;</div>
+      <div>
+        <div class="machine-name">staging-01</div>
+        <div class="machine-status">
+          <div class="dot gray"></div>
+          <span style="font-weight:700; color:rgba(0,0,0,0.4);">Offline</span>
+          <span style="color:rgba(0,0,0,0.3); margin-left:4px;">Last seen 2h ago</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="add-machine">+ Add Machine</div>
+
+</body>
+</html>

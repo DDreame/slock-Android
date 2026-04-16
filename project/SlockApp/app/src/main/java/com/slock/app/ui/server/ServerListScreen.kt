@@ -56,7 +56,7 @@ fun ServerListScreen(
                 }
                 else -> LazyColumn(contentPadding = PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(state.servers) { server ->
-                        ServerCard(server, onClick = { onServerClick(server.id) }, onDelete = { onDeleteServer(server.id) })
+                        ServerCard(server, onClick = { onServerClick(server.id.orEmpty()) }, onDelete = { onDeleteServer(server.id.orEmpty()) })
                     }
                 }
             }
@@ -83,17 +83,17 @@ fun ServerCard(server: Server, onClick: () -> Unit, onDelete: () -> Unit) {
         Row(modifier = Modifier.fillMaxWidth().padding(16.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                 Surface(modifier = Modifier.size(48.dp), shape = MaterialTheme.shapes.medium, color = MaterialTheme.colorScheme.primaryContainer) {
-                    Box(contentAlignment = Alignment.Center) { Text(server.name.take(2).uppercase(), fontWeight = FontWeight.Bold) }
+                    Box(contentAlignment = Alignment.Center) { Text(server.name.orEmpty().take(2).uppercase(), fontWeight = FontWeight.Bold) }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Column {
-                    Text(server.name, fontWeight = FontWeight.Medium, fontSize = 16.sp)
-                    Text("@${server.slug}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
+                    Text(server.name.orEmpty(), fontWeight = FontWeight.Medium, fontSize = 16.sp)
+                    Text("@${server.slug.orEmpty()}", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp)
                 }
             }
             Box {
                 Surface(shape = MaterialTheme.shapes.small, color = MaterialTheme.colorScheme.primaryContainer) {
-                    Text(server.role.uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(server.role.orEmpty().uppercase(), modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp), fontSize = 10.sp, fontWeight = FontWeight.Bold)
                 }
                 DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
                     DropdownMenuItem(

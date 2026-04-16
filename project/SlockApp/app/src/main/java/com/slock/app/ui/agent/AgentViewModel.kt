@@ -83,7 +83,7 @@ class AgentViewModel @Inject constructor(
             agentRepository.getAgents(serverId).fold(
                 onSuccess = { agents ->
                     val activities = agents.mapNotNull { agent ->
-                        agent.activity?.let { agent.id to it }
+                        agent.activity?.let { agent.id.orEmpty() to it }
                     }.toMap()
                     _state.update { it.copy(agents = agents, agentActivities = it.agentActivities + activities, isLoading = false) }
                 },
@@ -93,7 +93,7 @@ class AgentViewModel @Inject constructor(
             agentRepository.refreshAgents(serverId).fold(
                 onSuccess = { agents ->
                     val activities = agents.mapNotNull { agent ->
-                        agent.activity?.let { agent.id to it }
+                        agent.activity?.let { agent.id.orEmpty() to it }
                     }.toMap()
                     _state.update { it.copy(agents = agents, agentActivities = it.agentActivities + activities, error = null) }
                 },

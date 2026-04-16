@@ -165,7 +165,7 @@ private fun ChannelsTabContent(
             }
             else -> {
                 val filteredChannels = channelState.channels.filter {
-                    searchQuery.isBlank() || it.name.contains(searchQuery, ignoreCase = true)
+                    searchQuery.isBlank() || it.name.orEmpty().contains(searchQuery, ignoreCase = true)
                 }
 
                 LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -176,7 +176,7 @@ private fun ChannelsTabContent(
                     items(filteredChannels) { channel ->
                         ChannelItem(
                             channel = channel,
-                            onClick = { onChannelClick(channel.id, channel.name) }
+                            onClick = { onChannelClick(channel.id.orEmpty(), channel.name.orEmpty()) }
                         )
                     }
 
@@ -204,9 +204,9 @@ private fun ChannelsTabContent(
                     if (channelState.dms.isNotEmpty()) {
                         items(channelState.dms) { dm ->
                             DMItem(
-                                name = dm.name,
+                                name = dm.name.orEmpty(),
                                 isAgent = true,
-                                onClick = { onDmClick(dm.id, dm.name) }
+                                onClick = { onDmClick(dm.id.orEmpty(), dm.name.orEmpty()) }
                             )
                         }
                     } else {
@@ -370,16 +370,16 @@ private fun ChannelItem(channel: Channel, onClick: () -> Unit, unreadCount: Int 
         // Channel info
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "# ${channel.name}",
+                text = "# ${channel.name.orEmpty()}",
                 style = MaterialTheme.typography.titleSmall,
                 color = if (unreadCount > 0) Black else Black,
                 fontWeight = if (unreadCount > 0) FontWeight.Bold else FontWeight.Normal,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (channel.type.isNotBlank()) {
+            if (channel.type.orEmpty().isNotBlank()) {
                 Text(
-                    text = channel.type,
+                    text = channel.type.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
                     color = TextMuted,
                     maxLines = 1,
@@ -678,7 +678,7 @@ private fun ServerDrawerItem(server: Server, isActive: Boolean, onClick: () -> U
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = server.name.take(1).uppercase(),
+                text = server.name.orEmpty().take(1).uppercase(),
                 fontWeight = FontWeight.Bold,
                 fontSize = 18.sp,
                 color = Black
@@ -687,7 +687,7 @@ private fun ServerDrawerItem(server: Server, isActive: Boolean, onClick: () -> U
         Spacer(modifier = Modifier.width(12.dp))
         Column {
             Text(
-                text = server.name,
+                text = server.name.orEmpty(),
                 style = MaterialTheme.typography.titleSmall,
                 color = Black
             )

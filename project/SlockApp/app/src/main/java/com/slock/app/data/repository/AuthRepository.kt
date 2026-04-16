@@ -33,7 +33,7 @@ class AuthRepositoryImpl @Inject constructor(
             val response = apiService.getMe()
             if (response.isSuccessful && response.body() != null) {
                 val user = response.body()!!
-                secureTokenStorage.saveUser(user.id, user.name)
+                secureTokenStorage.saveUser(user.id.orEmpty(), user.name.orEmpty())
             }
         } catch (_: Exception) { }
     }
@@ -43,7 +43,7 @@ class AuthRepositoryImpl @Inject constructor(
             val response = apiService.login(LoginRequest(email, password))
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
-                saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                saveTokens(authResponse.accessToken.orEmpty(), authResponse.refreshToken.orEmpty())
                 secureTokenStorage.resetAuthExpiredFlag()
                 fetchAndCacheUser()
                 Result.success(authResponse)
@@ -60,7 +60,7 @@ class AuthRepositoryImpl @Inject constructor(
             val response = apiService.register(RegisterRequest(email, password, name))
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
-                saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                saveTokens(authResponse.accessToken.orEmpty(), authResponse.refreshToken.orEmpty())
                 secureTokenStorage.resetAuthExpiredFlag()
                 fetchAndCacheUser()
                 Result.success(authResponse)
@@ -81,7 +81,7 @@ class AuthRepositoryImpl @Inject constructor(
             val response = apiService.refreshToken(RefreshTokenRequest(refreshToken))
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
-                saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                saveTokens(authResponse.accessToken.orEmpty(), authResponse.refreshToken.orEmpty())
                 Result.success(authResponse)
             } else {
                 Result.failure(Exception("Refresh failed: ${response.code()}"))
@@ -106,7 +106,7 @@ class AuthRepositoryImpl @Inject constructor(
             val response = apiService.getMe()
             if (response.isSuccessful && response.body() != null) {
                 val user = response.body()!!
-                secureTokenStorage.saveUser(user.id, user.name)
+                secureTokenStorage.saveUser(user.id.orEmpty(), user.name.orEmpty())
                 Result.success(user)
             } else {
                 Result.failure(Exception("Get user failed: ${response.code()}"))

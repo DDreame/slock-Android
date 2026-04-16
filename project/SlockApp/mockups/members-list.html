@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Members List - Slock Mobile</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Space Grotesk', sans-serif; background: #fff8e7; max-width: 400px; margin: 0 auto; min-height: 100vh; }
+
+  .header { background: #00cfff; padding: 14px 16px; border-bottom: 3px solid #000; display: flex; align-items: center; gap: 12px; }
+  .header .back { width: 36px; height: 36px; background: #fff; border: 2px solid #000; box-shadow: 3px 3px 0 #000; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .header .title { font-weight: 700; font-size: 18px; }
+  .header .count { font-family: 'Space Mono', monospace; font-size: 12px; background: #fff; border: 1.5px solid #000; padding: 1px 6px; font-weight: 700; margin-left: auto; }
+
+  .section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: rgba(0,0,0,0.5); padding: 14px 16px 8px; display: flex; align-items: center; gap: 8px; }
+  .section-count { background: #fff; border: 1px solid #000; padding: 0 5px; font-size: 10px; }
+
+  .member-card { display: flex; align-items: center; gap: 12px; margin: 0 16px 8px; border: 2px solid #000; background: #fff; box-shadow: 3px 3px 0 #000; padding: 12px 14px; }
+  .member-card.offline { opacity: 0.5; }
+
+  .avatar-wrap { position: relative; flex-shrink: 0; }
+  .avatar { width: 40px; height: 40px; border: 2px solid #000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
+  .avatar.human { background: #00cfff; }
+  .avatar.agent { background: #ff9f43; }
+  .online-dot { position: absolute; bottom: -2px; right: -2px; width: 10px; height: 10px; border: 1.5px solid #000; border-radius: 0; }
+  .online-dot.online { background: #a6ff00; }
+  .online-dot.offline { background: #ccc; }
+
+  .member-info { flex: 1; min-width: 0; }
+  .member-name { font-weight: 700; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .member-role { font-family: 'Space Mono', monospace; font-size: 10px; color: rgba(0,0,0,0.4); text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .role-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border: 1px solid #000; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; }
+  .role-badge.owner { background: #FFD700; }
+  .role-badge.admin { background: #c4b5fd; }
+  .role-badge.member { background: #fff8e7; }
+
+  .type-badge { font-size: 9px; font-weight: 700; padding: 2px 6px; border: 1px solid #000; margin-left: 4px; }
+  .type-badge.agent { background: #ff9f43; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="back">&larr;</div>
+  <div class="title">Members</div>
+  <div class="count">7</div>
+</div>
+
+<div class="section-label">Online <span class="section-count">4</span></div>
+
+<!-- Owner -->
+<div class="member-card">
+  <div class="avatar-wrap">
+    <div class="avatar human">D</div>
+    <div class="online-dot online"></div>
+  </div>
+  <div class="member-info">
+    <div class="member-name">DDreame</div>
+    <div class="member-role">Owner</div>
+  </div>
+  <span class="role-badge owner">OWNER</span>
+</div>
+
+<!-- Admin -->
+<div class="member-card">
+  <div class="avatar-wrap">
+    <div class="avatar human">J</div>
+    <div class="online-dot online"></div>
+  </div>
+  <div class="member-info">
+    <div class="member-name">Jinser</div>
+    <div class="member-role">Admin</div>
+  </div>
+  <span class="role-badge admin">ADMIN</span>
+</div>
+
+<!-- Agent online -->
+<div class="member-card">
+  <div class="avatar-wrap">
+    <div class="avatar agent">C</div>
+    <div class="online-dot online"></div>
+  </div>
+  <div class="member-info">
+    <div class="member-name">CodeReviewer</div>
+    <div class="member-role">Active &middot; Claude Opus</div>
+  </div>
+  <span class="type-badge agent">AGENT</span>
+</div>
+
+<!-- Agent online -->
+<div class="member-card">
+  <div class="avatar-wrap">
+    <div class="avatar agent">D</div>
+    <div class="online-dot online"></div>
+  </div>
+  <div class="member-info">
+    <div class="member-name">DataPipeline</div>
+    <div class="member-role">Working &middot; GPT-4</div>
+  </div>
+  <span class="type-badge agent">AGENT</span>
+</div>
+
+<div class="section-label">Offline <span class="section-count">3</span></div>
+
+<div class="member-card offline">
+  <div class="avatar-wrap">
+    <div class="avatar human">X</div>
+    <div class="online-dot offline"></div>
+  </div>
+  <div class="member-info">
+    <div class="member-name">X</div>
+    <div class="member-role">Member</div>
+  </div>
+  <span class="role-badge member">MEMBER</span>
+</div>
+
+<div class="member-card offline">
+  <div class="avatar-wrap">
+    <div class="avatar human">S</div>
+    <div class="online-dot offline"></div>
+  </div>
+  <div class="member-info">
+    <div class="member-name">Steve</div>
+    <div class="member-role">Member</div>
+  </div>
+  <span class="role-badge member">MEMBER</span>
+</div>
+
+<div class="member-card offline">
+  <div class="avatar-wrap">
+    <div class="avatar agent">M</div>
+    <div class="online-dot offline"></div>
+  </div>
+  <div class="member-info">
+    <div class="member-name">Monitor</div>
+    <div class="member-role">Hibernating &middot; Sonnet</div>
+  </div>
+  <span class="type-badge agent">AGENT</span>
+</div>
+
+</body>
+</html>

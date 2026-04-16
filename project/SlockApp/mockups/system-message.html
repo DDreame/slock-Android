@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>System Message UI - Slock</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: #fff8e7;
+    max-width: 400px;
+    margin: 0 auto;
+    min-height: 100vh;
+  }
+
+  .header {
+    background: #FFD700;
+    padding: 14px 16px;
+    border-bottom: 3px solid #000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header .back {
+    width: 36px; height: 36px;
+    background: #fff;
+    border: 2px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; cursor: pointer;
+  }
+  .header .title {
+    font-weight: 700; font-size: 18px;
+  }
+
+  .chat-area {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ===== Regular message (for contrast) ===== */
+  .message {
+    display: flex;
+    gap: 0;
+  }
+  .message .bar {
+    width: 3px;
+    background: #00cfff;
+    flex-shrink: 0;
+  }
+  .message .bar.agent { background: #ff9f43; }
+  .message .avatar {
+    width: 36px; height: 36px;
+    background: #00cfff;
+    border: 2px solid #000;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 14px;
+    margin-left: 10px;
+    flex-shrink: 0;
+  }
+  .message .avatar.agent { background: #ff9f43; }
+  .message .body {
+    flex: 1;
+    padding-left: 0;
+  }
+  .message .meta {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .message .meta .name {
+    font-weight: 700; font-size: 14px;
+  }
+  .message .meta .time {
+    font-size: 11px; color: #999;
+  }
+  .message .meta .agent-tag {
+    background: #ff9f43;
+    border: 1px solid #000;
+    padding: 0 4px;
+    font-size: 9px;
+    font-weight: 700;
+  }
+  .message .content {
+    font-size: 14px;
+    color: #222;
+    line-height: 1.5;
+    margin-top: 3px;
+  }
+
+  /* ===== System message (NEW DESIGN) ===== */
+  .system-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 16px;
+  }
+  .system-message .line {
+    flex: 1;
+    height: 1px;
+    background: #ccc;
+  }
+  .system-message .text {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #999;
+    white-space: nowrap;
+    text-align: center;
+    letter-spacing: 0.5px;
+  }
+  .system-message .icon {
+    font-size: 12px;
+  }
+
+  /* ===== Variant B: System message with subtle background ===== */
+  .system-message-boxed {
+    display: flex;
+    justify-content: center;
+    padding: 4px 16px;
+  }
+  .system-message-boxed .inner {
+    background: #f0ead6;
+    border: 1.5px solid #ddd;
+    padding: 5px 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .system-message-boxed .icon {
+    font-size: 12px;
+  }
+  .system-message-boxed .text {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: #888;
+    letter-spacing: 0.3px;
+  }
+
+  .section-label {
+    font-weight: 700;
+    font-size: 13px;
+    color: #000;
+    margin-top: 20px;
+    margin-bottom: 4px;
+    padding: 6px 10px;
+    background: #FFD700;
+    border: 2px solid #000;
+    box-shadow: 3px 3px 0 #000;
+    display: inline-block;
+  }
+
+  .divider {
+    border-top: 2px dashed #ccc;
+    margin: 20px 0;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="back">&larr;</div>
+  <div class="title"># general</div>
+</div>
+
+<div class="chat-area">
+
+  <!-- Section: Style A — Line divider style (Recommended) -->
+  <div class="section-label">Style A: Line Divider (Recommended)</div>
+
+  <!-- Regular user message -->
+  <div class="message">
+    <div class="bar"></div>
+    <div class="avatar">D</div>
+    <div class="body">
+      <div class="meta">
+        <span class="name">DDreame</span>
+        <span class="time">14:30</span>
+      </div>
+      <div class="content">Hey everyone, let's review the new deployment</div>
+    </div>
+  </div>
+
+  <!-- System message: user joined -->
+  <div class="system-message">
+    <div class="line"></div>
+    <span class="icon">&rarr;</span>
+    <span class="text">Alice joined #general</span>
+    <div class="line"></div>
+  </div>
+
+  <!-- Regular agent message -->
+  <div class="message">
+    <div class="bar agent"></div>
+    <div class="avatar agent">B</div>
+    <div class="body">
+      <div class="meta">
+        <span class="name">BuildBot</span>
+        <span class="agent-tag">AGENT</span>
+        <span class="time">14:32</span>
+      </div>
+      <div class="content">Build #247 passed. Ready for deploy.</div>
+    </div>
+  </div>
+
+  <!-- System message: channel updated -->
+  <div class="system-message">
+    <div class="line"></div>
+    <span class="icon">&bull;</span>
+    <span class="text">Channel description updated</span>
+    <div class="line"></div>
+  </div>
+
+  <!-- System message: task created -->
+  <div class="system-message">
+    <div class="line"></div>
+    <span class="icon">&#9744;</span>
+    <span class="text">Task "Fix login flow" created</span>
+    <div class="line"></div>
+  </div>
+
+  <!-- Regular user message -->
+  <div class="message">
+    <div class="bar"></div>
+    <div class="avatar" style="background:#00cfff;">J</div>
+    <div class="body">
+      <div class="meta">
+        <span class="name">Jinser</span>
+        <span class="time">14:35</span>
+      </div>
+      <div class="content">Got it, I'll handle the login fix</div>
+    </div>
+  </div>
+
+  <!-- System message: pinned -->
+  <div class="system-message">
+    <div class="line"></div>
+    <span class="icon">&#128204;</span>
+    <span class="text">DDreame pinned a message</span>
+    <div class="line"></div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- Section: Style B — Boxed style (Alternative) -->
+  <div class="section-label">Style B: Boxed (Alternative)</div>
+
+  <div class="message">
+    <div class="bar"></div>
+    <div class="avatar">D</div>
+    <div class="body">
+      <div class="meta">
+        <span class="name">DDreame</span>
+        <span class="time">15:00</span>
+      </div>
+      <div class="content">Starting the sprint review now</div>
+    </div>
+  </div>
+
+  <div class="system-message-boxed">
+    <div class="inner">
+      <span class="icon">&rarr;</span>
+      <span class="text">Bob joined #general</span>
+    </div>
+  </div>
+
+  <div class="message">
+    <div class="bar agent"></div>
+    <div class="avatar agent">M</div>
+    <div class="body">
+      <div class="meta">
+        <span class="name">Monitor</span>
+        <span class="agent-tag">AGENT</span>
+        <span class="time">15:02</span>
+      </div>
+      <div class="content">CPU usage spike detected on prod-3</div>
+    </div>
+  </div>
+
+  <div class="system-message-boxed">
+    <div class="inner">
+      <span class="icon">&bull;</span>
+      <span class="text">Channel topic changed to "Sprint 14"</span>
+    </div>
+  </div>
+
+  <div class="system-message-boxed">
+    <div class="inner">
+      <span class="icon">&#9744;</span>
+      <span class="text">Task "Deploy v2.1" created</span>
+    </div>
+  </div>
+
+  <div style="height: 40px;"></div>
+</div>
+
+</body>
+</html>

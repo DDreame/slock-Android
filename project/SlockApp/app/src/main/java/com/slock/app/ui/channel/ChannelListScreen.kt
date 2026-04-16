@@ -64,7 +64,7 @@ fun ChannelListScreen(
                             ListItem(
                                 headlineContent = { Text("# ${channel.name}", fontWeight = FontWeight.Medium) },
                                 leadingContent = { Icon(if (channel.type == "agent") Icons.Default.SmartToy else Icons.Default.Tag, null, tint = MaterialTheme.colorScheme.primary) },
-                                modifier = Modifier.clickable { onChannelClick(channel.id) }
+                                modifier = Modifier.clickable { onChannelClick(channel.id.orEmpty()) }
                             )
                             Divider()
                         }}

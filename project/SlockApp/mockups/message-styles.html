@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Message Styles - Quote Block & Online Status - Slock Mobile</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Space Grotesk', sans-serif; background: #fff8e7; max-width: 400px; margin: 0 auto; min-height: 100vh; }
+
+  .header { background: #FFD700; padding: 14px 16px; border-bottom: 3px solid #000; display: flex; align-items: center; gap: 12px; }
+  .header .back { width: 36px; height: 36px; background: #fff; border: 2px solid #000; box-shadow: 3px 3px 0 #000; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .header .title { font-weight: 700; font-size: 18px; }
+
+  .chat { padding: 12px 0; }
+
+  .label { font-size: 11px; font-weight: 700; color: #fff; background: #000; padding: 4px 12px; margin: 16px 16px 8px; display: inline-block; }
+
+  /* Message */
+  .msg { display: flex; gap: 0; padding: 8px 0; }
+  .msg .bar { width: 3px; flex-shrink: 0; }
+  .msg .bar.human { background: #00cfff; }
+  .msg .bar.agent { background: #ff9f43; }
+
+  .avatar-wrap { position: relative; margin-left: 10px; flex-shrink: 0; }
+  .avatar { width: 36px; height: 36px; border: 2px solid #000; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 14px; }
+  .avatar.human { background: #00cfff; }
+  .avatar.agent { background: #ff9f43; }
+  /* Online status dot on avatar */
+  .online-dot { position: absolute; bottom: -1px; right: -1px; width: 8px; height: 8px; border: 1.5px solid #000; }
+  .online-dot.on { background: #a6ff00; }
+  .online-dot.off { background: #ccc; }
+
+  .msg-body { flex: 1; padding-left: 0; }
+  .msg-meta { display: flex; align-items: center; gap: 8px; }
+  .msg-name { font-weight: 700; font-size: 14px; }
+  .msg-time { font-family: 'Space Mono', monospace; font-size: 10px; color: rgba(0,0,0,0.4); }
+  .agent-tag { background: #ff9f43; border: 1px solid #000; padding: 0 4px; font-size: 9px; font-weight: 700; }
+
+  .msg-text { font-size: 14px; color: #222; line-height: 1.5; margin-top: 3px; }
+
+  /* Quote block style */
+  .quote-block { border-left: 4px solid #000; padding-left: 12px; margin: 6px 0; font-style: italic; color: rgba(0,0,0,0.7); font-size: 13px; line-height: 1.5; }
+
+  /* @mention highlight */
+  .mention { background: rgba(0,207,255,0.3); padding: 0 3px; font-weight: 700; border: 1px solid #000; font-size: 13px; }
+  .mention.inactive { opacity: 0.6; }
+
+  /* Inline code */
+  .inline-code { font-family: 'Space Mono', monospace; background: rgba(255,215,0,0.4); border: 1px solid #000; padding: 0 4px; font-size: 12px; }
+
+  /* Code block */
+  .code-block { background: #1a1a2e; border: 2px solid #000; padding: 12px; margin: 6px 0; font-family: 'Space Mono', monospace; font-size: 12px; color: #fff; line-height: 1.6; overflow-x: auto; white-space: pre; }
+
+  /* Agent message background */
+  .msg-bg-agent { background: #FFF5EB; }
+
+  .spacer { height: 16px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="back">&larr;</div>
+  <div class="title"># general</div>
+</div>
+
+<div class="chat">
+
+  <div class="label">ONLINE STATUS DOT ON AVATAR</div>
+
+  <!-- Human message with online dot -->
+  <div class="msg">
+    <div class="bar human"></div>
+    <div class="avatar-wrap">
+      <div class="avatar human">D</div>
+      <div class="online-dot on"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-meta">
+        <span class="msg-name">DDreame</span>
+        <span class="msg-time">14:30</span>
+      </div>
+      <div class="msg-text">Check the latest deploy, something looks off with the auth flow</div>
+    </div>
+  </div>
+
+  <!-- Agent message with online dot + agent bg -->
+  <div class="msg msg-bg-agent">
+    <div class="bar agent"></div>
+    <div class="avatar-wrap">
+      <div class="avatar agent">C</div>
+      <div class="online-dot on"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-meta">
+        <span class="msg-name">CodeReviewer</span>
+        <span class="agent-tag">AGENT</span>
+        <span class="msg-time">14:31</span>
+      </div>
+      <div class="msg-text">I'll take a look at the auth middleware changes.</div>
+    </div>
+  </div>
+
+  <!-- Human offline -->
+  <div class="msg">
+    <div class="bar human"></div>
+    <div class="avatar-wrap">
+      <div class="avatar human">J</div>
+      <div class="online-dot off"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-meta">
+        <span class="msg-name">Jinser</span>
+        <span class="msg-time">14:25</span>
+      </div>
+      <div class="msg-text">I pushed the fix earlier, let me know if it works</div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="label">QUOTE BLOCK STYLE</div>
+
+  <div class="msg">
+    <div class="bar human"></div>
+    <div class="avatar-wrap">
+      <div class="avatar human">D</div>
+      <div class="online-dot on"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-meta">
+        <span class="msg-name">DDreame</span>
+        <span class="msg-time">14:35</span>
+      </div>
+      <div class="msg-text">
+        <div class="quote-block">The auth middleware should validate tokens before checking permissions, not after.</div>
+        Agreed, this matches our security policy. <span class="mention">@Jinser</span> please update.
+      </div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="label">@MENTION HIGHLIGHT</div>
+
+  <div class="msg msg-bg-agent">
+    <div class="bar agent"></div>
+    <div class="avatar-wrap">
+      <div class="avatar agent">C</div>
+      <div class="online-dot on"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-meta">
+        <span class="msg-name">CodeReviewer</span>
+        <span class="agent-tag">AGENT</span>
+        <span class="msg-time">14:36</span>
+      </div>
+      <div class="msg-text">
+        Found 3 issues in <span class="inline-code">src/auth/middleware.ts</span>:<br><br>
+        1. <span class="mention">@DDreame</span> the token validation is after permission check (line 42)<br>
+        2. <span class="mention">@Jinser</span> missing rate limiter on <span class="inline-code">/api/refresh</span><br>
+        3. <span class="mention">@everyone</span> please review the updated flow
+      </div>
+    </div>
+  </div>
+
+  <div class="spacer"></div>
+  <div class="label">CODE BLOCK</div>
+
+  <div class="msg msg-bg-agent">
+    <div class="bar agent"></div>
+    <div class="avatar-wrap">
+      <div class="avatar agent">C</div>
+      <div class="online-dot on"></div>
+    </div>
+    <div class="msg-body">
+      <div class="msg-meta">
+        <span class="msg-name">CodeReviewer</span>
+        <span class="agent-tag">AGENT</span>
+        <span class="msg-time">14:37</span>
+      </div>
+      <div class="msg-text">
+        Here's the suggested fix:
+        <div class="code-block">// Move validation before permission check
+const token = await validateToken(req);
+if (!token.valid) {
+  return res.status(401).json({
+    error: 'Invalid token'
+  });
+}
+await checkPermissions(token.userId);</div>
+        This ensures we reject invalid tokens early.
+      </div>
+    </div>
+  </div>
+
+  <div style="height: 40px;"></div>
+</div>
+
+</body>
+</html>

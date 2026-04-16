@@ -3,14 +3,14 @@ package com.slock.app.data.model
 import com.google.gson.annotations.SerializedName
 
 data class Channel(
-    val id: String,
+    val id: String? = null,
     @SerializedName("serverId")
     val serverId: String? = null,
-    val name: String,
-    val type: String = "text",
+    val name: String? = null,
+    val type: String? = null,
     val seq: Long = 0,
     @SerializedName("createdAt")
-    val createdAt: String
+    val createdAt: String? = null
 )
 
 data class CreateChannelRequest(
@@ -34,9 +34,9 @@ data class CreateDMRequest(
 )
 
 data class ChannelMember(
-    val id: String,
+    val id: String? = null,
     @SerializedName("channelId")
-    val channelId: String,
+    val channelId: String? = null,
     @SerializedName("userId")
     val userId: String? = null,
     @SerializedName("agentId")

@@ -3,18 +3,18 @@ package com.slock.app.data.model
 import com.google.gson.annotations.SerializedName
 
 data class Agent(
-    val id: String,
-    val name: String,
+    val id: String? = null,
+    val name: String? = null,
     val description: String? = null,
     val prompt: String? = null,
-    val model: String = "claude-sonnet-4-20250514",
+    val model: String? = null,
     val avatar: String? = null,
-    val status: String = "stopped",
+    val status: String? = null,
     val activity: String? = null,
     @SerializedName("activityDetail")
     val activityDetail: String? = null,
     @SerializedName("createdAt")
-    val createdAt: String = ""
+    val createdAt: String? = null
 )
 
 data class CreateAgentRequest(
@@ -36,10 +36,10 @@ data class ResetAgentRequest(
 )
 
 data class Machine(
-    val id: String,
-    val name: String,
+    val id: String? = null,
+    val name: String? = null,
     @SerializedName("serverId")
-    val serverId: String,
-    val status: String,
+    val serverId: String? = null,
+    val status: String? = null,
     val key: String? = null
 )

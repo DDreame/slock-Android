@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Agent Detail - Slock Mobile</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono&display=swap');
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Space Grotesk', sans-serif; background: #fff8e7; max-width: 400px; margin: 0 auto; min-height: 100vh; }
+
+  .header { background: #ff9f43; padding: 14px 16px; border-bottom: 3px solid #000; display: flex; align-items: center; gap: 12px; }
+  .header .back { width: 36px; height: 36px; background: #fff; border: 2px solid #000; box-shadow: 3px 3px 0 #000; display: flex; align-items: center; justify-content: center; font-size: 18px; }
+  .header .title { font-weight: 700; font-size: 18px; }
+
+  .agent-hero { background: #fff; border-bottom: 3px solid #000; padding: 20px 16px; display: flex; gap: 14px; align-items: flex-start; }
+  .agent-avatar { width: 56px; height: 56px; border: 2px solid #000; background: #ff9f43; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700; flex-shrink: 0; box-shadow: 3px 3px 0 #000; }
+  .agent-info { flex: 1; min-width: 0; }
+  .agent-name { font-size: 20px; font-weight: 700; }
+  .agent-model { display: inline-block; font-family: 'Space Mono', monospace; font-size: 11px; padding: 2px 8px; border: 1px solid #000; background: #fff8e7; font-weight: 700; margin-top: 4px; }
+  .agent-status-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .status-dot { width: 10px; height: 10px; border: 1.5px solid #000; background: #a6ff00; }
+  .status-text { font-size: 12px; font-weight: 700; color: #000; }
+
+  .section { padding: 16px; }
+  .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: rgba(0,0,0,0.5); margin-bottom: 10px; }
+
+  .info-card { border: 2px solid #000; background: #fff; box-shadow: 4px 4px 0 #000; margin-bottom: 12px; }
+  .info-card .strip { height: 4px; }
+  .info-card .content { padding: 12px 14px; }
+
+  .info-row { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.08); }
+  .info-row:last-child { border-bottom: none; }
+  .info-label { font-size: 12px; font-weight: 700; color: rgba(0,0,0,0.5); text-transform: uppercase; letter-spacing: 0.5px; }
+  .info-value { font-size: 13px; font-weight: 600; }
+  .info-value.mono { font-family: 'Space Mono', monospace; font-size: 11px; }
+
+  .activity-card { border: 2px solid #000; background: #fff; box-shadow: 4px 4px 0 #000; margin-bottom: 12px; }
+  .activity-strip { height: 4px; background: #a6ff00; }
+  .activity-content { padding: 12px 14px; }
+  .activity-status { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+  .activity-detail { font-size: 12px; color: rgba(0,0,0,0.6); font-family: 'Space Mono', monospace; line-height: 1.5; }
+
+  .prompt-card { border: 2px solid #000; background: #fff; box-shadow: 4px 4px 0 #000; }
+  .prompt-strip { height: 4px; background: #ff9f43; }
+  .prompt-content { padding: 12px 14px; }
+  .prompt-text { font-size: 12px; line-height: 1.6; color: rgba(0,0,0,0.7); max-height: 120px; overflow: hidden; position: relative; }
+  .prompt-fade { position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(transparent, #fff); }
+  .prompt-expand { font-size: 11px; font-weight: 700; color: rgba(0,0,0,0.5); margin-top: 6px; text-align: center; }
+
+  .machine-link { display: flex; align-items: center; gap: 10px; border: 2px solid #000; background: #FFD700; padding: 10px 14px; box-shadow: 3px 3px 0 #000; margin-bottom: 12px; }
+  .machine-link .icon { font-size: 18px; }
+  .machine-link .name { font-weight: 700; font-size: 13px; }
+  .machine-link .status { font-size: 11px; color: rgba(0,0,0,0.5); }
+  .machine-link .arrow { margin-left: auto; font-size: 14px; }
+
+  .action-row { display: flex; gap: 8px; padding: 16px; }
+  .action-btn { flex: 1; border: 2px solid #000; padding: 12px; text-align: center; font-weight: 700; font-size: 13px; box-shadow: 3px 3px 0 #000; }
+  .action-btn.dm { background: #00cfff; }
+  .action-btn.stop { background: #ff6b9d; }
+  .action-btn.config { background: #fff; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="back">&larr;</div>
+  <div class="title">Agent Detail</div>
+</div>
+
+<!-- Hero section -->
+<div class="agent-hero">
+  <div class="agent-avatar">C</div>
+  <div class="agent-info">
+    <div class="agent-name">CodeReviewer</div>
+    <span class="agent-model">Claude Opus</span>
+    <div class="agent-status-row">
+      <div class="status-dot"></div>
+      <span class="status-text">Active</span>
+    </div>
+  </div>
+</div>
+
+<!-- Action buttons -->
+<div class="action-row">
+  <div class="action-btn dm">&#128172; DM</div>
+  <div class="action-btn stop">&#9632; Stop</div>
+  <div class="action-btn config">&#9881; Config</div>
+</div>
+
+<!-- Activity section -->
+<div class="section">
+  <div class="section-title">Current Activity</div>
+  <div class="activity-card">
+    <div class="activity-strip"></div>
+    <div class="activity-content">
+      <div class="activity-status">&#9889; Reviewing PR #247</div>
+      <div class="activity-detail">Analyzing changes in src/auth/middleware.ts<br>Found 3 potential issues...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Machine link -->
+<div class="section" style="padding-top:0;">
+  <div class="section-title">Running On</div>
+  <div class="machine-link">
+    <span class="icon">&#128187;</span>
+    <div>
+      <div class="name">prod-gpu-01</div>
+      <div class="status">Connected &middot; 12h uptime</div>
+    </div>
+    <span class="arrow">&rarr;</span>
+  </div>
+</div>
+
+<!-- Info card -->
+<div class="section" style="padding-top:0;">
+  <div class="section-title">Details</div>
+  <div class="info-card">
+    <div class="strip" style="background: #ff9f43;"></div>
+    <div class="content">
+      <div class="info-row">
+        <span class="info-label">Model</span>
+        <span class="info-value mono">claude-opus-4-6</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Created</span>
+        <span class="info-value mono">2026-04-10</span>
+      </div>
+      <div class="info-row">
+        <span class="info-label">Messages</span>
+        <span class="info-value">1,247</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- System Prompt -->
+<div class="section" style="padding-top:0;">
+  <div class="section-title">System Prompt</div>
+  <div class="prompt-card">
+    <div class="prompt-strip"></div>
+    <div class="prompt-content">
+      <div class="prompt-text">
+        You are CodeReviewer, an expert code review agent. Your responsibilities include:
+        - Reviewing pull requests for code quality, security, and performance
+        - Providing constructive feedback with specific line references
+        - Suggesting improvements aligned with the project's coding standards
+        - Flagging potential security vulnerabilities (OWASP top 10)
+        <div class="prompt-fade"></div>
+      </div>
+      <div class="prompt-expand">tap to expand &darr;</div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

@@ -20,15 +20,15 @@ data class RefreshTokenRequest(
 
 data class AuthResponse(
     @SerializedName("accessToken")
-    val accessToken: String,
+    val accessToken: String? = null,
     @SerializedName("refreshToken")
-    val refreshToken: String
+    val refreshToken: String? = null
 )
 
 data class User(
-    val id: String,
-    val email: String,
-    val name: String,
+    val id: String? = null,
+    val email: String? = null,
+    val name: String? = null,
     val avatar: String? = null
 )
 

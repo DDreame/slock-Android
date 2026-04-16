@@ -196,7 +196,7 @@ private fun ThreadCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = thread.parentMessage.senderName.ifEmpty { "Unknown" }.take(1).uppercase(),
+                        text = thread.parentMessage.senderName.orEmpty().ifEmpty { "Unknown" }.take(1).uppercase(),
                         fontWeight = FontWeight.Bold,
                         fontSize = 12.sp,
                         color = Black
@@ -210,7 +210,7 @@ private fun ThreadCard(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            text = thread.parentMessage.senderName.ifEmpty { "Unknown" },
+                            text = thread.parentMessage.senderName.orEmpty().ifEmpty { "Unknown" },
                             style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = Black
                         )
@@ -235,7 +235,7 @@ private fun ThreadCard(
 
                     // Message preview
                     Text(
-                        text = thread.parentMessage.content,
+                        text = thread.parentMessage.content.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF444444),
                         maxLines = 2,

@@ -3,12 +3,12 @@ package com.slock.app.data.model
 import com.google.gson.annotations.SerializedName
 
 data class Server(
-    val id: String = "",
-    val name: String = "",
-    val slug: String = "",
-    val role: String = "member",
+    val id: String? = null,
+    val name: String? = null,
+    val slug: String? = null,
+    val role: String? = null,
     @SerializedName("createdAt")
-    val createdAt: String = ""
+    val createdAt: String? = null
 )
 
 data class CreateServerRequest(
@@ -17,10 +17,10 @@ data class CreateServerRequest(
 )
 
 data class Member(
-    val id: String,
+    val id: String? = null,
     @SerializedName("userId")
-    val userId: String,
-    val role: String,
+    val userId: String? = null,
+    val role: String? = null,
     val user: User? = null,
     val name: String? = null,
     @SerializedName("displayName")
