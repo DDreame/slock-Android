@@ -151,6 +151,9 @@ interface ApiService {
     ): Response<MessagesResponse>
 
     // Tasks (X-Server-Id header added automatically by ServerIdInterceptor)
+    @GET("tasks/server")
+    suspend fun getServerTasks(): Response<TasksResponse>
+
     @GET("tasks/channel/{channelId}")
     suspend fun getTasks(@Path("channelId") channelId: String): Response<TasksResponse>
 

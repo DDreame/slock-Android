@@ -15,6 +15,7 @@ import javax.inject.Inject
 interface TaskRepository {
     suspend fun getTasks(serverId: String, channelId: String): Result<List<Task>>
     suspend fun getAllServerTasks(serverId: String, channelIds: List<String>): Result<List<Task>>
+    suspend fun getServerTasks(serverId: String): Result<List<Task>>
     suspend fun createTask(serverId: String, channelId: String, title: String, description: String?, assigneeId: String?, messageId: String?): Result<Task>
     suspend fun updateTaskStatus(serverId: String, taskId: String, status: String): Result<Task>
     suspend fun deleteTask(serverId: String, taskId: String): Result<Unit>
@@ -99,6 +100,28 @@ class TaskRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Log.e("TaskRepo", "getAllServerTasks exception", e)
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getServerTasks(serverId: String): Result<List<Task>> {
+        activeServerHolder.serverId = serverId
+        return try {
+            val response = apiService.getServerTasks()
+            Log.d("TaskRepo", "getServerTasks API: code=${response.code()}, bodySize=${response.body()?.tasks?.size}")
+            if (response.isSuccessful && response.body() != null) {
+                val tasks = response.body()!!.tasks
+                if (tasks.isNotEmpty()) {
+                    taskDao.insertTasks(tasks.map { it.toEntity() })
+                }
+                Result.success(tasks)
+            } else {
+                val errorMsg = try { response.errorBody()?.string()?.take(200) } catch (_: Exception) { null }
+                Log.e("TaskRepo", "getServerTasks failed: code=${response.code()}, error=$errorMsg")
+                Result.failure(Exception("Get server tasks failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e("TaskRepo", "getServerTasks exception", e)
             Result.failure(e)
         }
     }

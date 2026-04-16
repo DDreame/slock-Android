@@ -4,7 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.model.Task
-import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.TaskRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,7 +25,6 @@ data class ServerTasksUiState(
 @HiltViewModel
 class ServerTasksViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
-    private val channelRepository: ChannelRepository,
     private val socketIOManager: SocketIOManager,
     private val activeServerHolder: ActiveServerHolder
 ) : ViewModel() {
@@ -80,54 +78,16 @@ class ServerTasksViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = it.tasks.isEmpty(), error = null) }
 
-            // First get all channels for this server
-            channelRepository.getChannels(serverId).fold(
-                onSuccess = { channels ->
-                    val channelIds = channels.map { it.id }
-                    if (channelIds.isEmpty()) {
-                        // Channels not loaded yet, try refreshing from API
-                        channelRepository.refreshChannels(serverId).fold(
-                            onSuccess = { refreshed ->
-                                fetchTasksForChannels(serverId, refreshed.map { it.id })
-                            },
-                            onFailure = { err ->
-                                _state.update { it.copy(isLoading = false, error = err.message) }
-                            }
-                        )
-                    } else {
-                        fetchTasksForChannels(serverId, channelIds)
-                    }
+            // Use server-level tasks endpoint (matches JS frontend: GET /tasks/server)
+            taskRepository.getServerTasks(serverId).fold(
+                onSuccess = { tasks ->
+                    _state.update { it.copy(tasks = tasks, isLoading = false) }
                 },
                 onFailure = { err ->
                     _state.update { it.copy(isLoading = false, error = err.message) }
                 }
             )
         }
-    }
-
-    private suspend fun fetchTasksForChannels(serverId: String, channelIds: List<String>) {
-        // Then fetch tasks from all channels
-        taskRepository.getAllServerTasks(serverId, channelIds).fold(
-            onSuccess = { tasks ->
-                _state.update { it.copy(tasks = tasks, isLoading = false) }
-            },
-            onFailure = { err ->
-                _state.update { it.copy(isLoading = false, error = err.message) }
-            }
-        )
-        // Then refresh channels from cloud and re-fetch tasks
-        channelRepository.refreshChannels(serverId).fold(
-            onSuccess = { channels ->
-                val channelIds2 = channels.map { it.id }
-                taskRepository.getAllServerTasks(serverId, channelIds2).fold(
-                    onSuccess = { tasks ->
-                        _state.update { it.copy(tasks = tasks, error = null) }
-                    },
-                    onFailure = { /* keep cached data */ }
-                )
-            },
-            onFailure = { /* keep cached data */ }
-        )
     }
 
     fun retryIfEmpty() {
