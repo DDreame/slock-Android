@@ -113,11 +113,12 @@ fun ThreadReplyScreen(
             text = text,
             onTextChange = { text = it },
             onSend = {
-                if (text.isNotBlank()) {
+                if (text.isNotBlank() && !state.isSending) {
                     onSendReply(text)
                     text = ""
                 }
-            }
+            },
+            enabled = !state.isSending
         )
     }
 }
@@ -455,7 +456,8 @@ private fun ThreadReply(message: Message) {
 private fun ThreadComposeBar(
     text: String,
     onTextChange: (String) -> Unit,
-    onSend: () -> Unit
+    onSend: () -> Unit,
+    enabled: Boolean = true
 ) {
     var isFocused by remember { mutableStateOf(false) }
 
@@ -502,16 +504,17 @@ private fun ThreadComposeBar(
             )
 
             // Send button
+            val sendColor = if (enabled) Yellow else Color(0xFFD0D0D0)
             Box(
                 modifier = Modifier
                     .size(40.dp)
                     .neoShadowSmall()
-                    .background(Yellow)
+                    .background(sendColor)
                     .border(2.dp, Black, RectangleShape)
-                    .clickable(onClick = onSend),
+                    .clickable(enabled = enabled, onClick = onSend),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "\u27A4", fontSize = 18.sp, color = Black)
+                Text(text = "\u27A4", fontSize = 18.sp, color = if (enabled) Black else TextMuted)
             }
         }
     }

@@ -109,6 +109,7 @@ class MessageViewModel @Inject constructor(
     }
 
     fun sendMessage(content: String) {
+        if (_state.value.isSending) return
         val serverId = activeServerHolder.serverId
         if (serverId.isNullOrBlank()) {
             _state.update { it.copy(error = "Server not selected") }

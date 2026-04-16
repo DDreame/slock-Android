@@ -133,6 +133,7 @@ class ThreadReplyViewModel @Inject constructor(
     }
 
     fun sendReply(content: String) {
+        if (_state.value.isSending) return
         viewModelScope.launch {
             _state.update { it.copy(isSending = true) }
             messageRepository.sendMessage(activeServerHolder.serverId ?: "", _state.value.threadChannelId, content).fold(
