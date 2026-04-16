@@ -177,6 +177,7 @@ fun SlockNavHost(
                     val server = toSelect ?: serverState.servers.first()
                     if (selectedServer?.id != server.id) {
                         selectedServer = server
+                        serverViewModel.selectServer(server.id)
                         channelViewModel.loadChannels(server.id)
                         channelViewModel.loadDMs()
                         agentViewModel.loadAgents(server.id)
