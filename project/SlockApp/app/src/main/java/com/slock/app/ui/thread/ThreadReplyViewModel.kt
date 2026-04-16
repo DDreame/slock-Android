@@ -7,6 +7,7 @@ import com.slock.app.data.model.Message
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.repository.ThreadRepository
 import com.slock.app.data.socket.SocketIOManager
+import android.util.Log
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -78,21 +79,31 @@ class ThreadReplyViewModel @Inject constructor(
 
     fun loadThread(parentMessage: Message, threadChannelId: String) {
         _state.update { it.copy(parentMessage = parentMessage, threadChannelId = threadChannelId) }
+        val serverId = activeServerHolder.serverId ?: ""
+        Log.d("ThreadReplyVM", "loadThread: threadChannelId=$threadChannelId, serverId=$serverId")
         viewModelScope.launch {
             _state.update { it.copy(isLoading = it.replies.isEmpty()) }
-            // Get cached data first
-            messageRepository.getMessages(activeServerHolder.serverId ?: "", threadChannelId).fold(
+
+            // Primary: use standard messages endpoint (matches JS frontend: GET /messages/channel/${threadChannelId})
+            messageRepository.refreshMessages(serverId, threadChannelId).fold(
                 onSuccess = { replies ->
+                    Log.d("ThreadReplyVM", "refreshMessages success: ${replies.size} replies")
                     _state.update { it.copy(replies = replies, isLoading = false) }
                 },
-                onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
-            )
-            // Then refresh from cloud
-            messageRepository.refreshMessages(activeServerHolder.serverId ?: "", threadChannelId).fold(
-                onSuccess = { replies ->
-                    _state.update { it.copy(replies = replies) }
-                },
-                onFailure = { /* keep cached data */ }
+                onFailure = { err ->
+                    Log.e("ThreadReplyVM", "refreshMessages failed, trying thread endpoint", err)
+                    // Fallback: use thread-specific endpoint (GET /threads/{threadId}/messages)
+                    threadRepository.getThreadReplies(serverId, threadChannelId).fold(
+                        onSuccess = { replies ->
+                            Log.d("ThreadReplyVM", "getThreadReplies success: ${replies.size} replies")
+                            _state.update { it.copy(replies = replies, isLoading = false) }
+                        },
+                        onFailure = { err2 ->
+                            Log.e("ThreadReplyVM", "getThreadReplies also failed", err2)
+                            _state.update { it.copy(isLoading = false, error = err2.message) }
+                        }
+                    )
+                }
             )
             socketManager.joinChannel(threadChannelId)
         }

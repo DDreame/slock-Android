@@ -30,10 +30,10 @@ data class Message(
 }
 
 data class Attachment(
-    val id: String,
-    val name: String,
-    val url: String,
-    val type: String
+    val id: String = "",
+    val name: String = "",
+    val url: String = "",
+    val type: String = ""
 )
 
 data class SendMessageRequest(
