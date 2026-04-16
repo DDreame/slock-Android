@@ -747,7 +747,7 @@ private fun AgentSettingsSheet(
 
             // Role
             SettingsRow(label = "ROLE") {
-                Text(text = agent.description, fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Black)
+                Text(text = agent.description ?: "", fontSize = 14.sp, fontWeight = FontWeight.Medium, color = Black)
             }
 
             Spacer(modifier = Modifier.height(16.dp))
