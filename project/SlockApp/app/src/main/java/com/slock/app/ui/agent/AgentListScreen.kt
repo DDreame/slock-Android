@@ -206,15 +206,7 @@ private fun AgentHeader(onBack: () -> Unit, onCreateClick: () -> Unit) {
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // Back button
-                Box(
-                    modifier = Modifier
-                        .size(36.dp)
-                        .neoShadowSmall()
-                        .background(White)
-                        .border(2.dp, Black, RectangleShape)
-                        .clickable(onClick = onBack),
-                    contentAlignment = Alignment.Center
-                ) {
+                NeoPressableBox(onClick = onBack) {
                     Text(text = "\u2190", fontSize = 18.sp, color = Black)
                 }
                 Spacer(modifier = Modifier.width(12.dp))
@@ -226,15 +218,7 @@ private fun AgentHeader(onBack: () -> Unit, onCreateClick: () -> Unit) {
             }
 
             // Create button
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .neoShadowSmall()
-                    .background(White)
-                    .border(2.dp, Black, RectangleShape)
-                    .clickable(onClick = onCreateClick),
-                contentAlignment = Alignment.Center
-            ) {
+            NeoPressableBox(onClick = onCreateClick) {
                 Text(text = "+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Black)
             }
         }

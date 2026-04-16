@@ -18,8 +18,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.data.model.Message
@@ -96,12 +99,16 @@ fun MessageListScreen(
                         reverseLayout = true
                     ) {
                         items(state.messages) { message ->
-                            NeoMessage(
-                                message = message,
-                                onThreadClick = if (message.threadChannelId != null) {
-                                    { onNavigateToThread(message.threadChannelId, message) }
-                                } else null
-                            )
+                            if (message.senderType == "system") {
+                                SystemMessageDivider(message.content)
+                            } else {
+                                NeoMessage(
+                                    message = message,
+                                    onThreadClick = if (message.threadChannelId != null) {
+                                        { onNavigateToThread(message.threadChannelId, message) }
+                                    } else null
+                                )
+                            }
                         }
                     }
                 }
@@ -136,15 +143,7 @@ private fun ChannelHeader(channelName: String, onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .neoShadowSmall()
-                    .background(Cream)
-                    .border(2.dp, Black, RectangleShape)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
+            NeoPressableBox(onClick = onBack, backgroundColor = Cream) {
                 Text(text = "\u2190", fontSize = 18.sp, color = Black)
             }
 
@@ -173,14 +172,7 @@ private fun ChannelHeader(channelName: String, onBack: () -> Unit) {
 
 @Composable
 private fun MiniIconButton(icon: String, onClick: () -> Unit = {}) {
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .background(White)
-            .border(2.dp, Black, RectangleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
+    NeoPressableBox(onClick = onClick, size = 34.dp) {
         Text(text = icon, fontSize = 16.sp)
     }
 }
@@ -264,20 +256,18 @@ private fun NeoMessage(
                 }
                 Text(
                     text = message.createdAt.orEmpty().split("T").getOrNull(1)?.take(5) ?: "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontSize = 10.sp
+                    ),
+                    color = Black.copy(alpha = 0.4f)
                 )
             }
 
             Spacer(modifier = Modifier.height(3.dp))
 
-            // Message text
-            Text(
-                text = message.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF222222),
-                lineHeight = 21.sp
-            )
+            // Message content with markdown rendering
+            NeoMessageContent(content = message.content)
 
             // Sending indicator
             if (isPending) {
@@ -551,7 +541,7 @@ private fun NeoComposeBar(
                     .heightIn(min = 40.dp, max = 120.dp)
                     .onFocusChanged { isFocused = it.isFocused }
                     .then(
-                        if (isFocused) Modifier.neoShadow(3.dp, 3.dp, Cyan)
+                        if (isFocused) Modifier.neoShadow(4.dp, 4.dp, Cyan)
                         else Modifier.neoShadowSmall()
                     )
                     .border(2.dp, Black, RectangleShape)
@@ -559,17 +549,45 @@ private fun NeoComposeBar(
 
             // Send button
             val sendColor = if (enabled) Yellow else Color(0xFFD0D0D0)
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .neoShadowSmall()
-                    .background(sendColor)
-                    .border(2.dp, Black, RectangleShape)
-                    .clickable(enabled = enabled, onClick = onSend),
-                contentAlignment = Alignment.Center
+            NeoPressableBox(
+                onClick = onSend,
+                enabled = enabled,
+                size = 40.dp,
+                backgroundColor = sendColor
             ) {
                 Text(text = "\u27A4", fontSize = 18.sp, color = if (enabled) Black else TextMuted)
             }
         }
+    }
+}
+
+// System message divider (Style A: centered text with lines)
+@Composable
+private fun SystemMessageDivider(content: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Divider(
+            modifier = Modifier.weight(1f),
+            thickness = 1.dp,
+            color = Color(0xFFCCCCCC)
+        )
+        Text(
+            text = content,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 11.sp,
+                letterSpacing = 0.3.sp
+            ),
+            color = TextMuted,
+            modifier = Modifier.padding(horizontal = 12.dp)
+        )
+        Divider(
+            modifier = Modifier.weight(1f),
+            thickness = 1.dp,
+            color = Color(0xFFCCCCCC)
+        )
     }
 }

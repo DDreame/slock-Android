@@ -108,15 +108,7 @@ private fun ThreadListHeader(onBack: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .neoShadowSmall()
-                    .background(White)
-                    .border(2.dp, Black, RectangleShape)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
+            NeoPressableBox(onClick = onBack) {
                 Text(text = "\u2190", fontSize = 18.sp, color = Black)
             }
 
@@ -202,7 +194,7 @@ private fun ThreadCard(
                 Box(
                     modifier = Modifier
                         .size(30.dp)
-                        .background(if (isAgent) Orange else Cyan)
+                        .background(Lavender)
                         .border(2.dp, Black, RectangleShape),
                     contentAlignment = Alignment.Center
                 ) {

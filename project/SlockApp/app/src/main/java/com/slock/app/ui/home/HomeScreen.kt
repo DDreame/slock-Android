@@ -38,6 +38,8 @@ fun HomeScreen(
     onCreateChannel: (name: String, type: String) -> Unit,
     onCreateServer: (name: String, slug: String) -> Unit,
     onLogout: () -> Unit,
+    isConnected: Boolean = true,
+    isReconnecting: Boolean = false,
     onTabSelected: (Int) -> Unit = {},
     threadsContent: @Composable () -> Unit = {},
     agentsContent: @Composable () -> Unit = {},
@@ -84,12 +86,17 @@ fun HomeScreen(
                 )
             }
         ) { padding ->
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Cream)
                     .padding(padding)
             ) {
+                NetworkStatusBanner(
+                    isConnected = isConnected,
+                    isReconnecting = isReconnecting
+                )
+                Box(modifier = Modifier.weight(1f)) {
                 when (selectedTab) {
                     0 -> ChannelsTabContent(
                         channelState = channelState,
@@ -102,6 +109,7 @@ fun HomeScreen(
                     1 -> threadsContent()
                     2 -> agentsContent()
                     3 -> tasksContent()
+                }
                 }
             }
         }
@@ -260,7 +268,7 @@ private fun NeoTopBar(
                     modifier = Modifier
                         .size(36.dp)
                         .neoShadowSmall()
-                        .background(White)
+                        .background(Yellow)
                         .border(2.dp, Black, RectangleShape),
                     contentAlignment = Alignment.Center
                 ) {
@@ -294,15 +302,7 @@ private fun NeoTopBar(
 
 @Composable
 private fun NeoIconButton(icon: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .neoShadowSmall()
-            .background(White)
-            .border(2.dp, Black, RectangleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
+    NeoPressableBox(onClick = onClick) {
         Text(text = icon, fontSize = 18.sp)
     }
 }
@@ -323,7 +323,7 @@ private fun SectionHeader(title: String, onAdd: () -> Unit) {
                 letterSpacing = 1.5.sp,
                 fontWeight = FontWeight.Bold
             ),
-            color = TextMuted
+            color = Black.copy(alpha = 0.6f)
         )
         Box(
             modifier = Modifier
@@ -564,10 +564,10 @@ private fun NeoNavItem(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(
-                letterSpacing = 0.5.sp,
+                letterSpacing = 1.5.sp,
                 fontWeight = FontWeight.SemiBold
             ),
-            color = if (isSelected) Black else TextMuted,
+            color = if (isSelected) Black else Black.copy(alpha = 0.6f),
             modifier = Modifier.padding(top = 2.dp)
         )
     }
@@ -601,10 +601,10 @@ private fun ServerDrawer(
             Text(
                 text = "YOUR SERVERS",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    letterSpacing = 1.sp,
+                    letterSpacing = 1.5.sp,
                     fontWeight = FontWeight.Bold
                 ),
-                color = TextMuted,
+                color = Black.copy(alpha = 0.6f),
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 

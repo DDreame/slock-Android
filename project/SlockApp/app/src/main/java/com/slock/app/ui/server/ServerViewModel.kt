@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.model.Server
 import com.slock.app.data.repository.ServerRepository
+import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,11 +21,14 @@ data class ServerUiState(
 
 @HiltViewModel
 class ServerViewModel @Inject constructor(
-    private val serverRepository: ServerRepository
+    private val serverRepository: ServerRepository,
+    private val socketManager: SocketIOManager
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ServerUiState())
     val state: StateFlow<ServerUiState> = _state.asStateFlow()
+
+    val connectionState = socketManager.connectionState
 
     var selectedServerId: String? = null
         private set

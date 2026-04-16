@@ -163,6 +163,9 @@ fun SlockNavHost(
             val agentState by agentViewModel.state.collectAsState()
             val threadListState by threadListViewModel.state.collectAsState()
             val tasksState by serverTasksViewModel.state.collectAsState()
+            val connectionState by serverViewModel.connectionState.collectAsState(
+                initial = com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTING
+            )
             val context = androidx.compose.ui.platform.LocalContext.current
 
             var selectedServer by remember { mutableStateOf<Server?>(null) }
@@ -191,6 +194,8 @@ fun SlockNavHost(
                 serverState = serverState,
                 channelState = channelState,
                 selectedServer = selectedServer,
+                isConnected = connectionState == com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTED,
+                isReconnecting = connectionState == com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTING,
                 onServerSelect = { server ->
                     selectedServer = server
                     serverViewModel.selectServer(server.id)

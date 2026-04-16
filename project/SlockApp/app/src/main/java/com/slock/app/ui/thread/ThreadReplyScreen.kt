@@ -140,15 +140,7 @@ private fun ThreadHeader(
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Back button
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .neoShadowSmall()
-                    .background(White)
-                    .border(2.dp, Black, RectangleShape)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center
-            ) {
+            NeoPressableBox(onClick = onBack) {
                 Text(text = "\u2190", fontSize = 18.sp, color = Black)
             }
 
@@ -180,14 +172,7 @@ private fun ThreadHeader(
 
 @Composable
 private fun MiniActionButton(icon: String, onClick: () -> Unit = {}) {
-    Box(
-        modifier = Modifier
-            .size(34.dp)
-            .background(White)
-            .border(2.dp, Black, RectangleShape)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
+    NeoPressableBox(onClick = onClick, size = 34.dp) {
         Text(text = icon, fontSize = 15.sp)
     }
 }
@@ -230,9 +215,12 @@ private fun ParticipantBar(
             }
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = "${participants.size} participants",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = Black
+                text = "${participants.size} PARTICIPANTS",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.sp
+                ),
+                color = Black.copy(alpha = 0.6f)
             )
         }
 
@@ -313,20 +301,18 @@ private fun OriginalMessageCard(message: Message) {
                     }
                     Text(
                         text = message.createdAt.orEmpty().split("T").getOrNull(1)?.take(5) ?: "",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = TextMuted
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                            fontSize = 10.sp
+                        ),
+                        color = Black.copy(alpha = 0.4f)
                     )
                 }
 
                 Spacer(modifier = Modifier.height(4.dp))
 
                 // Message text
-                Text(
-                    text = message.content,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF222222),
-                    lineHeight = 21.sp
-                )
+                NeoMessageContent(content = message.content)
 
                 Spacer(modifier = Modifier.height(10.dp))
 
@@ -366,7 +352,7 @@ private fun RepliesDivider(count: Int) {
         Text(
             text = "$count REPLIES",
             style = MaterialTheme.typography.labelSmall.copy(
-                letterSpacing = 0.5.sp,
+                letterSpacing = 1.5.sp,
                 fontWeight = FontWeight.Bold
             ),
             color = TextMuted
@@ -438,19 +424,17 @@ private fun ThreadReply(message: Message) {
                 }
                 Text(
                     text = message.createdAt.orEmpty().split("T").getOrNull(1)?.take(5) ?: "",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = TextMuted
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontSize = 10.sp
+                    ),
+                    color = Black.copy(alpha = 0.4f)
                 )
             }
 
             Spacer(modifier = Modifier.height(3.dp))
 
-            Text(
-                text = message.content,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF222222),
-                lineHeight = 21.sp
-            )
+            NeoMessageContent(content = message.content)
 
             if (isPending) {
                 Text(
@@ -510,7 +494,7 @@ private fun ThreadComposeBar(
                     .heightIn(min = 40.dp, max = 100.dp)
                     .onFocusChanged { isFocused = it.isFocused }
                     .then(
-                        if (isFocused) Modifier.neoShadow(3.dp, 3.dp, Lavender)
+                        if (isFocused) Modifier.neoShadow(4.dp, 4.dp, Lavender)
                         else Modifier.neoShadowSmall()
                     )
                     .border(2.dp, Black, RectangleShape)
@@ -518,14 +502,11 @@ private fun ThreadComposeBar(
 
             // Send button
             val sendColor = if (enabled) Yellow else Color(0xFFD0D0D0)
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .neoShadowSmall()
-                    .background(sendColor)
-                    .border(2.dp, Black, RectangleShape)
-                    .clickable(enabled = enabled, onClick = onSend),
-                contentAlignment = Alignment.Center
+            NeoPressableBox(
+                onClick = onSend,
+                enabled = enabled,
+                size = 40.dp,
+                backgroundColor = sendColor
             ) {
                 Text(text = "\u27A4", fontSize = 18.sp, color = if (enabled) Black else TextMuted)
             }

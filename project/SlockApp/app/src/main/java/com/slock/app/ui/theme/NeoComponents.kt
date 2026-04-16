@@ -6,12 +6,20 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
@@ -43,7 +51,13 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -71,6 +85,45 @@ private fun DrawScope.drawNeoShadow(offsetX: Float, offsetY: Float, color: Color
         topLeft = Offset(offsetX, offsetY),
         size = Size(size.width, size.height)
     )
+}
+
+// Neo-Brutalism pressable icon button with shadow animation
+@Composable
+fun NeoPressableBox(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    size: Dp = 36.dp,
+    backgroundColor: Color = White,
+    borderWidth: Dp = 2.dp,
+    content: @Composable () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val shadowOffset by animateDpAsState(
+        targetValue = if (isPressed) 0.dp else 2.dp,
+        animationSpec = tween(100),
+        label = "shadow"
+    )
+    val buttonOffset by animateDpAsState(
+        targetValue = if (isPressed) 2.dp else 0.dp,
+        animationSpec = tween(100),
+        label = "offset"
+    )
+
+    Box(
+        modifier = modifier
+            .size(size)
+            .offset(x = buttonOffset, y = buttonOffset)
+            .neoShadow(offsetX = shadowOffset, offsetY = shadowOffset)
+            .background(backgroundColor)
+            .border(borderWidth, Black, RectangleShape)
+            .clickable(interactionSource = interactionSource, indication = null, enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
 }
 
 // Neo-Brutalism Card
@@ -287,6 +340,31 @@ fun NeoDivider(text: String) {
 }
 
 @Composable
+fun NetworkStatusBanner(
+    isConnected: Boolean,
+    isReconnecting: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    if (isConnected) return
+    val bgColor = if (isReconnecting) Color(0xFFFF9F43) else Error
+    val text = if (isReconnecting) "正在重新连接..." else "网络连接已断开"
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(bgColor)
+            .padding(horizontal = 16.dp, vertical = 6.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = Color.White
+        )
+    }
+}
+
+@Composable
 fun NeoErrorState(
     message: String,
     subtitle: String? = "请检查网络后重试",
@@ -321,6 +399,139 @@ fun NeoErrorState(
                 onClick = onRetry,
                 modifier = Modifier.padding(horizontal = 48.dp)
             )
+        }
+    }
+}
+
+// Inline text styling: @mentions (Cyan/30 + bold) and `inline code` (Yellow/40 + mono)
+private val inlinePattern = Regex("`[^`]+`|@[\\w.-]+")
+
+fun buildMentionAnnotatedString(content: String): AnnotatedString {
+    return buildAnnotatedString {
+        var lastIndex = 0
+        inlinePattern.findAll(content).forEach { match ->
+            append(content.substring(lastIndex, match.range.first))
+            val value = match.value
+            if (value.startsWith("`") && value.endsWith("`")) {
+                // Inline code
+                withStyle(
+                    SpanStyle(
+                        fontFamily = FontFamily.Monospace,
+                        background = Yellow.copy(alpha = 0.4f),
+                        fontWeight = FontWeight.Medium
+                    )
+                ) {
+                    append(value.removeSurrounding("`"))
+                }
+            } else {
+                // @mention
+                withStyle(
+                    SpanStyle(
+                        fontWeight = FontWeight.Bold,
+                        background = Cyan.copy(alpha = 0.3f)
+                    )
+                ) {
+                    append(value)
+                }
+            }
+            lastIndex = match.range.last + 1
+        }
+        if (lastIndex < content.length) {
+            append(content.substring(lastIndex))
+        }
+    }
+}
+
+// Block-level message content renderer: code blocks, quotes, and inline text
+private val codeBlockRegex = Regex("```(?:\\w*\\n)?([\\s\\S]*?)```")
+
+@Composable
+fun NeoMessageContent(
+    content: String,
+    modifier: Modifier = Modifier,
+    textColor: Color = Color(0xFF222222)
+) {
+    // Split content by code blocks
+    val segments = mutableListOf<Pair<String, String>>() // type to content
+    var lastIndex = 0
+
+    codeBlockRegex.findAll(content).forEach { match ->
+        val before = content.substring(lastIndex, match.range.first)
+        if (before.isNotBlank()) segments.add("text" to before.trim())
+        segments.add("code" to match.groupValues[1].trimEnd())
+        lastIndex = match.range.last + 1
+    }
+    val remaining = content.substring(lastIndex)
+    if (remaining.isNotBlank()) segments.add("text" to remaining.trim())
+
+    if (segments.isEmpty()) return
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        segments.forEach { (type, text) ->
+            when (type) {
+                "code" -> {
+                    // Code block: black bg, white mono text
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = FontFamily.Monospace,
+                            lineHeight = 18.sp
+                        ),
+                        color = White,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Black)
+                            .border(2.dp, Black, RectangleShape)
+                            .padding(12.dp)
+                    )
+                }
+                else -> {
+                    // Parse lines for quotes
+                    val lines = text.split("\n")
+                    var i = 0
+                    while (i < lines.size) {
+                        val line = lines[i]
+                        if (line.trimStart().startsWith(">")) {
+                            // Quote block: collect consecutive quote lines
+                            val quoteLines = mutableListOf<String>()
+                            while (i < lines.size && lines[i].trimStart().startsWith(">")) {
+                                quoteLines.add(lines[i].trimStart().removePrefix(">").trimStart())
+                                i++
+                            }
+                            Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
+                                Box(
+                                    modifier = Modifier
+                                        .width(4.dp)
+                                        .fillMaxHeight()
+                                        .background(Black)
+                                )
+                                Text(
+                                    text = buildMentionAnnotatedString(quoteLines.joinToString("\n")),
+                                    style = MaterialTheme.typography.bodyMedium.copy(
+                                        fontStyle = FontStyle.Italic,
+                                        fontSize = 13.sp
+                                    ),
+                                    color = textColor.copy(alpha = 0.7f),
+                                    modifier = Modifier.padding(start = 12.dp)
+                                )
+                            }
+                        } else {
+                            // Normal text lines (collect until next quote or end)
+                            val normalLines = mutableListOf<String>()
+                            while (i < lines.size && !lines[i].trimStart().startsWith(">")) {
+                                normalLines.add(lines[i])
+                                i++
+                            }
+                            Text(
+                                text = buildMentionAnnotatedString(normalLines.joinToString("\n")),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = textColor,
+                                lineHeight = 21.sp
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
