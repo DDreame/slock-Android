@@ -24,7 +24,7 @@ import com.slock.app.data.local.entity.UserEntity
         AgentEntity::class,
         TaskEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
