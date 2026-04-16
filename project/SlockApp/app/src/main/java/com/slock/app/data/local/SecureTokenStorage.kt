@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -78,4 +81,20 @@ class SecureTokenStorage @Inject constructor(
     }
 
     fun hasTokens(): Boolean = !accessToken.isNullOrEmpty()
+
+    // Auth expiry event — emitted when token refresh fails (401 unrecoverable)
+    private val _authExpired = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    val authExpired: SharedFlow<Unit> = _authExpired.asSharedFlow()
+    private var authExpiredFired = false
+
+    fun notifyAuthExpired() {
+        if (authExpiredFired) return
+        authExpiredFired = true
+        clearTokens()
+        _authExpired.tryEmit(Unit)
+    }
+
+    fun resetAuthExpiredFlag() {
+        authExpiredFired = false
+    }
 }

@@ -18,6 +18,7 @@ import android.net.Uri
 import com.google.gson.Gson
 import com.slock.app.data.model.Message
 import com.slock.app.data.model.Server
+import com.slock.app.data.local.SecureTokenStorage
 import com.slock.app.service.SocketNotificationService
 import com.slock.app.ui.auth.LoginScreen
 import com.slock.app.ui.auth.RegisterScreen
@@ -30,6 +31,8 @@ import com.slock.app.ui.message.MessageListScreen
 import com.slock.app.ui.message.MessageViewModel
 import com.slock.app.ui.agent.AgentListScreen
 import com.slock.app.ui.agent.AgentViewModel
+import com.slock.app.ui.member.MembersListScreen
+import com.slock.app.ui.member.MembersViewModel
 import com.slock.app.ui.task.TaskListScreen
 import com.slock.app.ui.task.TaskViewModel
 import com.slock.app.ui.task.ServerTasksScreen
@@ -59,6 +62,20 @@ fun SlockNavHost(
     deepLinkChannelName: String? = null,
     onDeepLinkConsumed: () -> Unit = {}
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+
+    // Observe auth expiry globally — redirect to login when token refresh fails
+    val topAuthViewModel: AuthViewModel = hiltViewModel()
+    LaunchedEffect(Unit) {
+        topAuthViewModel.authExpired.collect {
+            SocketNotificationService.stop(context)
+            android.widget.Toast.makeText(context, "登录已过期，请重新登录", android.widget.Toast.LENGTH_LONG).show()
+            navController.navigate(Routes.LOGIN) {
+                popUpTo(0) { inclusive = true }
+            }
+        }
+    }
+
     // Handle deep link from notification
     LaunchedEffect(deepLinkChannelId) {
         if (!deepLinkChannelId.isNullOrBlank()) {
@@ -154,6 +171,7 @@ fun SlockNavHost(
             val serverViewModel: ServerViewModel = hiltViewModel()
             val channelViewModel: ChannelViewModel = hiltViewModel()
             val agentViewModel: AgentViewModel = hiltViewModel()
+            val membersViewModel: MembersViewModel = hiltViewModel()
             val threadListViewModel: ThreadListViewModel = hiltViewModel()
             val serverTasksViewModel: ServerTasksViewModel = hiltViewModel()
             val authViewModel: AuthViewModel = hiltViewModel()
@@ -161,6 +179,7 @@ fun SlockNavHost(
             val serverState by serverViewModel.state.collectAsState()
             val channelState by channelViewModel.state.collectAsState()
             val agentState by agentViewModel.state.collectAsState()
+            val membersState by membersViewModel.state.collectAsState()
             val threadListState by threadListViewModel.state.collectAsState()
             val tasksState by serverTasksViewModel.state.collectAsState()
             val connectionState by serverViewModel.connectionState.collectAsState(
@@ -184,6 +203,7 @@ fun SlockNavHost(
                         channelViewModel.loadChannels(server.id)
                         channelViewModel.loadDMs()
                         agentViewModel.loadAgents(server.id)
+                        membersViewModel.loadMembers(server.id)
                         threadListViewModel.loadThreads(server.id)
                         serverTasksViewModel.loadAllTasks(server.id)
                     }
@@ -202,6 +222,7 @@ fun SlockNavHost(
                     channelViewModel.loadChannels(server.id)
                     channelViewModel.loadDMs()
                     agentViewModel.loadAgents(server.id)
+                    membersViewModel.loadMembers(server.id)
                     threadListViewModel.loadThreads(server.id)
                     serverTasksViewModel.loadAllTasks(server.id)
                 },
@@ -225,7 +246,7 @@ fun SlockNavHost(
                 },
                 onTabSelected = { tab ->
                     when (tab) {
-                        2 -> agentViewModel.retryIfEmpty()
+                        2 -> membersViewModel.retryIfEmpty()
                         3 -> serverTasksViewModel.retryIfEmpty()
                     }
                 },
@@ -242,31 +263,12 @@ fun SlockNavHost(
                         showHeader = false
                     )
                 },
-                agentsContent = {
-                    AgentListScreen(
-                        state = agentState,
-                        onCreateAgent = { name, desc, prompt, model -> agentViewModel.createAgent(name, desc, prompt, model) },
-                        onStartAgent = agentViewModel::startAgent,
-                        onStopAgent = agentViewModel::stopAgent,
-                        onResetAgent = agentViewModel::resetAgent,
-                        onDeleteAgent = agentViewModel::deleteAgent,
-                        onUpdateAgent = { agentId, name, desc, prompt -> agentViewModel.updateAgent(agentId, name, desc, prompt) },
-                        onDmAgent = { agentId ->
-                            channelViewModel.createDM(
-                                agentId = agentId,
-                                onSuccess = { dmChannel ->
-                                    val agentName = agentState.agents.find { it.id == agentId }?.name ?: "DM"
-                                    val encodedName = Uri.encode(agentName)
-                                    navController.navigate("channel/${dmChannel.id}/messages?name=$encodedName")
-                                },
-                                onError = { error ->
-                                    android.widget.Toast.makeText(context, "Failed to create DM: $error", android.widget.Toast.LENGTH_SHORT).show()
-                                }
-                            )
-                        },
-                        onAgentClick = { },
+                membersContent = {
+                    MembersListScreen(
+                        state = membersState,
+                        onMemberClick = { /* TODO: navigate to member/agent detail */ },
                         onNavigateBack = { },
-                        onRetry = { selectedServer?.id?.let { agentViewModel.loadAgents(it) } },
+                        onRetry = { selectedServer?.id?.let { membersViewModel.loadMembers(it) } },
                         showHeader = false
                     )
                 },

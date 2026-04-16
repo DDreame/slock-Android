@@ -76,10 +76,7 @@ fun AgentListScreen(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 state.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Black
-                    )
+                    NeoSkeletonCardList()
                 }
                 state.error != null && state.agents.isEmpty() -> {
                     NeoErrorState(

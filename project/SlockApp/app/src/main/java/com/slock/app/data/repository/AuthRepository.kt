@@ -44,6 +44,7 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                secureTokenStorage.resetAuthExpiredFlag()
                 fetchAndCacheUser()
                 Result.success(authResponse)
             } else {
@@ -60,6 +61,7 @@ class AuthRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 val authResponse = response.body()!!
                 saveTokens(authResponse.accessToken, authResponse.refreshToken)
+                secureTokenStorage.resetAuthExpiredFlag()
                 fetchAndCacheUser()
                 Result.success(authResponse)
             } else {

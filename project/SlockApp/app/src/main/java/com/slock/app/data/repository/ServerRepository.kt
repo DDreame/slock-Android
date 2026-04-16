@@ -5,6 +5,7 @@ import com.slock.app.data.local.dao.ServerDao
 import com.slock.app.data.local.toEntity
 import com.slock.app.data.local.toModel
 import com.slock.app.data.model.*
+import android.util.Log
 import javax.inject.Inject
 
 interface ServerRepository {
@@ -25,7 +26,10 @@ class ServerRepositoryImpl @Inject constructor(
         // Return cache for instant UI. ViewModel calls refreshServers() separately.
         val cached = try {
             serverDao.getAllServersSync().map { it.toModel() }
-        } catch (e: Exception) { emptyList() }
+        } catch (e: Exception) {
+            Log.e("ServerRepo", "Cache read failed", e)
+            emptyList()
+        }
 
         if (cached.isNotEmpty()) {
             return Result.success(cached)
@@ -34,14 +38,20 @@ class ServerRepositoryImpl @Inject constructor(
         // No cache — must wait for network
         return try {
             val response = apiService.getServers()
+            Log.d("ServerRepo", "getServers API: code=${response.code()}, bodySize=${response.body()?.size}")
             if (response.isSuccessful && response.body() != null) {
                 val servers = response.body()!!
-                serverDao.insertServers(servers.map { it.toEntity() })
+                if (servers.isNotEmpty()) {
+                    serverDao.insertServers(servers.map { it.toEntity() })
+                }
                 Result.success(servers)
             } else {
+                val errorMsg = try { response.errorBody()?.string()?.take(200) } catch (_: Exception) { null }
+                Log.e("ServerRepo", "getServers failed: code=${response.code()}, error=$errorMsg")
                 Result.failure(Exception("Get servers failed: ${response.code()}"))
             }
         } catch (e: Exception) {
+            Log.e("ServerRepo", "getServers exception", e)
             Result.failure(e)
         }
     }
@@ -49,15 +59,19 @@ class ServerRepositoryImpl @Inject constructor(
     override suspend fun refreshServers(): Result<List<Server>> {
         return try {
             val response = apiService.getServers()
+            Log.d("ServerRepo", "refreshServers API: code=${response.code()}, bodySize=${response.body()?.size}")
             if (response.isSuccessful && response.body() != null) {
                 val servers = response.body()!!
                 serverDao.deleteAllServers()
                 serverDao.insertServers(servers.map { it.toEntity() })
                 Result.success(servers)
             } else {
+                val errorMsg = try { response.errorBody()?.string()?.take(200) } catch (_: Exception) { null }
+                Log.e("ServerRepo", "refreshServers failed: code=${response.code()}, error=$errorMsg")
                 Result.failure(Exception("Refresh servers failed: ${response.code()}"))
             }
         } catch (e: Exception) {
+            Log.e("ServerRepo", "refreshServers exception", e)
             Result.failure(e)
         }
     }

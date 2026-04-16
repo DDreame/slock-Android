@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -42,7 +43,7 @@ fun HomeScreen(
     isReconnecting: Boolean = false,
     onTabSelected: (Int) -> Unit = {},
     threadsContent: @Composable () -> Unit = {},
-    agentsContent: @Composable () -> Unit = {},
+    membersContent: @Composable () -> Unit = {},
     tasksContent: @Composable () -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
@@ -107,7 +108,7 @@ fun HomeScreen(
                         onShowCreateChannel = { showCreateChannelDialog = true }
                     )
                     1 -> threadsContent()
-                    2 -> agentsContent()
+                    2 -> membersContent()
                     3 -> tasksContent()
                 }
                 }
@@ -160,12 +161,7 @@ private fun ChannelsTabContent(
 
         when {
             channelState.isLoading -> {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(color = Black)
-                }
+                NeoSkeletonChannelList()
             }
             else -> {
                 val filteredChannels = channelState.channels.filter {
@@ -392,10 +388,24 @@ private fun ChannelItem(channel: Channel, onClick: () -> Unit, unreadCount: Int 
             }
         }
 
-        // Unread badge
+        // Unread badge with scale bounce
         if (unreadCount > 0) {
+            val scale = remember { androidx.compose.animation.core.Animatable(0f) }
+            LaunchedEffect(unreadCount) {
+                scale.snapTo(0f)
+                scale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = androidx.compose.animation.core.keyframes {
+                        durationMillis = 300
+                        0f at 0
+                        1.3f at 150
+                        1f at 300
+                    }
+                )
+            }
             Box(
                 modifier = Modifier
+                    .graphicsLayer(scaleX = scale.value, scaleY = scale.value)
                     .size(24.dp)
                     .background(Pink)
                     .border(2.dp, Black, RectangleShape),
@@ -527,8 +537,8 @@ private fun NeoBottomNav(selectedTab: Int, onTabSelect: (Int) -> Unit) {
                     modifier = Modifier.weight(1f)
                 )
                 NeoNavItem(
-                    icon = "\uD83E\uDD16",
-                    label = "AGENTS",
+                    icon = "\uD83D\uDC65",
+                    label = "MEMBERS",
                     isSelected = selectedTab == 2,
                     onClick = { onTabSelect(2) },
                     modifier = Modifier.weight(1f)

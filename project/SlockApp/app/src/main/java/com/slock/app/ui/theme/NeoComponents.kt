@@ -1,6 +1,9 @@
 package com.slock.app.ui.theme
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -531,6 +534,140 @@ fun NeoMessageContent(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// Skeleton shimmer animation base
+@Composable
+private fun skeletonAlpha(): Float {
+    val transition = rememberInfiniteTransition(label = "skeleton")
+    val alpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(800),
+            repeatMode = androidx.compose.animation.core.RepeatMode.Reverse
+        ),
+        label = "skeletonAlpha"
+    )
+    return alpha
+}
+
+@Composable
+private fun SkeletonBox(
+    modifier: Modifier = Modifier,
+    alpha: Float = skeletonAlpha()
+) {
+    Box(
+        modifier = modifier
+            .background(Black.copy(alpha = 0.1f * (alpha / 0.3f)))
+    )
+}
+
+// Channel list skeleton
+@Composable
+fun NeoSkeletonChannelList(count: Int = 5) {
+    val alpha = skeletonAlpha()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        SkeletonBox(
+            modifier = Modifier
+                .width(100.dp)
+                .height(12.dp)
+                .padding(vertical = 2.dp),
+            alpha = alpha
+        )
+        repeat(count) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(2.dp, Black.copy(alpha = 0.1f), RectangleShape)
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                SkeletonBox(modifier = Modifier.size(36.dp), alpha = alpha)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    SkeletonBox(modifier = Modifier.fillMaxWidth(0.6f).height(14.dp), alpha = alpha)
+                    SkeletonBox(modifier = Modifier.fillMaxWidth(0.4f).height(10.dp), alpha = alpha)
+                }
+            }
+        }
+    }
+}
+
+// Message list skeleton
+@Composable
+fun NeoSkeletonMessageList(count: Int = 6) {
+    val alpha = skeletonAlpha()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
+        repeat(count) { i ->
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                SkeletonBox(modifier = Modifier.size(36.dp), alpha = alpha)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        SkeletonBox(modifier = Modifier.width(80.dp).height(14.dp), alpha = alpha)
+                        SkeletonBox(modifier = Modifier.width(40.dp).height(10.dp), alpha = alpha)
+                    }
+                    SkeletonBox(
+                        modifier = Modifier.fillMaxWidth(if (i % 2 == 0) 0.9f else 0.7f).height(12.dp),
+                        alpha = alpha
+                    )
+                    if (i % 3 == 0) {
+                        SkeletonBox(modifier = Modifier.fillMaxWidth(0.5f).height(12.dp), alpha = alpha)
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Card list skeleton (members, agents, tasks, threads)
+@Composable
+fun NeoSkeletonCardList(count: Int = 4) {
+    val alpha = skeletonAlpha()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        repeat(count) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .neoShadow(3.dp, 3.dp, Black.copy(alpha = 0.05f))
+                    .border(2.dp, Black.copy(alpha = 0.1f), RectangleShape)
+                    .padding(12.dp, 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                SkeletonBox(modifier = Modifier.size(40.dp), alpha = alpha)
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    SkeletonBox(modifier = Modifier.fillMaxWidth(0.5f).height(14.dp), alpha = alpha)
+                    SkeletonBox(modifier = Modifier.fillMaxWidth(0.3f).height(10.dp), alpha = alpha)
+                }
+                SkeletonBox(modifier = Modifier.width(50.dp).height(18.dp), alpha = alpha)
             }
         }
     }

@@ -61,10 +61,7 @@ fun MessageListScreen(
         Box(modifier = Modifier.weight(1f)) {
             when {
                 state.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Black
-                    )
+                    NeoSkeletonMessageList()
                 }
                 state.error != null -> {
                     NeoErrorState(
@@ -190,10 +187,13 @@ private fun NeoMessage(
     val alpha = if (isPending) 0.5f else 1f
     var showMenu by remember { mutableStateOf(false) }
 
+    val messageBgColor = if (isAgent) Color(0xFFFFF5EB) else Color.Transparent
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(alpha)
+            .background(messageBgColor)
             .height(IntrinsicSize.Min)
             .combinedClickable(
                 onClick = { },

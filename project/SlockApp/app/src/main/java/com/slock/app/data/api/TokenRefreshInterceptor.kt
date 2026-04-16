@@ -47,6 +47,9 @@ class TokenRefreshInterceptor @Inject constructor(
                     .header("Authorization", "Bearer $newToken")
                     .build()
                 return chain.proceed(newRequest)
+            } else {
+                // Refresh failed — token expired, trigger logout
+                secureTokenStorage.notifyAuthExpired()
             }
         }
 

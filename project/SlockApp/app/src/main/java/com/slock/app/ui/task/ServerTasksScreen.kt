@@ -60,10 +60,7 @@ fun ServerTasksScreen(
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 state.isLoading && state.tasks.isEmpty() -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Black
-                    )
+                    NeoSkeletonCardList()
                 }
                 state.error != null && state.tasks.isEmpty() -> {
                     NeoErrorState(

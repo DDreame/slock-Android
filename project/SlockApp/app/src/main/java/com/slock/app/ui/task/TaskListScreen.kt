@@ -76,10 +76,7 @@ fun TaskListScreen(
         Box(modifier = Modifier.weight(1f)) {
             when {
                 state.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Black
-                    )
+                    NeoSkeletonCardList()
                 }
                 state.tasks.isEmpty() -> {
                     Column(

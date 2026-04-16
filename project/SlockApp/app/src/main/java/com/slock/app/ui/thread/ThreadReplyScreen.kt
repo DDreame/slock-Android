@@ -54,10 +54,7 @@ fun ThreadReplyScreen(
         Box(modifier = Modifier.weight(1f)) {
             when {
                 state.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center),
-                        color = Black
-                    )
+                    NeoSkeletonMessageList()
                 }
                 else -> {
                     LazyColumn(
