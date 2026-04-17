@@ -66,3 +66,7 @@ fun resolveWarmStartDeepLinkNav(channelId: String, channelName: String?): WarmDe
         singleTop = true
     )
 }
+
+fun resolveThreadListServerName(serverId: String, serverName: String?): String {
+    return serverName?.takeIf { it.isNotBlank() } ?: serverId
+}

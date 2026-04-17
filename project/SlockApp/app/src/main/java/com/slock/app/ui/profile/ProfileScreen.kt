@@ -75,7 +75,7 @@ fun ProfileScreen(
                     Text("\u2190", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
                 if (headerContextLabel != null) {
-                    Column {
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
                             if (state.isOwnProfile) "My Profile" else "User Profile",
                             fontFamily = SpaceGrotesk,

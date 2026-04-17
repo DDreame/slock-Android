@@ -589,7 +589,9 @@ fun SlockNavHost(
         composable(Routes.THREAD_LIST) { backStackEntry ->
             val serverId = backStackEntry.arguments?.getString("serverId") ?: return@composable
             val viewModel: ThreadListViewModel = hiltViewModel()
+            val serverVM: ServerViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
+            val serverState by serverVM.state.collectAsState()
 
             LaunchedEffect(serverId) {
                 viewModel.loadThreads(serverId)
@@ -599,12 +601,16 @@ fun SlockNavHost(
                 state = state,
                 onThreadClick = { threadChannelId, parentMessage, channelName ->
                     val parentJson = Uri.encode(Gson().toJson(parentMessage))
+                    val serverName = resolveThreadListServerName(
+                        serverId,
+                        serverState.servers.find { it.id == serverId }?.name
+                    )
                     navController.navigate(
                         Routes.threadReplyRoute(
                             threadChannelId = threadChannelId,
                             parentMessageJson = parentJson,
                             channelName = channelName,
-                            contextLabel = Routes.buildContextLabel(serverId, "Threads")
+                            contextLabel = Routes.buildContextLabel(serverName, "Threads")
                         )
                     )
                 },
