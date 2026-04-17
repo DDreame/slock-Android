@@ -61,8 +61,8 @@ class TypographyRegressionTest {
         )
         timestampBlocks.forEach { block ->
             assertTrue(
-                "Timestamp must use TextSecondary, found: ${block.take(100)}",
-                block.contains("TextSecondary")
+                "Timestamp must use TextSecondary (directly or via MessageTextStyles), found: ${block.take(100)}",
+                block.contains("TextSecondary") || block.contains("MessageTextStyles")
             )
         }
     }
