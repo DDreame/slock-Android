@@ -370,7 +370,11 @@ fun SlockNavHost(
                 onAddAttachment = viewModel::addAttachment,
                 onRemoveAttachment = viewModel::removeAttachment,
                 onImageClick = viewModel::showImagePreview,
-                onDismissPreview = viewModel::dismissImagePreview
+                onDismissPreview = viewModel::dismissImagePreview,
+                onToggleSearch = viewModel::toggleSearch,
+                onSearchQueryChange = viewModel::updateSearchQuery,
+                onNextSearchResult = viewModel::nextSearchResult,
+                onPreviousSearchResult = viewModel::previousSearchResult
             )
         }
 
