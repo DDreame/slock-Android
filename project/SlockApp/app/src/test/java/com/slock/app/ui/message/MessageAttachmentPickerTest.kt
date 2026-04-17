@@ -154,11 +154,23 @@ class MessageAttachmentPickerStructuralTest {
         File("app/src/main/java/com/slock/app/ui/message/MessageListScreen.kt")
     ).first { it.exists() }.readText()
 
+    private val manifestSource: String = listOf(
+        File("src/main/AndroidManifest.xml"),
+        File("app/src/main/AndroidManifest.xml")
+    ).first { it.exists() }.readText()
+
+    private val filePathsSource: String = listOf(
+        File("src/main/res/xml/file_paths.xml"),
+        File("app/src/main/res/xml/file_paths.xml")
+    ).first { it.exists() }.readText()
+
     @Test
     fun `compose bar exposes photo file and camera launchers`() {
         assertTrue(screenSource.contains("photoPicker.launch(\"image/*\")"))
         assertTrue(screenSource.contains("filePicker.launch(\"*/*\")"))
-        assertTrue(screenSource.contains("ActivityResultContracts.TakePicturePreview()"))
+        assertTrue(screenSource.contains("ActivityResultContracts.TakePicture()"))
+        assertTrue(screenSource.contains("createCameraCaptureTarget(context)"))
+        assertTrue(screenSource.contains("cameraPicker.launch(captureTarget.uri)"))
     }
 
     @Test
@@ -172,5 +184,18 @@ class MessageAttachmentPickerStructuralTest {
     fun `pending attachment preview distinguishes image and file cards`() {
         assertTrue(screenSource.contains("isPendingAttachmentImage(attachment)"))
         assertTrue(screenSource.contains("PendingFileAttachmentCard(attachment = attachment)"))
+    }
+
+    @Test
+    fun `manifest declares file provider for camera capture`() {
+        assertTrue(manifestSource.contains("androidx.core.content.FileProvider"))
+        assertTrue(manifestSource.contains("android:authorities=\"${'$'}{applicationId}.fileprovider\""))
+        assertTrue(manifestSource.contains("@xml/file_paths"))
+    }
+
+    @Test
+    fun `file provider paths expose cache dir for camera temp files`() {
+        assertTrue(filePathsSource.contains("<cache-path"))
+        assertTrue(filePathsSource.contains("path=\".\""))
     }
 }

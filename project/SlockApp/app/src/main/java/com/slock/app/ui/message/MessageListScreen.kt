@@ -1,11 +1,11 @@
 package com.slock.app.ui.message
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.FileProvider
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -47,8 +47,8 @@ import com.slock.app.data.model.Agent
 import com.slock.app.data.model.Message
 import com.slock.app.ui.theme.*
 import com.slock.app.util.LogCollector
-import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
 import java.util.Locale
 
 @Composable
@@ -305,7 +305,11 @@ internal fun resolveChannelHeaderContext(contextLabel: String): String? =
     contextLabel.trim().takeIf { it.isNotEmpty() }
 
 private const val MaxAttachmentSizeBytes = 10 * 1024 * 1024
-private const val CameraCompressionQuality = 92
+
+private data class CameraCaptureTarget(
+    val file: File,
+    val uri: Uri
+)
 
 internal fun isPendingAttachmentImage(attachment: PendingAttachment): Boolean =
     attachment.mimeType.startsWith("image/", ignoreCase = true)
@@ -378,25 +382,26 @@ private fun readPendingAttachment(
     return PendingAttachment(uri = uri, name = name, mimeType = mimeType, bytes = bytes)
 }
 
-private fun createCameraAttachment(context: Context, bitmap: Bitmap): PendingAttachment? {
-    val output = ByteArrayOutputStream()
-    bitmap.compress(Bitmap.CompressFormat.JPEG, CameraCompressionQuality, output)
-    val bytes = output.toByteArray()
-    val fileName = "camera_${System.currentTimeMillis()}.jpg"
-
-    if (bytes.size > MaxAttachmentSizeBytes) {
-        android.widget.Toast.makeText(context, "附件超过 10MB 限制: $fileName", android.widget.Toast.LENGTH_SHORT).show()
-        return null
+private fun createCameraCaptureTarget(context: Context): CameraCaptureTarget? {
+    return try {
+        val file = File.createTempFile(
+            "camera_${System.currentTimeMillis()}_",
+            ".jpg",
+            context.cacheDir
+        )
+        val uri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            file
+        )
+        CameraCaptureTarget(file = file, uri = uri)
+    } catch (_: IOException) {
+        android.widget.Toast.makeText(context, "无法启动相机", android.widget.Toast.LENGTH_SHORT).show()
+        null
+    } catch (_: IllegalArgumentException) {
+        android.widget.Toast.makeText(context, "无法启动相机", android.widget.Toast.LENGTH_SHORT).show()
+        null
     }
-
-    val tempFile = File(context.cacheDir, fileName)
-    tempFile.outputStream().use { it.write(bytes) }
-    return PendingAttachment(
-        uri = Uri.fromFile(tempFile),
-        name = fileName,
-        mimeType = "image/jpeg",
-        bytes = bytes
-    )
 }
 
 // Channel Header
@@ -1040,6 +1045,7 @@ private fun NeoComposeBar(
 ) {
     var isFocused by remember { mutableStateOf(false) }
     var showAttachmentMenu by remember { mutableStateOf(false) }
+    var pendingCameraCapture by remember { mutableStateOf<CameraCaptureTarget?>(null) }
     val context = LocalContext.current
 
     val photoPicker = rememberLauncherForActivityResult(
@@ -1061,10 +1067,20 @@ private fun NeoComposeBar(
     }
 
     val cameraPicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicturePreview()
-    ) { bitmap: Bitmap? ->
-        bitmap?.let {
-            createCameraAttachment(context, it)?.let(onAddAttachment)
+        contract = ActivityResultContracts.TakePicture()
+    ) { success: Boolean ->
+        val captureTarget = pendingCameraCapture
+        pendingCameraCapture = null
+
+        if (success && captureTarget != null) {
+            readPendingAttachment(
+                context = context,
+                uri = captureTarget.uri,
+                fallbackMimeType = "image/jpeg",
+                fallbackPrefix = "camera"
+            )?.let(onAddAttachment)
+        } else {
+            captureTarget?.file?.delete()
         }
     }
 
@@ -1111,7 +1127,10 @@ private fun NeoComposeBar(
                     },
                     onCameraClick = {
                         showAttachmentMenu = false
-                        cameraPicker.launch(null)
+                        createCameraCaptureTarget(context)?.let { captureTarget ->
+                            pendingCameraCapture = captureTarget
+                            cameraPicker.launch(captureTarget.uri)
+                        }
                     }
                 )
             }
