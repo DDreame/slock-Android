@@ -77,7 +77,7 @@ class SearchViewModel @Inject constructor(
         }
         val messagesDeferred = viewModelScope.launch {
             try {
-                val results = messageDao.searchMessages(query)
+                val results = messageDao.searchMessages(serverId, query)
                 _state.update { it.copy(messages = results.map { e -> e.toModel() }) }
             } catch (_: Exception) { }
         }
