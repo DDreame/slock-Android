@@ -55,6 +55,27 @@ jobs:
           path: project/SlockApp/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
+      - name: Publish to Pgyer
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          RESPONSE=$(curl -s -X POST \
+            "https://api.pgyer.com/apiv2/app/upload" \
+            -F "_api_key=${{ secrets.PGYER_API_KEY }}" \
+            -F "buildInstallType=1" \
+            -F "file=@$APK_PATH")
+          CODE=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('code', -1))" 2>/dev/null || echo "-1")
+          if [ "$CODE" != "0" ]; then
+            MSG=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('message','unknown error'))" 2>/dev/null || echo "unknown")
+            echo "::error::Pgyer upload failed (code=$CODE): $MSG"
+            exit 1
+          fi
+          URL=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print('https://www.pgyer.com/' + d.get('buildShortcutUrl',''))" 2>/dev/null)
+          VERSION=$(echo "$RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin)['data']; print(d.get('buildVersion','') + ' (build ' + str(d.get('buildVersionNo','')) + ')')" 2>/dev/null)
+          echo "### Pgyer Upload Success" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: $VERSION" >> $GITHUB_STEP_SUMMARY
+          echo "- **Download**: $URL" >> $GITHUB_STEP_SUMMARY
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
