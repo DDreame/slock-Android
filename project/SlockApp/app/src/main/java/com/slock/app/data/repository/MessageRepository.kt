@@ -119,7 +119,7 @@ class MessageRepositoryImpl @Inject constructor(
         }
         // Fallback: plain array (JS: it.messages ?? it)
         try {
-            val response = apiService.getMessagesRaw(channelId, limit)
+            val response = apiService.getMessagesRaw(channelId, limit, before, after)
             if (response.isSuccessful && response.body() != null) {
                 return response.body()!!
             }

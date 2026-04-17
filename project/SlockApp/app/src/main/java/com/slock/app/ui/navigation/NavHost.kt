@@ -490,6 +490,7 @@ fun SlockNavHost(
                 state = state,
                 onSendMessage = viewModel::sendMessage,
                 onLoadMore = viewModel::loadMoreMessages,
+                onRetryLoad = viewModel::retryLoadMessages,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToThread = { threadChannelId, parentMessage ->
                     val parentJson = Uri.encode(Gson().toJson(parentMessage))
@@ -514,7 +515,8 @@ fun SlockNavHost(
                 onPreviousSearchResult = viewModel::previousSearchResult,
                 onToggleReaction = viewModel::toggleReaction,
                 onToggleSavedChannel = viewModel::toggleSavedChannel,
-                onSavedChannelFeedbackShown = viewModel::consumeSavedChannelFeedback
+                onSavedChannelFeedbackShown = viewModel::consumeSavedChannelFeedback,
+                onSendErrorShown = viewModel::dismissSendError
             )
         }
 

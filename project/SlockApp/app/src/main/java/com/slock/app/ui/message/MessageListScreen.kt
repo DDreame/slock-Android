@@ -50,6 +50,7 @@ fun MessageListScreen(
     state: MessageUiState,
     onSendMessage: (String) -> Unit,
     onLoadMore: () -> Unit,
+    onRetryLoad: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToThread: (threadChannelId: String, parentMessage: Message) -> Unit,
     onReplyTo: (Message) -> Unit = {},
@@ -64,7 +65,8 @@ fun MessageListScreen(
     onPreviousSearchResult: () -> Unit = {},
     onToggleReaction: (Message, String) -> Unit = { _, _ -> },
     onToggleSavedChannel: () -> Unit = {},
-    onSavedChannelFeedbackShown: () -> Unit = {}
+    onSavedChannelFeedbackShown: () -> Unit = {},
+    onSendErrorShown: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -73,6 +75,12 @@ fun MessageListScreen(
         val message = state.savedChannelFeedbackMessage ?: return@LaunchedEffect
         android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
         onSavedChannelFeedbackShown()
+    }
+
+    LaunchedEffect(state.sendError) {
+        val message = state.sendError ?: return@LaunchedEffect
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        onSendErrorShown()
     }
 
     Column(
@@ -110,12 +118,12 @@ fun MessageListScreen(
                 state.isLoading -> {
                     NeoSkeletonMessageList()
                 }
-                state.error != null -> {
+                state.error != null && state.messages.isEmpty() -> {
                     val context = LocalContext.current
                     NeoErrorState(
                         message = "消息加载失败",
                         modifier = Modifier.align(Alignment.Center),
-                        onRetry = { onLoadMore() },
+                        onRetry = { onRetryLoad() },
                         onSendLog = { LogCollector.shareReport(context, state.error) }
                     )
                 }
