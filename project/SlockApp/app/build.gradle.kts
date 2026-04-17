@@ -56,6 +56,12 @@ android {
         kotlinCompilerExtensionVersion = "1.5.8"
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -126,6 +132,24 @@ dependencies {
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("org.mockito:mockito-inline:5.2.0")
     testImplementation("org.mockito.kotlin:mockito-kotlin:5.2.1")
+
+    // Robolectric
+    testImplementation("org.robolectric:robolectric:4.11.1")
+
+    // Compose UI testing on JVM (via Robolectric)
+    testImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.compose.ui:ui-test-manifest")
+
+    // AndroidX test (needed by Robolectric + Compose test)
+    testImplementation("androidx.test.ext:junit:1.1.5")
+    testImplementation("androidx.test:core-ktx:1.5.0")
+    testImplementation("androidx.test:rules:1.5.0")
+
+    // Hilt testing
+    testImplementation("com.google.dagger:hilt-android-testing:2.50")
+    kspTest("com.google.dagger:hilt-android-compiler:2.50")
+
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
     androidTestImplementation(platform("androidx.compose:compose-bom:2023.10.01"))
