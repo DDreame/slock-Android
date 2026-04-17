@@ -300,14 +300,19 @@ private fun NeoMessage(
                     Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
                         Text(
                             text = quotedMessage.senderName.orEmpty().ifEmpty { "Unknown" },
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontWeight = FontWeight.Bold,
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            ),
                             color = Black.copy(alpha = 0.7f),
                             fontSize = 11.sp
                         )
                         Text(
                             text = quotedMessage.content.orEmpty(),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextSecondary,
+                            style = MaterialTheme.typography.bodySmall.copy(
+                                fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                            ),
+                            color = Black.copy(alpha = 0.7f),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                             fontSize = 12.sp
