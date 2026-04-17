@@ -16,9 +16,9 @@ class ThreadReplyPaginationStateTest {
     }
 
     @Test
-    fun `ThreadReplyUiState has hasMoreReplies field defaulting to true`() {
+    fun `ThreadReplyUiState has hasMoreReplies field defaulting to false`() {
         val state = ThreadReplyUiState()
-        assertTrue(state.hasMoreReplies)
+        assertFalse(state.hasMoreReplies)
     }
 
     @Test
@@ -67,6 +67,25 @@ class ThreadReplyPaginationStructuralTest {
         File("src/main/java/com/slock/app/ui/thread/ThreadReplyScreen.kt"),
         File("app/src/main/java/com/slock/app/ui/thread/ThreadReplyScreen.kt")
     ).first { it.exists() }.readText()
+
+    @Test
+    fun `hasMoreReplies defaults to false preventing eager prefetch`() {
+        assertFalse(
+            "hasMoreReplies must default to false to avoid first-open no-op request",
+            ThreadReplyUiState().hasMoreReplies
+        )
+    }
+
+    @Test
+    fun `loadThread sets hasMoreReplies based on reply count threshold`() {
+        val loadBlock = vmSource
+            .substringAfter("fun loadThread(")
+            .substringBefore("fun sendReply(")
+        assertTrue(
+            "loadThread must set hasMoreReplies based on reply count (>= 50 threshold)",
+            loadBlock.contains("hasMoreReplies") && loadBlock.contains("50")
+        )
+    }
 
     @Test
     fun `loadMoreReplies guards against double fetch`() {
