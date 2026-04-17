@@ -29,4 +29,8 @@ class PresenceTracker @Inject constructor() {
     fun updateBulk(onlineUserIds: List<String>) {
         _onlineIds.value = onlineUserIds.toSet()
     }
+
+    fun clear() {
+        _onlineIds.value = emptySet()
+    }
 }

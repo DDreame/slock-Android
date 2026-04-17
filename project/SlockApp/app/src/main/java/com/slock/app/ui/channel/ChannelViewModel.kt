@@ -44,9 +44,31 @@ class ChannelViewModel @Inject constructor(
     val state: StateFlow<ChannelUiState> = _state.asStateFlow()
 
     private var socketEventsJob: Job? = null
+    private var connectionJob: Job? = null
 
     init {
         observePresence()
+        observeConnection()
+    }
+
+    private fun observeConnection() {
+        connectionJob = viewModelScope.launch {
+            socketIOManager.connectionState.collect { state ->
+                if (state == SocketIOManager.ConnectionState.CONNECTED) {
+                    // Clear stale presence on reconnect, will be re-seeded
+                    presenceTracker.clear()
+                    val serverId = activeServerHolder.serverId ?: return@collect
+                    agentRepository.getAgents(serverId).onSuccess { agents ->
+                        agents.forEach { agent ->
+                            if (agent.status == "active") {
+                                presenceTracker.setOnline(agent.id.orEmpty())
+                            }
+                        }
+                        _state.update { it.copy(onlineIds = presenceTracker.onlineIds.value) }
+                    }
+                }
+            }
+        }
     }
 
     private fun observePresence() {
@@ -178,5 +200,6 @@ class ChannelViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         socketEventsJob?.cancel()
+        connectionJob?.cancel()
     }
 }
