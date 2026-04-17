@@ -16,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -25,6 +26,7 @@ import org.junit.After
 import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
@@ -60,6 +62,9 @@ class ChannelViewModelCreateDMTest {
         channelRepository: ChannelRepository = FakeChannelRepository(),
         agentRepository: AgentRepository = mock()
     ): ChannelViewModel {
+        runBlocking {
+            whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
+        }
         return ChannelViewModel(
             channelRepository = channelRepository,
             messageRepository = FakeMessageRepository(),
