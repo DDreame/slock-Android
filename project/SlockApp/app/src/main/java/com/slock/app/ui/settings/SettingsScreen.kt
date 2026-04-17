@@ -86,13 +86,13 @@ fun SettingsScreen(
             }
 
             SettingsSection(title = "Notifications") {
-                NotificationPreference.values().forEach { preference ->
+                NotificationPreference.entries.forEachIndexed { index, preference ->
                     NotificationOptionCard(
                         preference = preference,
                         isSelected = state.notificationPreference == preference,
                         onClick = { onNotificationPreferenceChange(preference) }
                     )
-                    if (preference != NotificationPreference.values().last()) {
+                    if (index != NotificationPreference.entries.lastIndex) {
                         Spacer(modifier = Modifier.height(10.dp))
                     }
                 }

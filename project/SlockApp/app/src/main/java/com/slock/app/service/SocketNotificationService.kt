@@ -29,6 +29,20 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+internal object NotificationDecision {
+    fun shouldNotify(
+        preference: NotificationPreference,
+        isDm: Boolean,
+        isMentioned: Boolean
+    ): Boolean {
+        return when (preference) {
+            NotificationPreference.ALL_MESSAGES -> true
+            NotificationPreference.MENTIONS_ONLY -> isDm || isMentioned
+            NotificationPreference.MUTE -> false
+        }
+    }
+}
+
 @AndroidEntryPoint
 class SocketNotificationService : Service() {
 
@@ -134,11 +148,11 @@ class SocketNotificationService : Service() {
         } else false
 
         val notificationPreference = settingsPreferencesStore.getNotificationPreference()
-        val shouldNotify = when (notificationPreference) {
-            NotificationPreference.ALL_MESSAGES -> true
-            NotificationPreference.MENTIONS_ONLY -> isDm || isMentioned
-            NotificationPreference.MUTE -> false
-        }
+        val shouldNotify = NotificationDecision.shouldNotify(
+            preference = notificationPreference,
+            isDm = isDm,
+            isMentioned = isMentioned
+        )
 
         if (!shouldNotify) return
 

@@ -36,7 +36,7 @@ enum class NotificationPreference(
 
     companion object {
         fun fromStorageValue(value: String?): NotificationPreference {
-            return values().firstOrNull { it.storageValue == value } ?: ALL_MESSAGES
+            return entries.firstOrNull { it.storageValue == value } ?: ALL_MESSAGES
         }
     }
 }
