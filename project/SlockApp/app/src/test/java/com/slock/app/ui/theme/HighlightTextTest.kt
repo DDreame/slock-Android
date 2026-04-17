@@ -5,79 +5,92 @@ import org.junit.Test
 
 class HighlightTextTest {
 
-    private fun highlightRanges(text: String, query: String): List<IntRange> {
-        if (query.isBlank()) return emptyList()
-        val ranges = mutableListOf<IntRange>()
-        val lowerText = text.lowercase()
-        val lowerQuery = query.lowercase()
-        var start = 0
-        while (start < text.length) {
-            val idx = lowerText.indexOf(lowerQuery, start)
-            if (idx < 0) break
-            ranges.add(idx until idx + query.length)
-            start = idx + query.length
+    @Test
+    fun `no highlight for blank query`() {
+        val result = buildMentionAnnotatedString("Hello world", "")
+        assertEquals("Hello world", result.text)
+        assertTrue(result.spanStyles.isEmpty() || result.spanStyles.all { it.item.background == androidx.compose.ui.graphics.Color.Unspecified })
+    }
+
+    @Test
+    fun `plain text gets highlighted`() {
+        val result = buildMentionAnnotatedString("Hello world", "world")
+        assertEquals("Hello world", result.text)
+        val yellowSpans = result.spanStyles.filter {
+            it.item.background != androidx.compose.ui.graphics.Color.Unspecified &&
+            it.item.background.alpha > 0
         }
-        return ranges
+        assertTrue(yellowSpans.isNotEmpty())
     }
 
     @Test
-    fun `no highlights for blank query`() {
-        val ranges = highlightRanges("Hello world", "")
-        assertTrue(ranges.isEmpty())
+    fun `case insensitive highlight`() {
+        val result = buildMentionAnnotatedString("HELLO hello HeLLo", "hello")
+        assertEquals("HELLO hello HeLLo", result.text)
+        val boldSpans = result.spanStyles.filter {
+            it.item.fontWeight == androidx.compose.ui.text.font.FontWeight.Bold
+        }
+        assertTrue("Should have highlight spans for each match", boldSpans.size >= 3)
     }
 
     @Test
-    fun `single match highlighted`() {
-        val ranges = highlightRanges("Hello world", "world")
-        assertEquals(1, ranges.size)
-        assertEquals(6 until 11, ranges[0])
+    fun `mention text is preserved`() {
+        val result = buildMentionAnnotatedString("Hi @user check this", "")
+        assertTrue(result.text.contains("@user"))
     }
 
     @Test
-    fun `multiple matches highlighted`() {
-        val ranges = highlightRanges("hello hello hello", "hello")
-        assertEquals(3, ranges.size)
-        assertEquals(0 until 5, ranges[0])
-        assertEquals(6 until 11, ranges[1])
-        assertEquals(12 until 17, ranges[2])
+    fun `inline code text is preserved`() {
+        val result = buildMentionAnnotatedString("Run `npm install` now", "")
+        assertTrue(result.text.contains("npm install"))
     }
 
     @Test
-    fun `case insensitive highlighting`() {
-        val ranges = highlightRanges("Hello HELLO hElLo", "hello")
-        assertEquals(3, ranges.size)
+    fun `highlight inside mention text`() {
+        val result = buildMentionAnnotatedString("Hello @username bye", "user")
+        assertEquals("Hello @username bye", result.text)
+        val highlightSpans = result.spanStyles.filter {
+            it.item.fontWeight == androidx.compose.ui.text.font.FontWeight.Bold &&
+            it.item.background.alpha > 0
+        }
+        assertTrue("Should highlight 'user' inside @username", highlightSpans.isNotEmpty())
     }
 
     @Test
-    fun `no match returns empty`() {
-        val ranges = highlightRanges("Hello world", "xyz")
-        assertTrue(ranges.isEmpty())
+    fun `highlight inside inline code`() {
+        val result = buildMentionAnnotatedString("Use `search function` here", "search")
+        assertTrue(result.text.contains("search function"))
+        val highlightSpans = result.spanStyles.filter {
+            it.item.fontWeight == androidx.compose.ui.text.font.FontWeight.Bold
+        }
+        assertTrue("Should highlight 'search' inside code block", highlightSpans.isNotEmpty())
     }
 
     @Test
-    fun `match at start of text`() {
-        val ranges = highlightRanges("test message", "test")
-        assertEquals(1, ranges.size)
-        assertEquals(0 until 4, ranges[0])
+    fun `no match returns plain text`() {
+        val result = buildMentionAnnotatedString("Hello world", "xyz")
+        assertEquals("Hello world", result.text)
     }
 
     @Test
-    fun `match at end of text`() {
-        val ranges = highlightRanges("a message test", "test")
-        assertEquals(1, ranges.size)
-        assertEquals(10 until 14, ranges[0])
+    fun `chinese character highlight`() {
+        val result = buildMentionAnnotatedString("搜索消息功能实现", "消息")
+        assertEquals("搜索消息功能实现", result.text)
+        val highlightSpans = result.spanStyles.filter {
+            it.item.fontWeight == androidx.compose.ui.text.font.FontWeight.Bold &&
+            it.item.background.alpha > 0
+        }
+        assertTrue("Should highlight Chinese characters", highlightSpans.isNotEmpty())
     }
 
     @Test
-    fun `partial word match`() {
-        val ranges = highlightRanges("testing tester tested", "test")
-        assertEquals(3, ranges.size)
-    }
-
-    @Test
-    fun `chinese character search`() {
-        val ranges = highlightRanges("搜索消息功能实现", "消息")
-        assertEquals(1, ranges.size)
-        assertEquals(2 until 4, ranges[0])
+    fun `multiple occurrences all highlighted`() {
+        val result = buildMentionAnnotatedString("test one test two test", "test")
+        assertEquals("test one test two test", result.text)
+        val highlightSpans = result.spanStyles.filter {
+            it.item.fontWeight == androidx.compose.ui.text.font.FontWeight.Bold &&
+            it.item.background.alpha > 0
+        }
+        assertTrue("Should have at least 3 highlight spans", highlightSpans.size >= 3)
     }
 }

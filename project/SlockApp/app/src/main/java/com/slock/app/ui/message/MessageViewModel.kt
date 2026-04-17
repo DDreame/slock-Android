@@ -46,6 +46,20 @@ data class MessageUiState(
     val currentSearchMatchPosition: Int = -1
 )
 
+fun computeSearchMatches(state: MessageUiState): MessageUiState {
+    if (!state.isSearchActive || state.searchQuery.isBlank()) return state
+    val matches = state.messages.indices.filter { i ->
+        state.messages[i].content.orEmpty().contains(state.searchQuery, ignoreCase = true)
+    }
+    val position = when {
+        matches.isEmpty() -> -1
+        state.currentSearchMatchPosition >= matches.size -> 0
+        state.currentSearchMatchPosition < 0 -> 0
+        else -> state.currentSearchMatchPosition
+    }
+    return state.copy(searchMatchIndices = matches, currentSearchMatchPosition = position)
+}
+
 @HiltViewModel
 class MessageViewModel @Inject constructor(
     private val messageRepository: MessageRepository,
@@ -57,6 +71,9 @@ class MessageViewModel @Inject constructor(
     val state: StateFlow<MessageUiState> = _state.asStateFlow()
 
     private var socketEventsJob: Job? = null
+
+    private fun recomputeSearchMatches(state: MessageUiState): MessageUiState =
+        computeSearchMatches(state)
 
     init {
         observeSocketEvents()
@@ -82,7 +99,7 @@ class MessageViewModel @Inject constructor(
                                     )
                                     val exists = current.messages.any { it.id == newMessage.id }
                                     if (!exists) {
-                                        current.copy(messages = listOf(newMessage) + current.messages)
+                                        recomputeSearchMatches(current.copy(messages = listOf(newMessage) + current.messages))
                                     } else current
                                 }
                             }
@@ -113,7 +130,7 @@ class MessageViewModel @Inject constructor(
             // Get cached data first
             messageRepository.getMessages(serverId, channelId).fold(
                 onSuccess = { messages ->
-                    _state.update { it.copy(messages = messages.reversed(), isLoading = false) }
+                    _state.update { recomputeSearchMatches(it.copy(messages = messages.reversed(), isLoading = false)) }
                 },
                 onFailure = { error ->
                     _state.update { it.copy(isLoading = false, error = error.message) }
@@ -122,7 +139,7 @@ class MessageViewModel @Inject constructor(
             // Then refresh from cloud (cloud always wins)
             messageRepository.refreshMessages(serverId, channelId).fold(
                 onSuccess = { messages ->
-                    _state.update { it.copy(messages = messages.reversed()) }
+                    _state.update { recomputeSearchMatches(it.copy(messages = messages.reversed())) }
                 },
                 onFailure = { /* keep cached data */ }
             )
@@ -152,7 +169,7 @@ class MessageViewModel @Inject constructor(
             parentMessageId = replyTo?.id
         )
         viewModelScope.launch {
-            _state.update { it.copy(isSending = true, isUploading = attachments.isNotEmpty(), error = null, replyingTo = null, pendingAttachments = emptyList(), messages = listOf(pendingMessage) + it.messages) }
+            _state.update { recomputeSearchMatches(it.copy(isSending = true, isUploading = attachments.isNotEmpty(), error = null, replyingTo = null, pendingAttachments = emptyList(), messages = listOf(pendingMessage) + it.messages)) }
 
             // Upload attachments first
             val attachmentIds = mutableListOf<String>()
@@ -170,11 +187,11 @@ class MessageViewModel @Inject constructor(
             if (uploadFailCount > 0 && attachmentIds.isEmpty() && content.isBlank()) {
                 // All uploads failed and no text content — abort send
                 _state.update { current ->
-                    current.copy(
+                    recomputeSearchMatches(current.copy(
                         messages = current.messages.filter { it.id != pendingId },
                         isSending = false,
                         error = "图片上传失败，消息未发送"
-                    )
+                    ))
                 }
                 return@launch
             }
@@ -184,16 +201,16 @@ class MessageViewModel @Inject constructor(
                 onSuccess = { message ->
                     _state.update { current ->
                         val updated = current.messages.map { if (it.id == pendingId) message else it }
-                        current.copy(messages = updated, isSending = false)
+                        recomputeSearchMatches(current.copy(messages = updated, isSending = false))
                     }
                 },
                 onFailure = { error ->
                     _state.update { current ->
-                        current.copy(
+                        recomputeSearchMatches(current.copy(
                             messages = current.messages.filter { it.id != pendingId },
                             isSending = false,
                             error = error.message
-                        )
+                        ))
                     }
                 }
             )
@@ -240,11 +257,11 @@ class MessageViewModel @Inject constructor(
                     _state.update { state ->
                         val existingIds = state.messages.map { it.id }.toSet()
                         val newMessages = olderMessages.reversed().filter { it.id !in existingIds }
-                        state.copy(
+                        recomputeSearchMatches(state.copy(
                             messages = state.messages + newMessages,
                             isLoadingMore = false,
                             hasMoreMessages = olderMessages.size >= 50
-                        )
+                        ))
                     }
                 },
                 onFailure = {

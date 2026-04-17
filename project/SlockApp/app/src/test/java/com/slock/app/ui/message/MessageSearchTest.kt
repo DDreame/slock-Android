@@ -11,8 +11,18 @@ class MessageSearchTest {
             Message(id = "msg-$i", content = text, senderName = "User$i", senderType = "user")
         }
 
+    private fun stateWithSearch(messages: List<Message>, query: String, position: Int = 0): MessageUiState {
+        val base = MessageUiState(
+            messages = messages,
+            isSearchActive = true,
+            searchQuery = query,
+            currentSearchMatchPosition = position
+        )
+        return computeSearchMatches(base)
+    }
+
     @Test
-    fun `search state starts inactive`() {
+    fun `initial state has search inactive`() {
         val state = MessageUiState()
         assertFalse(state.isSearchActive)
         assertEquals("", state.searchQuery)
@@ -21,134 +31,110 @@ class MessageSearchTest {
     }
 
     @Test
-    fun `toggle search activates and deactivates`() {
-        val initial = MessageUiState()
-        val activated = initial.copy(isSearchActive = true)
-        assertTrue(activated.isSearchActive)
-
-        val deactivated = activated.copy(
-            isSearchActive = false,
-            searchQuery = "",
-            searchMatchIndices = emptyList(),
-            currentSearchMatchPosition = -1
-        )
-        assertFalse(deactivated.isSearchActive)
-        assertEquals("", deactivated.searchQuery)
-    }
-
-    @Test
-    fun `search finds matching messages by index`() {
+    fun `computeSearchMatches finds correct indices`() {
         val messages = makeMessages("Hello world", "Goodbye world", "Hello again", "Nothing here")
-        val query = "Hello"
-        val matches = messages.indices.filter { i ->
-            messages[i].content.orEmpty().contains(query, ignoreCase = true)
-        }
-        assertEquals(listOf(0, 2), matches)
+        val result = stateWithSearch(messages, "Hello")
+        assertEquals(listOf(0, 2), result.searchMatchIndices)
+        assertEquals(0, result.currentSearchMatchPosition)
     }
 
     @Test
-    fun `search is case insensitive`() {
+    fun `computeSearchMatches is case insensitive`() {
         val messages = makeMessages("HELLO World", "hello world", "no match")
-        val query = "hello"
-        val matches = messages.indices.filter { i ->
-            messages[i].content.orEmpty().contains(query, ignoreCase = true)
-        }
-        assertEquals(listOf(0, 1), matches)
+        val result = stateWithSearch(messages, "hello")
+        assertEquals(listOf(0, 1), result.searchMatchIndices)
     }
 
     @Test
-    fun `blank query returns no matches`() {
+    fun `computeSearchMatches returns no matches for blank query`() {
         val messages = makeMessages("Hello", "World")
-        val query = "   "
-        val matches = if (query.isBlank()) emptyList()
-        else messages.indices.filter { i ->
-            messages[i].content.orEmpty().contains(query, ignoreCase = true)
-        }
-        assertTrue(matches.isEmpty())
+        val base = MessageUiState(messages = messages, isSearchActive = true, searchQuery = "   ")
+        val result = computeSearchMatches(base)
+        assertTrue(result.searchMatchIndices.isEmpty())
     }
 
     @Test
-    fun `no matches when query not found`() {
+    fun `computeSearchMatches returns no matches when inactive`() {
         val messages = makeMessages("Hello", "World")
-        val query = "xyz"
-        val matches = messages.indices.filter { i ->
-            messages[i].content.orEmpty().contains(query, ignoreCase = true)
-        }
-        assertTrue(matches.isEmpty())
+        val base = MessageUiState(messages = messages, isSearchActive = false, searchQuery = "Hello")
+        val result = computeSearchMatches(base)
+        assertTrue(result.searchMatchIndices.isEmpty())
+    }
+
+    @Test
+    fun `computeSearchMatches returns empty when query not found`() {
+        val messages = makeMessages("Hello", "World")
+        val result = stateWithSearch(messages, "xyz")
+        assertTrue(result.searchMatchIndices.isEmpty())
+        assertEquals(-1, result.currentSearchMatchPosition)
+    }
+
+    @Test
+    fun `computeSearchMatches clamps position when matches shrink`() {
+        val messages = makeMessages("alpha beta", "gamma", "alpha gamma")
+        val result = stateWithSearch(messages, "alpha", position = 5)
+        assertEquals(listOf(0, 2), result.searchMatchIndices)
+        assertEquals(0, result.currentSearchMatchPosition)
+    }
+
+    @Test
+    fun `computeSearchMatches preserves valid position`() {
+        val messages = makeMessages("alpha", "beta", "alpha", "gamma")
+        val result = stateWithSearch(messages, "alpha", position = 1)
+        assertEquals(listOf(0, 2), result.searchMatchIndices)
+        assertEquals(1, result.currentSearchMatchPosition)
     }
 
     @Test
     fun `next cycles through matches`() {
-        val matchIndices = listOf(0, 3, 7)
-        var position = 0
+        val messages = makeMessages("a", "b", "a", "c", "a")
+        val state = stateWithSearch(messages, "a")
+        assertEquals(listOf(0, 2, 4), state.searchMatchIndices)
+        assertEquals(0, state.currentSearchMatchPosition)
 
-        position = (position + 1) % matchIndices.size
-        assertEquals(1, position)
+        val next1 = (state.currentSearchMatchPosition + 1) % state.searchMatchIndices.size
+        assertEquals(1, next1)
 
-        position = (position + 1) % matchIndices.size
-        assertEquals(2, position)
+        val next2 = (next1 + 1) % state.searchMatchIndices.size
+        assertEquals(2, next2)
 
-        position = (position + 1) % matchIndices.size
-        assertEquals(0, position) // wraps around
+        val next3 = (next2 + 1) % state.searchMatchIndices.size
+        assertEquals(0, next3) // wraps
     }
 
     @Test
-    fun `previous cycles through matches backwards`() {
-        val matchIndices = listOf(0, 3, 7)
-        var position = 0
+    fun `previous cycles backwards`() {
+        val messages = makeMessages("a", "b", "a", "c", "a")
+        val state = stateWithSearch(messages, "a")
+        val size = state.searchMatchIndices.size
 
-        position = if (position <= 0) matchIndices.size - 1 else position - 1
-        assertEquals(2, position) // wraps to end
+        val prev1 = if (0 <= 0) size - 1 else 0 - 1
+        assertEquals(2, prev1) // wraps to end
 
-        position = if (position <= 0) matchIndices.size - 1 else position - 1
-        assertEquals(1, position)
-
-        position = if (position <= 0) matchIndices.size - 1 else position - 1
-        assertEquals(0, position)
+        val prev2 = if (prev1 <= 0) size - 1 else prev1 - 1
+        assertEquals(1, prev2)
     }
 
     @Test
-    fun `next and previous are no-op with empty matches`() {
-        val matchIndices = emptyList<Int>()
-        val position = -1
-        // next
-        val nextPos = if (matchIndices.isEmpty()) position else (position + 1) % matchIndices.size
-        assertEquals(-1, nextPos)
-        // previous
-        val prevPos = if (matchIndices.isEmpty()) position else if (position <= 0) matchIndices.size - 1 else position - 1
-        assertEquals(-1, prevPos)
+    fun `recompute after new message added`() {
+        val original = makeMessages("hello", "world")
+        val state1 = stateWithSearch(original, "hello")
+        assertEquals(listOf(0), state1.searchMatchIndices)
+
+        val newMsg = Message(id = "msg-new", content = "hello again", senderName = "User", senderType = "user")
+        val updated = state1.copy(messages = listOf(newMsg) + state1.messages)
+        val state2 = computeSearchMatches(updated)
+        assertEquals(listOf(0, 1), state2.searchMatchIndices)
     }
 
     @Test
-    fun `search match updates when query changes`() {
-        val messages = makeMessages("alpha beta", "gamma", "alpha gamma", "delta")
+    fun `recompute after message removed`() {
+        val messages = makeMessages("hello", "world", "hello world")
+        val state1 = stateWithSearch(messages, "hello")
+        assertEquals(listOf(0, 2), state1.searchMatchIndices)
 
-        val query1 = "alpha"
-        val matches1 = messages.indices.filter { messages[it].content.orEmpty().contains(query1, ignoreCase = true) }
-        assertEquals(listOf(0, 2), matches1)
-
-        val query2 = "gamma"
-        val matches2 = messages.indices.filter { messages[it].content.orEmpty().contains(query2, ignoreCase = true) }
-        assertEquals(listOf(1, 2), matches2)
-    }
-
-    @Test
-    fun `deactivating search clears all search state`() {
-        val active = MessageUiState(
-            isSearchActive = true,
-            searchQuery = "test",
-            searchMatchIndices = listOf(0, 2),
-            currentSearchMatchPosition = 1
-        )
-        val cleared = active.copy(
-            isSearchActive = false,
-            searchQuery = "",
-            searchMatchIndices = emptyList(),
-            currentSearchMatchPosition = -1
-        )
-        assertFalse(cleared.isSearchActive)
-        assertEquals("", cleared.searchQuery)
-        assertTrue(cleared.searchMatchIndices.isEmpty())
-        assertEquals(-1, cleared.currentSearchMatchPosition)
+        val reduced = state1.copy(messages = listOf(messages[1], messages[2]))
+        val state2 = computeSearchMatches(reduced)
+        assertEquals(listOf(1), state2.searchMatchIndices)
     }
 }

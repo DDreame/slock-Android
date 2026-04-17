@@ -428,6 +428,7 @@ fun buildMentionAnnotatedString(content: String, highlightQuery: String = ""): A
             appendHighlighted(segment, highlightQuery)
             val value = match.value
             if (value.startsWith("`") && value.endsWith("`")) {
+                val codeText = value.removeSurrounding("`")
                 withStyle(
                     SpanStyle(
                         fontFamily = FontFamily.Monospace,
@@ -435,7 +436,7 @@ fun buildMentionAnnotatedString(content: String, highlightQuery: String = ""): A
                         fontWeight = FontWeight.Medium
                     )
                 ) {
-                    append(value.removeSurrounding("`"))
+                    appendHighlighted(codeText, highlightQuery)
                 }
             } else {
                 withStyle(
@@ -444,7 +445,7 @@ fun buildMentionAnnotatedString(content: String, highlightQuery: String = ""): A
                         background = Cyan.copy(alpha = 0.3f)
                     )
                 ) {
-                    append(value)
+                    appendHighlighted(value, highlightQuery)
                 }
             }
             lastIndex = match.range.last + 1
