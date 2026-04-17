@@ -6,6 +6,7 @@ build/
 *.apk
 *.aar
 *.jar
+!**/gradle/wrapper/gradle-wrapper.jar
 
 # Android Studio
 .idea/
