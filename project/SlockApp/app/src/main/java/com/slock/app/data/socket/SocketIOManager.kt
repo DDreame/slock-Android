@@ -29,6 +29,7 @@ class SocketIOManager @Inject constructor(
 
     private var socket: Socket? = null
     private var currentServerId: String? = null
+    private val joinedChannelIds = linkedSetOf<String>()
     private val _connectionState = MutableSharedFlow<ConnectionState>(replay = 1)
     val connectionState: Flow<ConnectionState> = _connectionState.asSharedFlow()
 
@@ -133,9 +134,25 @@ class SocketIOManager @Inject constructor(
      * Connect to Socket.IO server
      */
     fun connect(serverId: String? = null) {
-        if (socket?.connected() == true) {
+        val isConnected = socket?.connected() == true
+        val hasSocket = socket != null
+        val shouldReconnect = shouldReconnectForServerChange(
+            currentServerId = currentServerId,
+            requestedServerId = serverId,
+            hasSocket = hasSocket
+        )
+
+        if (isConnected && !shouldReconnect) {
             Log.d(TAG, "Already connected")
             return
+        }
+
+        if (shouldReconnect) {
+            Log.d(TAG, "Server changed from $currentServerId to $serverId, reconnecting socket")
+            disconnect(clearJoinedChannels = true)
+        } else if (socket != null) {
+            socket?.off()
+            socket = null
         }
 
         currentServerId = serverId
@@ -173,10 +190,14 @@ class SocketIOManager @Inject constructor(
     /**
      * Disconnect from Socket.IO server
      */
-    fun disconnect() {
+    fun disconnect(clearJoinedChannels: Boolean = false) {
         socket?.disconnect()
         socket?.off()
         socket = null
+        currentServerId = null
+        if (clearJoinedChannels) {
+            joinedChannelIds.clear()
+        }
         _connectionState.tryEmit(ConnectionState.DISCONNECTED)
     }
 
@@ -184,16 +205,22 @@ class SocketIOManager @Inject constructor(
      * Join a channel to receive messages
      */
     fun joinChannel(channelId: String) {
-        socket?.emit("join:channel", channelId)
-        Log.d(TAG, "Joining channel: $channelId")
+        joinedChannelIds += channelId
+        emitJoinChannel(channelId)
     }
 
     /**
      * Leave a channel
      */
     fun leaveChannel(channelId: String) {
+        joinedChannelIds -= channelId
         socket?.emit("leave:channel", channelId)
         Log.d(TAG, "Leaving channel: $channelId")
+    }
+
+    private fun emitJoinChannel(channelId: String) {
+        socket?.emit("join:channel", channelId)
+        Log.d(TAG, "Joining channel: $channelId")
     }
 
     /**
@@ -212,6 +239,10 @@ class SocketIOManager @Inject constructor(
             on(Socket.EVENT_CONNECT) {
                 Log.d(TAG, "Connected to Socket.IO")
                 _connectionState.tryEmit(ConnectionState.CONNECTED)
+
+                joinedChannelIds.forEach { channelId ->
+                    emitJoinChannel(channelId)
+                }
 
                 // Resume sync after connection
                 syncResume(0)
@@ -419,3 +450,9 @@ class SocketIOManager @Inject constructor(
 
     fun isConnected(): Boolean = socket?.connected() == true
 }
+
+internal fun shouldReconnectForServerChange(
+    currentServerId: String?,
+    requestedServerId: String?,
+    hasSocket: Boolean
+): Boolean = hasSocket && currentServerId != requestedServerId

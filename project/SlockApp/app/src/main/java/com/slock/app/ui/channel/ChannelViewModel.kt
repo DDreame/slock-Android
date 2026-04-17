@@ -45,9 +45,10 @@ class ChannelViewModel @Inject constructor(
 
     private var socketEventsJob: Job? = null
     private var connectionJob: Job? = null
+    private var currentServerId: String? = null
 
     init {
-        observePresence()
+        observeSocketEvents()
         observeConnection()
     }
 
@@ -66,12 +67,17 @@ class ChannelViewModel @Inject constructor(
                         }
                         _state.update { it.copy(onlineIds = presenceTracker.onlineIds.value) }
                     }
+
+                    if (_state.value.serverId == serverId) {
+                        loadChannels(serverId)
+                        loadDMs()
+                    }
                 }
             }
         }
     }
 
-    private fun observePresence() {
+    private fun observeSocketEvents() {
         socketEventsJob = viewModelScope.launch {
             socketIOManager.events.collect { event ->
                 when (event) {
@@ -88,6 +94,57 @@ class ChannelViewModel @Inject constructor(
                         presenceTracker.setOnline(event.data.agentId)
                         _state.update { it.copy(onlineIds = presenceTracker.onlineIds.value) }
                     }
+                    is SocketIOManager.SocketEvent.ChannelUpdated -> {
+                        val serverId = currentServerId ?: activeServerHolder.serverId ?: return@collect
+                        if (event.data.type == "dm") {
+                            loadDMs()
+                        } else {
+                            loadChannels(serverId)
+                        }
+                    }
+                    is SocketIOManager.SocketEvent.DMNew -> {
+                        if (currentServerId != null || activeServerHolder.serverId != null) {
+                            loadDMs()
+                        }
+                    }
+                    is SocketIOManager.SocketEvent.MessageNew -> {
+                        _state.update { current ->
+                            val knownChannelIds = (current.channels + current.dms).mapNotNull { it.id }.toSet()
+                            if (event.data.channelId !in knownChannelIds) {
+                                current
+                            } else {
+                                current.copy(
+                                    channelPreviews = current.channelPreviews + (
+                                        event.data.channelId to Message(
+                                            id = event.data.id,
+                                            channelId = event.data.channelId,
+                                            content = event.data.content,
+                                            senderId = event.data.senderId,
+                                            senderName = event.data.senderName,
+                                            senderType = event.data.senderType,
+                                            createdAt = event.data.createdAt
+                                        )
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    is SocketIOManager.SocketEvent.MessageUpdated -> {
+                        _state.update { current ->
+                            val existingPreview = current.channelPreviews[event.data.channelId]
+                            if (existingPreview == null || existingPreview.id != event.data.id) {
+                                current
+                            } else {
+                                current.copy(
+                                    channelPreviews = current.channelPreviews + (
+                                        event.data.channelId to existingPreview.copy(
+                                            content = event.data.content.ifBlank { existingPreview.content }
+                                        )
+                                    )
+                                )
+                            }
+                        }
+                    }
                     else -> { /* ignore */ }
                 }
             }
@@ -95,10 +152,9 @@ class ChannelViewModel @Inject constructor(
     }
 
     fun loadChannels(serverId: String) {
+        currentServerId = serverId
         activeServerHolder.serverId = serverId
-        if (!socketIOManager.isConnected()) {
-            socketIOManager.connect(serverId)
-        }
+        socketIOManager.connect(serverId)
         viewModelScope.launch {
             _state.update { it.copy(serverId = serverId, isLoading = it.channels.isEmpty()) }
             // Get cached data first
