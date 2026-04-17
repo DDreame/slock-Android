@@ -20,6 +20,12 @@ jobs:
       run:
         working-directory: project/SlockApp
 
+    env:
+      GRADLE_OPTS: >-
+        -Dorg.gradle.jvmargs=-Xmx4g
+        -Dorg.gradle.workers.max=2
+        -Dorg.gradle.parallel=true
+
     steps:
       - uses: actions/checkout@v4
 
