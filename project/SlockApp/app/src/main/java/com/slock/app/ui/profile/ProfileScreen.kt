@@ -21,6 +21,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.ui.theme.*
 
+internal sealed interface ProfileContentState {
+    data object Loading : ProfileContentState
+    data class Error(val message: String) : ProfileContentState
+    data object Content : ProfileContentState
+}
+
+internal fun resolveProfileContentState(state: ProfileUiState): ProfileContentState = when {
+    state.user != null || state.member != null -> ProfileContentState.Content
+    state.error != null -> ProfileContentState.Error(state.error)
+    else -> ProfileContentState.Loading
+}
+
 @Composable
 fun ProfileScreen(
     state: ProfileUiState,
@@ -32,8 +44,9 @@ fun ProfileScreen(
     onLogout: () -> Unit = {},
     onRetry: () -> Unit = {}
 ) {
-    val displayData = resolveProfileDisplayData(state)
-    var showLogoutConfirm by remember { mutableStateOf(false) }
+    val contentState = resolveProfileContentState(state)
+    val profileKey = state.user?.id ?: state.member?.userId ?: state.isOwnProfile.toString()
+    var showLogoutConfirm by remember(profileKey) { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -69,192 +82,197 @@ fun ProfileScreen(
         }
         Divider(thickness = 3.dp, color = Color.Black)
 
-        if (state.isLoading && state.user == null) {
-            NeoSkeletonCardList(count = 3)
-            return@Column
-        }
-        if (state.error != null && state.user == null) {
-            NeoErrorState(
-                message = state.error,
-                onRetry = onRetry
-            )
-            return@Column
-        }
+        when (contentState) {
+            ProfileContentState.Loading -> {
+                NeoSkeletonCardList(count = 3)
+            }
 
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            // Hero Section
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .padding(20.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                // Avatar with shadow
-                Box(modifier = Modifier.size(75.dp)) {
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .offset(3.dp, 3.dp)
-                            .background(Color.Black, RectangleShape)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(72.dp)
-                            .border(2.dp, Color.Black, RectangleShape)
-                            .background(Cyan, RectangleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            displayData.initial,
-                            fontSize = 30.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = SpaceGrotesk
-                        )
-                    }
-                    // Online status dot
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .size(14.dp)
-                            .border(2.dp, Color.Black, RectangleShape)
-                            .background(
-                                if (displayData.isOnline) Lime else Color(0xFFCCCCCC),
-                                RectangleShape
-                            )
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        displayData.name.ifEmpty { "Unknown" },
-                        fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 22.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (displayData.email.isNotEmpty()) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            displayData.email,
-                            fontFamily = SpaceMono,
-                            fontSize = 12.sp,
-                            color = Color.Black.copy(alpha = 0.6f),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Spacer(Modifier.height(8.dp))
+            is ProfileContentState.Error -> {
+                NeoErrorState(
+                    message = contentState.message,
+                    onRetry = onRetry
+                )
+            }
+
+            ProfileContentState.Content -> {
+                val displayData = resolveProfileDisplayData(state)
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // Hero Section
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color.White)
+                            .padding(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.Top
                     ) {
-                        if (displayData.role.isNotEmpty()) {
-                            RoleBadge(displayData.role)
-                        }
-                        StatusBadge(displayData.isOnline)
-                    }
-                }
-            }
-            Divider(thickness = 3.dp, color = Color.Black)
-
-            // Details Card
-            SectionTitle("Details")
-            ProfileNeoCard(stripColor = Cyan) {
-                InfoRow("Name", displayData.name.ifEmpty { "\u2014" })
-                if (displayData.email.isNotEmpty()) {
-                    InfoRow("Email", displayData.email, isMono = true)
-                }
-                InfoRow("Role", displayData.role.replaceFirstChar { it.uppercaseChar() }.ifEmpty { "\u2014" })
-                InfoRow("Status", if (displayData.isOnline) "Online" else "Offline")
-                InfoRow("Last Active", displayData.lastActiveText)
-            }
-
-            // Edit Name (own profile only)
-            if (state.isOwnProfile) {
-                SectionTitle("Edit Profile")
-                ProfileNeoCard(stripColor = Yellow) {
-                    if (state.isEditing) {
-                        NeoTextField(
-                            value = state.editName,
-                            onValueChange = onEditNameChange,
-                            placeholder = "Enter new name"
-                        )
-                        if (state.saveError != null) {
-                            Spacer(Modifier.height(4.dp))
-                            Text(
-                                state.saveError,
-                                fontFamily = SpaceGrotesk,
-                                fontSize = 12.sp,
-                                color = Pink
+                        // Avatar with shadow
+                        Box(modifier = Modifier.size(75.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .offset(3.dp, 3.dp)
+                                    .background(Color.Black, RectangleShape)
                             )
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Box(Modifier.weight(1f)) {
-                                NeoButtonSecondary(
-                                    text = "CANCEL",
-                                    onClick = onCancelEditing
+                            Box(
+                                modifier = Modifier
+                                    .size(72.dp)
+                                    .border(2.dp, Color.Black, RectangleShape)
+                                    .background(Cyan, RectangleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    displayData.initial,
+                                    fontSize = 30.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = SpaceGrotesk
                                 )
                             }
-                            Box(Modifier.weight(1f)) {
-                                NeoButton(
-                                    text = if (state.isSaving) "SAVING..." else "SAVE",
-                                    onClick = { if (!state.isSaving) onSaveName() }
+                            // Online status dot
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .size(14.dp)
+                                    .border(2.dp, Color.Black, RectangleShape)
+                                    .background(
+                                        if (displayData.isOnline) Lime else Color(0xFFCCCCCC),
+                                        RectangleShape
+                                    )
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                displayData.name.ifEmpty { "Unknown" },
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 22.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            if (displayData.email.isNotEmpty()) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    displayData.email,
+                                    fontFamily = SpaceMono,
+                                    fontSize = 12.sp,
+                                    color = Color.Black.copy(alpha = 0.6f),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
-                        }
-                    } else {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Update your display name",
-                                fontFamily = SpaceGrotesk,
-                                fontSize = 13.sp,
-                                color = Color.Black.copy(alpha = 0.6f)
-                            )
-                            ActionButton("EDIT", Cyan, Modifier, onStartEditing)
+                            Spacer(Modifier.height(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (displayData.role.isNotEmpty()) {
+                                    RoleBadge(displayData.role)
+                                }
+                                StatusBadge(displayData.isOnline)
+                            }
                         }
                     }
+                    Divider(thickness = 3.dp, color = Color.Black)
+
+                    // Details Card
+                    SectionTitle("Details")
+                    ProfileNeoCard(stripColor = Cyan) {
+                        InfoRow("Name", displayData.name.ifEmpty { "\u2014" })
+                        if (displayData.email.isNotEmpty()) {
+                            InfoRow("Email", displayData.email, isMono = true)
+                        }
+                        InfoRow("Role", displayData.role.replaceFirstChar { it.uppercaseChar() }.ifEmpty { "\u2014" })
+                        InfoRow("Status", if (displayData.isOnline) "Online" else "Offline")
+                        InfoRow("Last Active", displayData.lastActiveText)
+                    }
+
+                    // Edit Name (own profile only)
+                    if (state.isOwnProfile) {
+                        SectionTitle("Edit Profile")
+                        ProfileNeoCard(stripColor = Yellow) {
+                            if (state.isEditing) {
+                                NeoTextField(
+                                    value = state.editName,
+                                    onValueChange = onEditNameChange,
+                                    placeholder = "Enter new name"
+                                )
+                                if (state.saveError != null) {
+                                    Spacer(Modifier.height(4.dp))
+                                    Text(
+                                        state.saveError,
+                                        fontFamily = SpaceGrotesk,
+                                        fontSize = 12.sp,
+                                        color = Pink
+                                    )
+                                }
+                                Spacer(Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Box(Modifier.weight(1f)) {
+                                        NeoButtonSecondary(
+                                            text = "CANCEL",
+                                            onClick = onCancelEditing
+                                        )
+                                    }
+                                    Box(Modifier.weight(1f)) {
+                                        NeoButton(
+                                            text = if (state.isSaving) "SAVING..." else "SAVE",
+                                            onClick = { if (!state.isSaving) onSaveName() }
+                                        )
+                                    }
+                                }
+                            } else {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        "Update your display name",
+                                        fontFamily = SpaceGrotesk,
+                                        fontSize = 13.sp,
+                                        color = Color.Black.copy(alpha = 0.6f)
+                                    )
+                                    ActionButton("EDIT", Cyan, Modifier, onStartEditing)
+                                }
+                            }
+                        }
+
+                        // Logout
+                        Spacer(Modifier.height(16.dp))
+                        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            NeoButton(
+                                text = "LOG OUT",
+                                onClick = { showLogoutConfirm = true },
+                                containerColor = Pink
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(24.dp))
                 }
 
-                // Logout
-                Spacer(Modifier.height(16.dp))
-                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
-                    NeoButton(
-                        text = "LOG OUT",
-                        onClick = { showLogoutConfirm = true },
-                        containerColor = Pink
+                if (showLogoutConfirm) {
+                    NeoConfirmDialog(
+                        title = "Log Out",
+                        message = "Are you sure you want to log out?",
+                        confirmText = "LOG OUT",
+                        confirmColor = Pink,
+                        onConfirm = {
+                            showLogoutConfirm = false
+                            onLogout()
+                        },
+                        onDismiss = { showLogoutConfirm = false }
                     )
                 }
             }
-
-            Spacer(Modifier.height(24.dp))
-        }
-
-        if (showLogoutConfirm) {
-            NeoConfirmDialog(
-                title = "Log Out",
-                message = "Are you sure you want to log out?",
-                confirmText = "LOG OUT",
-                confirmColor = Pink,
-                onConfirm = {
-                    showLogoutConfirm = false
-                    onLogout()
-                },
-                onDismiss = { showLogoutConfirm = false }
-            )
         }
     }
 }
