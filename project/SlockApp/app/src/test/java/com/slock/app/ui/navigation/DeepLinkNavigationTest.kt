@@ -6,6 +6,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class DeepLinkNavigationTest {
 
@@ -101,5 +102,71 @@ class DeepLinkNavigationTest {
     @Test
     fun `warm start deep link does NOT fire when channel ID is blank`() {
         assertFalse(shouldHandleWarmStartDeepLink(isSplashDone = true, deepLinkChannelId = ""))
+    }
+}
+
+class DeepLinkProductionOrderingTest {
+
+    private val navHostSource: String = listOf(
+        File("src/main/java/com/slock/app/ui/navigation/NavHost.kt"),
+        File("app/src/main/java/com/slock/app/ui/navigation/NavHost.kt")
+    ).first { it.exists() }.readText()
+
+    @Test
+    fun `warm-start deep link effect is gated by isSplashDone via shouldHandleWarmStartDeepLink`() {
+        assertTrue(
+            "Warm-start deep link must use shouldHandleWarmStartDeepLink gate",
+            navHostSource.contains("shouldHandleWarmStartDeepLink(isSplashDone, deepLinkChannelId)")
+        )
+    }
+
+    @Test
+    fun `warm-start deep link effect has isSplashDone as LaunchedEffect key`() {
+        assertTrue(
+            "Warm-start deep link LaunchedEffect must include isSplashDone as key",
+            navHostSource.contains("LaunchedEffect(deepLinkChannelId, isSplashDone)")
+        )
+    }
+
+    @Test
+    fun `splash composable uses resolveSplashNavigation for navigation decision`() {
+        assertTrue(
+            "Splash must delegate to resolveSplashNavigation",
+            navHostSource.contains("resolveSplashNavigation(state.isLoggedIn, deepLinkChannelId, deepLinkChannelName)")
+        )
+    }
+
+    @Test
+    fun `splash navigates to primary target before deep link target`() {
+        val primaryNav = navHostSource.indexOf("navController.navigate(result.target)")
+        val deepLinkNav = navHostSource.indexOf("navController.navigate(result.deepLinkRoute)")
+        assertTrue("Primary target navigation must exist in splash", primaryNav > 0)
+        assertTrue("Deep link navigation must exist in splash", deepLinkNav > 0)
+        assertTrue(
+            "Primary target (HOME/LOGIN) must be navigated BEFORE deep link channel",
+            primaryNav < deepLinkNav
+        )
+    }
+
+    @Test
+    fun `isSplashDone is set AFTER both navigation calls in splash`() {
+        val splashBlock = navHostSource.substringAfter("composable(Routes.SPLASH)")
+            .substringBefore("composable(Routes.LOGIN)")
+        val deepLinkNav = splashBlock.indexOf("navigate(result.deepLinkRoute)")
+        val splashDoneSet = splashBlock.indexOf("isSplashDone = true")
+        assertTrue("isSplashDone assignment must exist in splash", splashDoneSet > 0)
+        assertTrue(
+            "isSplashDone must be set AFTER deep link navigation to prevent warm-start effect from firing prematurely",
+            splashDoneSet > deepLinkNav
+        )
+    }
+
+    @Test
+    fun `deep link is NOT navigated before splash resolves`() {
+        val beforeSplash = navHostSource.substringBefore("composable(Routes.SPLASH)")
+        assertFalse(
+            "No direct deep link navigate call should exist before splash composable without isSplashDone gate",
+            beforeSplash.contains("navigate(\"channel/\$deepLinkChannelId")
+        )
     }
 }
