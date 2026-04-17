@@ -60,11 +60,16 @@ class MembersViewModel @Inject constructor(
                 when (event) {
                     is SocketIOManager.SocketEvent.AgentActivity -> {
                         presenceTracker.setOnline(event.data.agentId)
+                        val subtitle = if (!event.data.message.isNullOrBlank()) {
+                            "${event.data.activity} — ${event.data.message}"
+                        } else {
+                            event.data.activity
+                        }
                         _state.update { current ->
                             current.copy(
                                 members = current.members.map { m ->
                                     if (m.id == event.data.agentId && m.isAgent) {
-                                        m.copy(subtitle = event.data.activity, isOnline = true)
+                                        m.copy(subtitle = subtitle, isOnline = true)
                                     } else m
                                 }
                             )
@@ -191,9 +196,15 @@ class MembersViewModel @Inject constructor(
         }
     }
 
-    private fun buildAgentSubtitle(agent: Agent): String {
+    internal fun buildAgentSubtitle(agent: Agent): String {
         val statusText = when {
-            agent.activity != null && agent.status == "active" -> agent.activity
+            agent.activity != null && agent.status == "active" -> {
+                if (!agent.activityDetail.isNullOrBlank()) {
+                    "${agent.activity} — ${agent.activityDetail}"
+                } else {
+                    agent.activity
+                }
+            }
             agent.status == "active" -> "Working"
             else -> "Hibernating"
         }

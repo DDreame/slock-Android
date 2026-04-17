@@ -141,7 +141,7 @@ fun AgentListScreen(
                             items(activeAgents) { agent ->
                                 NeoAgentCard(
                                     agent = agent,
-                                    activity = state.agentActivities[agent.id.orEmpty()],
+                                    activityInfo = state.agentActivities[agent.id.orEmpty()],
                                     onDm = { onDmAgent(agent.id.orEmpty()) },
                                     onToggle = { confirmStopAgent = agent },
                                     onConfig = { showSettingsAgent = agent }
@@ -155,7 +155,7 @@ fun AgentListScreen(
                             items(inactiveAgents) { agent ->
                                 NeoAgentCard(
                                     agent = agent,
-                                    activity = state.agentActivities[agent.id.orEmpty()],
+                                    activityInfo = state.agentActivities[agent.id.orEmpty()],
                                     onDm = { onDmAgent(agent.id.orEmpty()) },
                                     onToggle = {
                                         onStartAgent(agent.id.orEmpty())
@@ -339,12 +339,13 @@ private fun SectionLabel(text: String) {
 @Composable
 private fun NeoAgentCard(
     agent: Agent,
-    activity: String?,
+    activityInfo: AgentActivityInfo?,
     onDm: () -> Unit,
     onToggle: () -> Unit,
     onConfig: () -> Unit
 ) {
     val isRunning = agent.status == "active"
+    val activity = activityInfo?.activity
     val isThinking = activity?.contains("Thinking") == true || activity == "thinking"
     val avatarColor = when {
         !isRunning -> Color(0xFFEEEEEE)
@@ -461,6 +462,17 @@ private fun NeoAgentCard(
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Black
+                    )
+                }
+
+                if (isRunning && !activityInfo?.message.isNullOrBlank()) {
+                    Text(
+                        text = activityInfo!!.message!!,
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
             }
