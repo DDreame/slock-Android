@@ -51,6 +51,7 @@ fun SettingsScreen(
     onNotificationPreferenceChange: (NotificationPreference) -> Unit,
     onRefreshAccount: () -> Unit,
     onOpenProfile: () -> Unit = {},
+    onOpenSavedChannels: () -> Unit = {},
     onSendFeedback: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -118,6 +119,21 @@ fun SettingsScreen(
                     NeoButtonSecondary(
                         text = "VIEW PROFILE",
                         onClick = onOpenProfile,
+                        containerColor = Yellow,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            SettingsSection(title = "Workspace") {
+                SettingsInfoCard(
+                    accentColor = Yellow,
+                    title = "Saved Channels",
+                    subtitle = "Open channels you bookmarked across this server"
+                ) {
+                    NeoButtonSecondary(
+                        text = "OPEN SAVED CHANNELS",
+                        onClick = onOpenSavedChannels,
                         containerColor = Yellow,
                         modifier = Modifier.fillMaxWidth()
                     )

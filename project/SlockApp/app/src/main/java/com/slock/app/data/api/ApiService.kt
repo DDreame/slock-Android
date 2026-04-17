@@ -89,6 +89,18 @@ interface ApiService {
     @GET("channels/unread")
     suspend fun getUnreadChannels(): Response<List<Channel>>
 
+    @GET("channels/saved")
+    suspend fun getSavedChannels(): Response<List<Channel>>
+
+    @POST("channels/saved")
+    suspend fun saveChannel(@Body request: SaveChannelRequest): Response<Unit>
+
+    @POST("channels/saved/check")
+    suspend fun checkSavedChannel(@Body request: SaveChannelRequest): Response<SavedChannelCheckResponse>
+
+    @DELETE("channels/saved/{channelId}")
+    suspend fun removeSavedChannel(@Path("channelId") channelId: String): Response<Unit>
+
     // Messages (X-Server-Id header added automatically by ServerIdInterceptor)
     @POST("messages")
     suspend fun sendMessage(@Body request: SendMessageRequest): Response<Message>

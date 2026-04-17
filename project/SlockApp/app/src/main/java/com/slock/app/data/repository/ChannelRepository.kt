@@ -22,6 +22,10 @@ interface ChannelRepository {
     suspend fun createDM(serverId: String, agentId: String? = null, userId: String? = null): Result<Channel>
     suspend fun getChannelMembers(serverId: String, channelId: String): Result<List<ChannelMember>>
     suspend fun getUnreadChannels(serverId: String): Result<List<Channel>>
+    suspend fun getSavedChannels(serverId: String): Result<List<Channel>> = Result.failure(NotImplementedError())
+    suspend fun saveChannel(serverId: String, channelId: String): Result<Unit> = Result.failure(NotImplementedError())
+    suspend fun removeSavedChannel(serverId: String, channelId: String): Result<Unit> = Result.failure(NotImplementedError())
+    suspend fun isChannelSaved(serverId: String, channelId: String): Result<Boolean> = Result.failure(NotImplementedError())
 }
 
 class ChannelRepositoryImpl @Inject constructor(
@@ -213,6 +217,62 @@ class ChannelRepositoryImpl @Inject constructor(
                 Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Get unread failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getSavedChannels(serverId: String): Result<List<Channel>> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.getSavedChannels()
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Get saved channels failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun saveChannel(serverId: String, channelId: String): Result<Unit> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.saveChannel(SaveChannelRequest(channelId))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Save channel failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun removeSavedChannel(serverId: String, channelId: String): Result<Unit> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.removeSavedChannel(channelId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Remove saved channel failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun isChannelSaved(serverId: String, channelId: String): Result<Boolean> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.checkSavedChannel(SaveChannelRequest(channelId))
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!.isSaved)
+            } else {
+                Result.failure(Exception("Check saved channel failed: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

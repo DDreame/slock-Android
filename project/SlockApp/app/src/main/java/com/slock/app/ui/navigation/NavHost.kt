@@ -27,6 +27,8 @@ import com.slock.app.ui.auth.AuthViewModel
 import com.slock.app.ui.home.HomeScreen
 import com.slock.app.ui.server.ServerViewModel
 import com.slock.app.ui.channel.ChannelViewModel
+import com.slock.app.ui.channel.SavedChannelsScreen
+import com.slock.app.ui.channel.SavedChannelsViewModel
 import com.slock.app.ui.message.MessageListScreen
 import com.slock.app.ui.message.MessageViewModel
 import com.slock.app.ui.agent.AgentListScreen
@@ -68,6 +70,7 @@ object Routes {
     const val AGENT_DETAIL = "agent/{agentId}?context={$CONTEXT_ARG}"
     const val MACHINE_LIST = "server/{serverId}/machines"
     const val SETTINGS = "settings"
+    const val SAVED_CHANNELS = "saved_channels"
     const val PROFILE = "profile"
     const val USER_PROFILE = "profile/{userId}?context={$CONTEXT_ARG}"
 
@@ -396,6 +399,7 @@ fun SlockNavHost(
                 onNotificationPreferenceChange = viewModel::updateNotificationPreference,
                 onRefreshAccount = { viewModel.refreshAccount() },
                 onOpenProfile = { navController.navigate(Routes.PROFILE) },
+                onOpenSavedChannels = { navController.navigate(Routes.SAVED_CHANNELS) },
                 onSendFeedback = { LogCollector.shareReport(context) },
                 onLogout = {
                     authViewModel.logout {
@@ -501,7 +505,36 @@ fun SlockNavHost(
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 onNextSearchResult = viewModel::nextSearchResult,
                 onPreviousSearchResult = viewModel::previousSearchResult,
-                onToggleReaction = viewModel::toggleReaction
+                onToggleReaction = viewModel::toggleReaction,
+                onToggleSavedChannel = viewModel::toggleSavedChannel
+            )
+        }
+
+        composable(Routes.SAVED_CHANNELS) {
+            val viewModel: SavedChannelsViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+
+            LaunchedEffect(Unit) {
+                viewModel.loadSavedChannels()
+            }
+
+            SavedChannelsScreen(
+                state = state,
+                onNavigateBack = { navController.popBackStack() },
+                onOpenChannel = { channel ->
+                    val channelId = channel.id.orEmpty()
+                    if (channelId.isNotEmpty()) {
+                        navController.navigate(
+                            Routes.messagesRoute(
+                                channelId = channelId,
+                                channelName = channel.name.orEmpty().ifBlank { channelId },
+                                contextLabel = Routes.buildContextLabel("Saved Channels")
+                            )
+                        )
+                    }
+                },
+                onRemoveSavedChannel = viewModel::removeSavedChannel,
+                onRetry = viewModel::loadSavedChannels
             )
         }
 
