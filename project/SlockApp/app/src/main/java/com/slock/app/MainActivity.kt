@@ -115,10 +115,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleDeepLink(intent: Intent?) {
-        val channelId = intent?.getStringExtra("channelId")
-        if (!channelId.isNullOrBlank()) {
-            deepLinkChannelId = channelId
-            deepLinkChannelName = intent.getStringExtra("channelName")
+        val result = resolveDeepLinkFromIntent(
+            intent?.getStringExtra("channelId"),
+            intent?.getStringExtra("channelName")
+        )
+        if (result != null) {
+            deepLinkChannelId = result.first
+            deepLinkChannelName = result.second
         }
     }
 
@@ -131,4 +134,9 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+
+internal fun resolveDeepLinkFromIntent(channelId: String?, channelName: String?): Pair<String, String?>? {
+    if (channelId.isNullOrBlank()) return null
+    return channelId to channelName
 }

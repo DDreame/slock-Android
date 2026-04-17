@@ -235,7 +235,7 @@ class SocketNotificationService : Service() {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             putExtra("navigate_to", "channel")
             putExtra("channelId", data.channelId)
-            putExtra("channelName", if (isDm) data.senderName else "")
+            putExtra("channelName", resolveNotificationChannelName(isDm, data.senderName))
         }
 
         val pendingIntent = PendingIntent.getActivity(
@@ -313,4 +313,8 @@ class SocketNotificationService : Service() {
         serviceScope.cancel()
         Log.d(TAG, "Service destroyed")
     }
+}
+
+internal fun resolveNotificationChannelName(isDm: Boolean, senderName: String): String {
+    return if (isDm) senderName else ""
 }
