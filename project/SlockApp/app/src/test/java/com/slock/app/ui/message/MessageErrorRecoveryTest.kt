@@ -1,10 +1,13 @@
 package com.slock.app.ui.message
 
+import com.slock.app.data.api.ApiService
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
+import com.slock.app.data.local.dao.MessageDao
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
+import com.slock.app.data.repository.MessageRepositoryImpl
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -192,6 +195,67 @@ class MessageErrorRecoveryExecutionTest {
 
         verify(messageRepository).getMessages("srv-1", "ch-1", 50, "100", null)
         assertEquals(2, vm.state.value.messages.size)
+    }
+}
+
+class MessageRepositoryRawFallbackTest {
+
+    private val apiService: ApiService = mock()
+    private val activeServerHolder: ActiveServerHolder = mock()
+    private val messageDao: MessageDao = mock()
+    private lateinit var logMock: org.mockito.MockedStatic<android.util.Log>
+
+    private lateinit var repo: MessageRepositoryImpl
+
+    @org.junit.Before
+    fun setup() {
+        logMock = org.mockito.Mockito.mockStatic(android.util.Log::class.java)
+        repo = MessageRepositoryImpl(apiService, activeServerHolder, messageDao)
+    }
+
+    @org.junit.After
+    fun tearDown() {
+        logMock.close()
+    }
+
+    @Test
+    fun `raw fallback receives before when wrapped returns empty`() = runTest {
+        whenever(apiService.getMessages("ch-1", 50, "cursor-100", null))
+            .thenReturn(retrofit2.Response.success(com.slock.app.data.model.MessagesResponse(messages = emptyList())))
+        whenever(apiService.getMessagesRaw("ch-1", 50, "cursor-100", null))
+            .thenReturn(retrofit2.Response.success(listOf(Message(id = "m1", content = "older", seq = 50))))
+
+        val result = repo.getMessages("srv-1", "ch-1", 50, before = "cursor-100", after = null)
+
+        assertTrue(result.isSuccess)
+        assertEquals(1, result.getOrNull()!!.size)
+        verify(apiService).getMessagesRaw("ch-1", 50, "cursor-100", null)
+    }
+
+    @Test
+    fun `raw fallback receives before and after when wrapped throws`() = runTest {
+        whenever(apiService.getMessages("ch-1", 50, "cursor-50", null))
+            .thenThrow(RuntimeException("deserialization error"))
+        whenever(apiService.getMessagesRaw("ch-1", 50, "cursor-50", null))
+            .thenReturn(retrofit2.Response.success(listOf(Message(id = "m2", content = "page2", seq = 30))))
+
+        val result = repo.getMessages("srv-1", "ch-1", 50, before = "cursor-50", after = null)
+
+        assertTrue(result.isSuccess)
+        verify(apiService).getMessagesRaw("ch-1", 50, "cursor-50", null)
+    }
+
+    @Test
+    fun `raw fallback forwards after param for forward pagination`() = runTest {
+        whenever(apiService.getMessages("ch-1", 50, null, "cursor-200"))
+            .thenReturn(retrofit2.Response.success(com.slock.app.data.model.MessagesResponse(messages = emptyList())))
+        whenever(apiService.getMessagesRaw("ch-1", 50, null, "cursor-200"))
+            .thenReturn(retrofit2.Response.success(listOf(Message(id = "m3", content = "newer", seq = 250))))
+
+        val result = repo.getMessages("srv-1", "ch-1", 50, before = null, after = "cursor-200")
+
+        assertTrue(result.isSuccess)
+        verify(apiService).getMessagesRaw("ch-1", 50, null, "cursor-200")
     }
 }
 
