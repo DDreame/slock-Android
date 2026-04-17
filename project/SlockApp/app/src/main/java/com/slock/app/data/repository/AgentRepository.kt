@@ -18,6 +18,7 @@ interface AgentRepository {
     suspend fun startAgent(serverId: String, agentId: String): Result<Unit>
     suspend fun stopAgent(serverId: String, agentId: String): Result<Unit>
     suspend fun resetAgent(serverId: String, agentId: String, mode: String = "full"): Result<Unit>
+    suspend fun getActivityLog(serverId: String, agentId: String, limit: Int = 50): Result<List<ActivityLogEntry>>
 }
 
 class AgentRepositoryImpl @Inject constructor(
@@ -177,6 +178,20 @@ class AgentRepositoryImpl @Inject constructor(
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("Reset agent failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun getActivityLog(serverId: String, agentId: String, limit: Int): Result<List<ActivityLogEntry>> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.getAgentActivityLog(agentId, limit)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Get activity log failed: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

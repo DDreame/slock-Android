@@ -563,6 +563,7 @@ fun SlockNavHost(
                         navController.navigate(Routes.machineListRoute(serverId))
                     }
                 },
+                onSelectTab = viewModel::selectTab,
                 onRetry = viewModel::retry
             )
         }
