@@ -260,6 +260,13 @@ fun SlockNavHost(
                 (context as? android.app.Activity)?.finish()
             }
 
+            LaunchedEffect(channelState.actionFeedbackMessage) {
+                channelState.actionFeedbackMessage?.let { msg ->
+                    android.widget.Toast.makeText(context, msg, android.widget.Toast.LENGTH_SHORT).show()
+                    channelViewModel.consumeActionFeedback()
+                }
+            }
+
             var selectedServer by remember { mutableStateOf<Server?>(null) }
 
             // Restore selected server from ViewModel (survives navigation)
@@ -310,6 +317,9 @@ fun SlockNavHost(
                 },
                 onCreateChannel = channelViewModel::createChannel,
                 onCreateServer = serverViewModel::createServer,
+                onEditChannel = channelViewModel::updateChannel,
+                onDeleteChannel = channelViewModel::deleteChannel,
+                onLeaveChannel = channelViewModel::leaveChannel,
                 onSearchMessageClick = { message ->
                     val channelId = message.channelId.orEmpty()
                     if (channelId.isNotEmpty()) {

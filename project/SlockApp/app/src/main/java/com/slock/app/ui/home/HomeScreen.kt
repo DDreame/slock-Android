@@ -43,6 +43,9 @@ fun HomeScreen(
     onDmClick: (channelId: String, channelName: String) -> Unit,
     onCreateChannel: (name: String, type: String) -> Unit,
     onCreateServer: (name: String, slug: String) -> Unit,
+    onEditChannel: (channelId: String, newName: String) -> Unit = { _, _ -> },
+    onDeleteChannel: (channelId: String) -> Unit = {},
+    onLeaveChannel: (channelId: String) -> Unit = {},
     onSearchMessageClick: (Message) -> Unit = {},
     onSearchAgentClick: (Agent) -> Unit = {},
     onOpenSettings: () -> Unit,
@@ -55,6 +58,9 @@ fun HomeScreen(
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var showCreateChannelDialog by remember { mutableStateOf(false) }
+    var editingChannel by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var deletingChannelId by remember { mutableStateOf<String?>(null) }
+    var leavingChannelId by remember { mutableStateOf<String?>(null) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -114,7 +120,10 @@ fun HomeScreen(
                                 onDmClick = onDmClick,
                                 onShowCreateChannel = { showCreateChannelDialog = true },
                                 onSearchMessageClick = onSearchMessageClick,
-                                onSearchAgentClick = onSearchAgentClick
+                                onSearchAgentClick = onSearchAgentClick,
+                                onEditChannel = { id, name -> editingChannel = id to name },
+                                onDeleteChannel = { deletingChannelId = it },
+                                onLeaveChannel = { leavingChannelId = it }
                             )
                         },
                         { threadsContent() },
@@ -146,6 +155,45 @@ fun HomeScreen(
             }
         )
     }
+
+    editingChannel?.let { (channelId, currentName) ->
+        EditChannelNeoDialog(
+            currentName = currentName,
+            onDismiss = { editingChannel = null },
+            onSave = { newName ->
+                onEditChannel(channelId, newName)
+                editingChannel = null
+            }
+        )
+    }
+
+    deletingChannelId?.let { channelId ->
+        ConfirmActionNeoDialog(
+            title = "Delete Channel",
+            message = "Are you sure you want to delete this channel? This cannot be undone.",
+            confirmText = "DELETE",
+            confirmColor = Pink,
+            onDismiss = { deletingChannelId = null },
+            onConfirm = {
+                onDeleteChannel(channelId)
+                deletingChannelId = null
+            }
+        )
+    }
+
+    leavingChannelId?.let { channelId ->
+        ConfirmActionNeoDialog(
+            title = "Leave Channel",
+            message = "Are you sure you want to leave this channel?",
+            confirmText = "LEAVE",
+            confirmColor = Orange,
+            onDismiss = { leavingChannelId = null },
+            onConfirm = {
+                onLeaveChannel(channelId)
+                leavingChannelId = null
+            }
+        )
+    }
 }
 
 // Channels Tab Content (Tab 0)
@@ -158,7 +206,10 @@ private fun ChannelsTabContent(
     onDmClick: (channelId: String, channelName: String) -> Unit,
     onShowCreateChannel: () -> Unit,
     onSearchMessageClick: (Message) -> Unit = {},
-    onSearchAgentClick: (Agent) -> Unit = {}
+    onSearchAgentClick: (Agent) -> Unit = {},
+    onEditChannel: (channelId: String, currentName: String) -> Unit = { _, _ -> },
+    onDeleteChannel: (channelId: String) -> Unit = {},
+    onLeaveChannel: (channelId: String) -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Search bar
@@ -193,7 +244,10 @@ private fun ChannelsTabContent(
                     channelState = channelState,
                     onChannelClick = onChannelClick,
                     onDmClick = onDmClick,
-                    onShowCreateChannel = onShowCreateChannel
+                    onShowCreateChannel = onShowCreateChannel,
+                    onEditChannel = onEditChannel,
+                    onDeleteChannel = onDeleteChannel,
+                    onLeaveChannel = onLeaveChannel
                 )
             }
         }
@@ -528,7 +582,10 @@ private fun ChannelListContent(
     channelState: ChannelUiState,
     onChannelClick: (channelId: String, channelName: String) -> Unit,
     onDmClick: (channelId: String, channelName: String) -> Unit,
-    onShowCreateChannel: () -> Unit
+    onShowCreateChannel: () -> Unit,
+    onEditChannel: (channelId: String, currentName: String) -> Unit = { _, _ -> },
+    onDeleteChannel: (channelId: String) -> Unit = {},
+    onLeaveChannel: (channelId: String) -> Unit = {}
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
         item {
@@ -542,7 +599,10 @@ private fun ChannelListContent(
                 onClick = { onChannelClick(channel.id.orEmpty(), channel.name.orEmpty()) },
                 lastMessageSender = preview?.senderName.orEmpty(),
                 lastMessageContent = preview?.content.orEmpty(),
-                lastMessageTime = preview?.createdAt.orEmpty()
+                lastMessageTime = preview?.createdAt.orEmpty(),
+                onEdit = { onEditChannel(channel.id.orEmpty(), channel.name.orEmpty()) },
+                onDelete = { onDeleteChannel(channel.id.orEmpty()) },
+                onLeave = { onLeaveChannel(channel.id.orEmpty()) }
             )
         }
 
@@ -718,8 +778,13 @@ private fun ChannelItem(
     unreadCount: Int = 0,
     lastMessageSender: String = "",
     lastMessageContent: String = "",
-    lastMessageTime: String = ""
+    lastMessageTime: String = "",
+    onEdit: () -> Unit = {},
+    onDelete: () -> Unit = {},
+    onLeave: () -> Unit = {}
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -825,6 +890,43 @@ private fun ChannelItem(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
                     color = White
+                )
+            }
+        }
+
+        // Overflow menu
+        Box {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clickable { showMenu = true },
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "\u22EE",
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextMuted
+                )
+            }
+            DropdownMenu(
+                expanded = showMenu,
+                onDismissRequest = { showMenu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Edit") },
+                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    onClick = { showMenu = false; onEdit() }
+                )
+                DropdownMenuItem(
+                    text = { Text("Leave") },
+                    leadingIcon = { Icon(Icons.Default.ExitToApp, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                    onClick = { showMenu = false; onLeave() }
+                )
+                DropdownMenuItem(
+                    text = { Text("Delete", color = Color(0xFFD32F2F)) },
+                    leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null, tint = Color(0xFFD32F2F), modifier = Modifier.size(18.dp)) },
+                    onClick = { showMenu = false; onDelete() }
                 )
             }
         }
@@ -1218,6 +1320,98 @@ private fun CreateServerNeoDialog(
                     text = "CREATE",
                     onClick = { if (name.isNotBlank() && slug.isNotBlank()) onCreate(name, slug) },
                     enabled = name.isNotBlank() && slug.isNotBlank()
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                NeoButtonSecondary(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                    containerColor = Cream
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EditChannelNeoDialog(
+    currentName: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var name by remember { mutableStateOf(currentName) }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
+                Text(
+                    text = "Edit Channel",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Black
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                NeoLabel("CHANNEL NAME")
+                NeoTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    placeholder = "e.g. general"
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                NeoButton(
+                    text = "SAVE",
+                    onClick = { if (name.isNotBlank() && name != currentName) onSave(name) },
+                    enabled = name.isNotBlank() && name != currentName
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                NeoButtonSecondary(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                    containerColor = Cream
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConfirmActionNeoDialog(
+    title: String,
+    message: String,
+    confirmText: String,
+    confirmColor: Color,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Black
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = TextSecondary
+                )
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                NeoButton(
+                    text = confirmText,
+                    onClick = onConfirm,
+                    containerColor = confirmColor
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))

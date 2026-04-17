@@ -28,7 +28,8 @@ data class ChannelUiState(
     val serverId: String = "",
     val isLoading: Boolean = false,
     val isDmLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val actionFeedbackMessage: String? = null
 )
 
 @HiltViewModel
@@ -276,6 +277,67 @@ class ChannelViewModel @Inject constructor(
                     (userId != null && member.userId == userId)
             } == true
         }
+    }
+
+    fun updateChannel(channelId: String, newName: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        viewModelScope.launch {
+            channelRepository.updateChannel(serverId, channelId, newName).fold(
+                onSuccess = { updated ->
+                    _state.update { current ->
+                        current.copy(
+                            channels = current.channels.map { if (it.id == channelId) updated else it },
+                            actionFeedbackMessage = "Channel renamed"
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _state.update { it.copy(actionFeedbackMessage = "Rename failed: ${err.message}") }
+                }
+            )
+        }
+    }
+
+    fun deleteChannel(channelId: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        viewModelScope.launch {
+            channelRepository.deleteChannel(serverId, channelId).fold(
+                onSuccess = {
+                    _state.update { current ->
+                        current.copy(
+                            channels = current.channels.filter { it.id != channelId },
+                            actionFeedbackMessage = "Channel deleted"
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _state.update { it.copy(actionFeedbackMessage = "Delete failed: ${err.message}") }
+                }
+            )
+        }
+    }
+
+    fun leaveChannel(channelId: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        viewModelScope.launch {
+            channelRepository.leaveChannel(serverId, channelId).fold(
+                onSuccess = {
+                    _state.update { current ->
+                        current.copy(
+                            channels = current.channels.filter { it.id != channelId },
+                            actionFeedbackMessage = "Left channel"
+                        )
+                    }
+                },
+                onFailure = { err ->
+                    _state.update { it.copy(actionFeedbackMessage = "Leave failed: ${err.message}") }
+                }
+            )
+        }
+    }
+
+    fun consumeActionFeedback() {
+        _state.update { it.copy(actionFeedbackMessage = null) }
     }
 
     private fun loadChannelPreviews(channels: List<Channel>) {
