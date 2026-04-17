@@ -48,6 +48,8 @@ import com.slock.app.ui.thread.ThreadListViewModel
 import com.slock.app.ui.home.SearchViewModel
 import com.slock.app.ui.settings.SettingsScreen
 import com.slock.app.ui.settings.SettingsViewModel
+import com.slock.app.ui.profile.ProfileScreen
+import com.slock.app.ui.profile.ProfileViewModel
 import com.slock.app.util.LogCollector
 
 object Routes {
@@ -64,8 +66,11 @@ object Routes {
     const val AGENT_DETAIL = "agent/{agentId}"
     const val MACHINE_LIST = "server/{serverId}/machines"
     const val SETTINGS = "settings"
+    const val PROFILE = "profile"
+    const val USER_PROFILE = "profile/{userId}"
     fun agentDetailRoute(agentId: String) = "agent/$agentId"
     fun machineListRoute(serverId: String) = "server/$serverId/machines"
+    fun userProfileRoute(userId: String) = "profile/$userId"
 }
 
 @Composable
@@ -293,6 +298,8 @@ fun SlockNavHost(
                         onMemberClick = { member ->
                             if (member.isAgent && member.id.isNotBlank()) {
                                 navController.navigate(Routes.agentDetailRoute(member.id))
+                            } else if (!member.isAgent && !member.userId.isNullOrBlank()) {
+                                navController.navigate(Routes.userProfileRoute(member.userId))
                             }
                         },
                         onNavigateBack = { },
@@ -325,6 +332,7 @@ fun SlockNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onNotificationPreferenceChange = viewModel::updateNotificationPreference,
                 onRefreshAccount = { viewModel.refreshAccount() },
+                onOpenProfile = { navController.navigate(Routes.PROFILE) },
                 onSendFeedback = { LogCollector.shareReport(context) },
                 onLogout = {
                     authViewModel.logout {
@@ -334,6 +342,49 @@ fun SlockNavHost(
                         }
                     }
                 }
+            )
+        }
+
+        // Own Profile Screen
+        composable(Routes.PROFILE) {
+            val viewModel: ProfileViewModel = hiltViewModel()
+            val authViewModel: AuthViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+            val context = androidx.compose.ui.platform.LocalContext.current
+
+            ProfileScreen(
+                state = state,
+                onNavigateBack = { navController.popBackStack() },
+                onStartEditing = viewModel::startEditing,
+                onCancelEditing = viewModel::cancelEditing,
+                onEditNameChange = viewModel::updateEditName,
+                onSaveName = viewModel::saveName,
+                onLogout = {
+                    authViewModel.logout {
+                        SocketNotificationService.stop(context)
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                },
+                onRetry = viewModel::retry
+            )
+        }
+
+        // Other User Profile Screen
+        composable(
+            Routes.USER_PROFILE,
+            arguments = listOf(
+                navArgument("userId") { type = NavType.StringType }
+            )
+        ) {
+            val viewModel: ProfileViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+
+            ProfileScreen(
+                state = state,
+                onNavigateBack = { navController.popBackStack() },
+                onRetry = viewModel::retry
             )
         }
 
