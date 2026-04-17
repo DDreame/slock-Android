@@ -39,6 +39,7 @@ data class MessageUiState(
     val isSending: Boolean = false,
     val isUploading: Boolean = false,
     val error: String? = null,
+    val sendError: String? = null,
     val replyingTo: Message? = null,
     val pendingAttachments: List<PendingAttachment> = emptyList(),
     val previewImageUrl: String? = null,
@@ -290,7 +291,7 @@ class MessageViewModel @Inject constructor(
         if (_state.value.isSending) return
         val serverId = activeServerHolder.serverId
         if (serverId.isNullOrBlank()) {
-            _state.update { it.copy(error = "Server not selected") }
+            _state.update { it.copy(sendError = "Server not selected") }
             return
         }
         val replyTo = _state.value.replyingTo
@@ -308,7 +309,7 @@ class MessageViewModel @Inject constructor(
             parentMessageId = replyTo?.id
         )
         viewModelScope.launch {
-            _state.update { recomputeSearchMatches(it.copy(isSending = true, isUploading = attachments.isNotEmpty(), error = null, replyingTo = null, pendingAttachments = emptyList(), messages = listOf(pendingMessage) + it.messages)) }
+            _state.update { recomputeSearchMatches(it.copy(isSending = true, isUploading = attachments.isNotEmpty(), sendError = null, replyingTo = null, pendingAttachments = emptyList(), messages = listOf(pendingMessage) + it.messages)) }
 
             // Upload attachments first
             val attachmentIds = mutableListOf<String>()
@@ -329,7 +330,7 @@ class MessageViewModel @Inject constructor(
                     recomputeSearchMatches(current.copy(
                         messages = current.messages.filter { it.id != pendingId },
                         isSending = false,
-                        error = "图片上传失败，消息未发送"
+                        sendError = "图片上传失败，消息未发送"
                     ))
                 }
                 return@launch
@@ -348,7 +349,7 @@ class MessageViewModel @Inject constructor(
                         recomputeSearchMatches(current.copy(
                             messages = current.messages.filter { it.id != pendingId },
                             isSending = false,
-                            error = error.message
+                            sendError = error.message
                         ))
                     }
                 }
@@ -378,6 +379,17 @@ class MessageViewModel @Inject constructor(
 
     fun clearReplyTo() {
         _state.update { it.copy(replyingTo = null) }
+    }
+
+    fun dismissSendError() {
+        _state.update { it.copy(sendError = null) }
+    }
+
+    fun retryLoadMessages() {
+        val channelId = _state.value.channelId
+        if (channelId.isNotBlank()) {
+            loadMessages(channelId)
+        }
     }
 
     fun loadMoreMessages() {

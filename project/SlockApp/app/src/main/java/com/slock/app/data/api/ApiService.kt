@@ -117,7 +117,9 @@ interface ApiService {
     @GET("messages/channel/{channelId}")
     suspend fun getMessagesRaw(
         @Path("channelId") channelId: String,
-        @Query("limit") limit: Int = 50
+        @Query("limit") limit: Int = 50,
+        @Query("before") before: String? = null,
+        @Query("after") after: String? = null
     ): Response<List<Message>>
 
     @GET("messages/search")
