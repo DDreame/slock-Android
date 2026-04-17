@@ -81,6 +81,7 @@ fun SlockNavHost(
     onDeepLinkConsumed: () -> Unit = {}
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
+    var isSplashDone by remember { mutableStateOf(false) }
 
     // Observe auth expiry globally — redirect to login when token refresh fails
     val topAuthViewModel: AuthViewModel = hiltViewModel()
@@ -94,9 +95,9 @@ fun SlockNavHost(
         }
     }
 
-    // Handle deep link from notification
-    LaunchedEffect(deepLinkChannelId) {
-        if (!deepLinkChannelId.isNullOrBlank()) {
+    // Handle deep link from notification (warm start only — cold start is handled by splash)
+    LaunchedEffect(deepLinkChannelId, isSplashDone) {
+        if (shouldHandleWarmStartDeepLink(isSplashDone, deepLinkChannelId)) {
             val encodedName = Uri.encode(deepLinkChannelName ?: "")
             navController.navigate("channel/$deepLinkChannelId/messages?name=$encodedName") {
                 launchSingleTop = true
@@ -116,10 +117,17 @@ fun SlockNavHost(
 
             LaunchedEffect(state.isCheckingSession, state.isLoggedIn) {
                 if (!state.isCheckingSession) {
-                    val target = if (state.isLoggedIn) Routes.HOME else Routes.LOGIN
-                    navController.navigate(target) {
+                    val result = resolveSplashNavigation(state.isLoggedIn, deepLinkChannelId, deepLinkChannelName)
+                    navController.navigate(result.target) {
                         popUpTo(Routes.SPLASH) { inclusive = true }
                     }
+                    if (result.deepLinkRoute != null) {
+                        navController.navigate(result.deepLinkRoute) {
+                            launchSingleTop = true
+                        }
+                        onDeepLinkConsumed()
+                    }
+                    isSplashDone = true
                 }
             }
         }
