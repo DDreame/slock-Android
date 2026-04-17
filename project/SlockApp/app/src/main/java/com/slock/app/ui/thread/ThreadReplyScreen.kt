@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.data.model.Message
+import com.slock.app.ui.message.MessageAttachmentContent
 import com.slock.app.ui.theme.*
 
 @Composable
@@ -324,6 +325,11 @@ private fun OriginalMessageCard(message: Message) {
                 // Message text
                 NeoMessageContent(content = message.content.orEmpty())
 
+                if (message.attachments.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    MessageAttachmentContent(attachments = message.attachments)
+                }
+
                 Spacer(modifier = Modifier.height(10.dp))
             }
         }
@@ -426,6 +432,11 @@ private fun ThreadReply(message: Message) {
             Spacer(modifier = Modifier.height(3.dp))
 
             NeoMessageContent(content = message.content.orEmpty())
+
+            if (message.attachments.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                MessageAttachmentContent(attachments = message.attachments)
+            }
 
             if (isPending) {
                 Text(
