@@ -286,32 +286,40 @@ private fun NeoTopBar(
         ) {
             // Server selector
             Row(
-                modifier = Modifier.clickable(onClick = onServerSelectorClick),
+                modifier = Modifier
+                    .clickable(onClick = onServerSelectorClick)
+                    .border(2.dp, Black, RectangleShape)
+                    .background(White)
+                    .padding(horizontal = 10.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
-                        .neoShadowSmall()
+                        .size(28.dp)
                         .background(Yellow)
-                        .border(2.dp, Black, RectangleShape),
+                        .border(1.5.dp, Black, RectangleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = serverInitial,
                         fontWeight = FontWeight.Bold,
-                        fontSize = 16.sp,
+                        fontSize = 14.sp,
                         color = Black
                     )
                 }
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = serverName,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = Black
                 )
-                Spacer(modifier = Modifier.width(4.dp))
-                Text(text = "\u25BC", fontSize = 12.sp, color = Black)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = "\u25BE",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Black
+                )
             }
 
             // Action buttons
