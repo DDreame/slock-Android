@@ -227,9 +227,15 @@ private fun ChannelsTabContent(
 
                     if (channelState.dms.isNotEmpty()) {
                         items(channelState.dms) { dm ->
+                            // Check if DM contact is online via members or ID
+                            val contactId = dm.members?.firstOrNull { it.agentId != null }?.agentId
+                                ?: dm.members?.firstOrNull { it.userId != null }?.userId
+                            val isOnline = contactId != null && contactId in channelState.onlineIds
+                            val isAgent = dm.members?.any { it.agentId != null } ?: true
                             DMItem(
                                 name = dm.name.orEmpty(),
-                                isAgent = true,
+                                isAgent = isAgent,
+                                isOnline = isOnline,
                                 onClick = { onDmClick(dm.id.orEmpty(), dm.name.orEmpty()) }
                             )
                         }

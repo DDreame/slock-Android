@@ -53,6 +53,7 @@ class SocketIOManager @Inject constructor(
         data class DaemonStatus(val machineId: String, val status: String) : SocketEvent()
         data class RoomsJoined(val rooms: List<String>) : SocketEvent()
         data class ServerPlanUpdated(val plan: String) : SocketEvent()
+        data class UserPresence(val userId: String, val status: String) : SocketEvent()
     }
 
     // Data classes for events
@@ -397,6 +398,16 @@ class SocketIOManager @Inject constructor(
                 val data = args.firstOrNull() as? JSONObject ?: return@on
                 _events.tryEmit(
                     SocketEvent.ServerPlanUpdated(data.optString("plan"))
+                )
+            }
+
+            on("user:presence") { args ->
+                val data = args.firstOrNull() as? JSONObject ?: return@on
+                _events.tryEmit(
+                    SocketEvent.UserPresence(
+                        userId = data.optString("userId"),
+                        status = data.optString("status")
+                    )
                 )
             }
 

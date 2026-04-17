@@ -10,7 +10,8 @@ data class Channel(
     val type: String? = null,
     val seq: Long = 0,
     @SerializedName("createdAt")
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    val members: List<ChannelMember>? = null
 )
 
 data class CreateChannelRequest(

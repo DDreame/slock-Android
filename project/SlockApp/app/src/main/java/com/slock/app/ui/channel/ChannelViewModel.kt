@@ -3,12 +3,15 @@ package com.slock.app.ui.channel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.model.Channel
 import com.slock.app.data.model.Message
+import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,6 +23,7 @@ data class ChannelUiState(
     val channels: List<Channel> = emptyList(),
     val dms: List<Channel> = emptyList(),
     val channelPreviews: Map<String, Message> = emptyMap(),
+    val onlineIds: Set<String> = emptySet(),
     val serverId: String = "",
     val isLoading: Boolean = false,
     val isDmLoading: Boolean = false,
@@ -30,12 +34,43 @@ data class ChannelUiState(
 class ChannelViewModel @Inject constructor(
     private val channelRepository: ChannelRepository,
     private val messageRepository: MessageRepository,
+    private val agentRepository: AgentRepository,
     private val activeServerHolder: ActiveServerHolder,
-    private val socketIOManager: SocketIOManager
+    private val socketIOManager: SocketIOManager,
+    private val presenceTracker: PresenceTracker
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChannelUiState())
     val state: StateFlow<ChannelUiState> = _state.asStateFlow()
+
+    private var socketEventsJob: Job? = null
+
+    init {
+        observePresence()
+    }
+
+    private fun observePresence() {
+        socketEventsJob = viewModelScope.launch {
+            socketIOManager.events.collect { event ->
+                when (event) {
+                    is SocketIOManager.SocketEvent.UserPresence -> {
+                        if (event.status == "online") {
+                            presenceTracker.setOnline(event.userId)
+                        } else {
+                            presenceTracker.setOffline(event.userId)
+                        }
+                        _state.update { it.copy(onlineIds = presenceTracker.onlineIds.value) }
+                    }
+                    is SocketIOManager.SocketEvent.AgentActivity -> {
+                        // Agent is active if we receive activity events
+                        presenceTracker.setOnline(event.data.agentId)
+                        _state.update { it.copy(onlineIds = presenceTracker.onlineIds.value) }
+                    }
+                    else -> { /* ignore */ }
+                }
+            }
+        }
+    }
 
     fun loadChannels(serverId: String) {
         activeServerHolder.serverId = serverId
@@ -81,6 +116,15 @@ class ChannelViewModel @Inject constructor(
                 onSuccess = { dms -> _state.update { it.copy(dms = dms, isDmLoading = false) } },
                 onFailure = { err -> _state.update { it.copy(isDmLoading = false, error = err.message) } }
             )
+            // Seed agent online status from agents list
+            agentRepository.getAgents(serverId).onSuccess { agents ->
+                agents.forEach { agent ->
+                    if (agent.status == "active") {
+                        presenceTracker.setOnline(agent.id.orEmpty())
+                    }
+                }
+                _state.update { it.copy(onlineIds = presenceTracker.onlineIds.value) }
+            }
         }
     }
 
@@ -129,5 +173,10 @@ class ChannelViewModel @Inject constructor(
                 _state.update { it.copy(channelPreviews = it.channelPreviews + apiPreviews) }
             }
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        socketEventsJob?.cancel()
     }
 }

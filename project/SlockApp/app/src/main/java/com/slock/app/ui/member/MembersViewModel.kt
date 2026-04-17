@@ -3,6 +3,7 @@ package com.slock.app.ui.member
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.model.Agent
 import com.slock.app.data.model.Member
 import com.slock.app.data.repository.AgentRepository
@@ -38,7 +39,8 @@ class MembersViewModel @Inject constructor(
     private val serverRepository: ServerRepository,
     private val agentRepository: AgentRepository,
     private val socketIOManager: SocketIOManager,
-    private val activeServerHolder: ActiveServerHolder
+    private val activeServerHolder: ActiveServerHolder,
+    private val presenceTracker: PresenceTracker
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MembersUiState())
@@ -56,11 +58,28 @@ class MembersViewModel @Inject constructor(
             socketIOManager.events.collect { event ->
                 when (event) {
                     is SocketIOManager.SocketEvent.AgentActivity -> {
+                        presenceTracker.setOnline(event.data.agentId)
                         _state.update { current ->
                             current.copy(
                                 members = current.members.map { m ->
                                     if (m.id == event.data.agentId && m.isAgent) {
-                                        m.copy(subtitle = event.data.activity)
+                                        m.copy(subtitle = event.data.activity, isOnline = true)
+                                    } else m
+                                }
+                            )
+                        }
+                    }
+                    is SocketIOManager.SocketEvent.UserPresence -> {
+                        if (event.status == "online") {
+                            presenceTracker.setOnline(event.userId)
+                        } else {
+                            presenceTracker.setOffline(event.userId)
+                        }
+                        _state.update { current ->
+                            current.copy(
+                                members = current.members.map { m ->
+                                    if (m.id == event.userId && !m.isAgent) {
+                                        m.copy(isOnline = event.status == "online")
                                     } else m
                                 }
                             )
@@ -103,7 +122,7 @@ class MembersViewModel @Inject constructor(
                                 name = displayName,
                                 role = member.role.orEmpty(),
                                 isAgent = false,
-                                isOnline = false, // No presence API yet
+                                isOnline = presenceTracker.isOnline(member.id.orEmpty()),
                                 subtitle = member.role.orEmpty().replaceFirstChar { it.uppercase() }
                             )
                         )
