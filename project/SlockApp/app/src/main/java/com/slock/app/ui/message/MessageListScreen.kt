@@ -179,6 +179,7 @@ fun MessageListScreen(
                                 NeoMessage(
                                     message = message,
                                     quotedMessage = quotedMessage,
+                                    isOnline = message.senderId.orEmpty() in state.onlineIds,
                                     reactions = resolveDisplayedReactions(
                                         message = message,
                                         reactionOverride = state.reactionOverridesByMessageId[message.id]
@@ -371,6 +372,7 @@ private fun SearchBar(
 private fun NeoMessage(
     message: Message,
     quotedMessage: Message? = null,
+    isOnline: Boolean = false,
     reactions: List<MessageReactionUiModel> = emptyList(),
     highlightQuery: String = "",
     isCurrentSearchMatch: Boolean = false,
@@ -413,21 +415,11 @@ private fun NeoMessage(
 
         Spacer(modifier = Modifier.width(10.dp))
 
-        // Avatar
-        Box(
-            modifier = Modifier
-                .size(36.dp)
-                .background(if (isAgent) Orange else Cyan)
-                .border(2.dp, Black, RectangleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = message.senderName.orEmpty().ifEmpty { "Unknown" }.take(1).uppercase(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = Black
-            )
-        }
+        MessageAvatar(
+            name = message.senderName.orEmpty().ifEmpty { "Unknown" },
+            isAgent = isAgent,
+            isOnline = isOnline
+        )
 
         // Content
         Column(modifier = Modifier.weight(1f)) {
@@ -645,6 +637,39 @@ private fun NeoMessage(
                 clipboardManager.setText(AnnotatedString(message.content.orEmpty()))
                 showMenu = false
             }
+        )
+    }
+}
+
+@Composable
+private fun MessageAvatar(
+    name: String,
+    isAgent: Boolean,
+    isOnline: Boolean
+) {
+    Box {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .background(if (isAgent) Orange else Cyan)
+                .border(2.dp, Black, RectangleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = name.take(1).uppercase(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp,
+                color = Black
+            )
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .offset(x = 1.dp, y = 1.dp)
+                .size(8.dp)
+                .background(if (isOnline) Lime else Color(0xFFCCCCCC))
+                .border(1.5.dp, Black, RectangleShape)
         )
     }
 }

@@ -1,6 +1,7 @@
 package com.slock.app.ui.message
 
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
@@ -26,12 +27,13 @@ class MessageViewModelReactionTest {
     private val messageRepository: MessageRepository = mock()
     private val socketIOManager: SocketIOManager = mock()
     private val activeServerHolder: ActiveServerHolder = mock()
+    private val presenceTracker = PresenceTracker()
 
     @Test
     fun toggleReaction_updatesLocalReactionOverrides() = runTest {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
 
-        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder)
+        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder, presenceTracker)
         val message = Message(id = "msg-1", content = "hello")
 
         viewModel.toggleReaction(message, "👍")
@@ -46,7 +48,7 @@ class MessageViewModelReactionTest {
     fun toggleReaction_ignoresMessagesWithoutId() = runTest {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
 
-        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder)
+        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder, presenceTracker)
 
         viewModel.toggleReaction(Message(id = null, content = "draft"), "👍")
 
@@ -65,7 +67,7 @@ class MessageViewModelReactionTest {
         whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
             .thenReturn(Result.success(listOf(existing)))
 
-        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder)
+        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder, presenceTracker)
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
 
@@ -81,5 +83,55 @@ class MessageViewModelReactionTest {
         advanceUntilIdle()
 
         assertEquals("after", viewModel.state.value.messages.first().content)
+    }
+
+    @Test
+    fun userPresenceEvent_updatesOnlineIds() = runTest {
+        val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
+        whenever(socketIOManager.events).thenReturn(events)
+
+        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder, presenceTracker)
+        advanceUntilIdle()
+
+        events.emit(SocketIOManager.SocketEvent.UserPresence(userId = "user-1", status = "online"))
+        advanceUntilIdle()
+        assertTrue("user-1" in viewModel.state.value.onlineIds)
+
+        events.emit(SocketIOManager.SocketEvent.UserPresence(userId = "user-1", status = "offline"))
+        advanceUntilIdle()
+        assertTrue("user-1" !in viewModel.state.value.onlineIds)
+    }
+
+    @Test
+    fun existingPresence_isExposedOnInit() = runTest {
+        whenever(socketIOManager.events).thenReturn(emptyFlow())
+        presenceTracker.setOnline("agent-1")
+
+        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder, presenceTracker)
+        advanceUntilIdle()
+
+        assertTrue("agent-1" in viewModel.state.value.onlineIds)
+    }
+
+    @Test
+    fun agentActivityEvent_marksAgentOnline() = runTest {
+        val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
+        whenever(socketIOManager.events).thenReturn(events)
+
+        val viewModel = MessageViewModel(messageRepository, socketIOManager, activeServerHolder, presenceTracker)
+        advanceUntilIdle()
+
+        events.emit(
+            SocketIOManager.SocketEvent.AgentActivity(
+                SocketIOManager.AgentActivityData(
+                    agentId = "agent-1",
+                    activity = "thinking",
+                    message = "working"
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        assertTrue("agent-1" in viewModel.state.value.onlineIds)
     }
 }
