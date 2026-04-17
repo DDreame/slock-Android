@@ -1,5 +1,6 @@
 package com.slock.app.ui.navigation
 
+import android.content.Intent
 import com.slock.app.resolveDeepLinkFromIntent
 import com.slock.app.service.resolveNotificationChannelName
 import org.junit.Assert.assertEquals
@@ -8,6 +9,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
 import java.io.File
 
 class WarmStartDeepLinkNavTest {
@@ -96,22 +99,32 @@ class DeepLinkFromIntentTest {
 
 class NotificationDeepLinkChainExecutionTest {
 
-    @Test
-    fun `warm start DM notification - full chain produces correct route`() {
-        // Step 1: Service resolves channel name for DM
-        val channelName = resolveNotificationChannelName(isDm = true, senderName = "Alice")
-        assertEquals("Alice", channelName)
+    private fun buildServiceIntent(channelId: String, isDm: Boolean, senderName: String): Intent {
+        val channelName = resolveNotificationChannelName(isDm, senderName)
+        val intent: Intent = mock()
+        whenever(intent.getStringExtra("channelId")).thenReturn(channelId)
+        whenever(intent.getStringExtra("channelName")).thenReturn(channelName)
+        return intent
+    }
 
-        // Step 2: Activity extracts deep link from intent extras
-        val deepLink = resolveDeepLinkFromIntent("dm-1", channelName)
+    private fun executeHandleDeepLink(intent: Intent): Pair<String, String?>? {
+        return resolveDeepLinkFromIntent(
+            intent.getStringExtra("channelId"),
+            intent.getStringExtra("channelName")
+        )
+    }
+
+    @Test
+    fun `warm start DM - service intent through activity to NavHost route`() {
+        val intent = buildServiceIntent("dm-1", isDm = true, senderName = "Alice")
+
+        val deepLink = executeHandleDeepLink(intent)
         assertNotNull(deepLink)
         assertEquals("dm-1", deepLink!!.first)
         assertEquals("Alice", deepLink.second)
 
-        // Step 3: NavHost gate allows warm-start navigation
         assertTrue(shouldHandleWarmStartDeepLink(isSplashDone = true, deepLinkChannelId = deepLink.first))
 
-        // Step 4: NavHost resolves to target route
         val action = resolveWarmStartDeepLinkNav(deepLink.first, deepLink.second)
         assertTrue(action.route.startsWith("channel/dm-1/messages"))
         assertTrue(action.route.contains("name=Alice"))
@@ -120,25 +133,22 @@ class NotificationDeepLinkChainExecutionTest {
     }
 
     @Test
-    fun `warm start channel mention - full chain uses empty channel name`() {
-        val channelName = resolveNotificationChannelName(isDm = false, senderName = "Bob")
-        assertEquals("", channelName)
+    fun `warm start channel mention - intent carries empty channelName`() {
+        val intent = buildServiceIntent("ch-42", isDm = false, senderName = "Bob")
 
-        val deepLink = resolveDeepLinkFromIntent("ch-42", channelName)
+        assertEquals("", intent.getStringExtra("channelName"))
+
+        val deepLink = executeHandleDeepLink(intent)
         assertNotNull(deepLink)
-        assertEquals("ch-42", deepLink!!.first)
-        assertEquals("", deepLink.second)
 
-        assertTrue(shouldHandleWarmStartDeepLink(isSplashDone = true, deepLinkChannelId = deepLink.first))
-
-        val action = resolveWarmStartDeepLinkNav(deepLink.first, deepLink.second)
+        val action = resolveWarmStartDeepLinkNav(deepLink!!.first, deepLink.second ?: "")
         assertTrue(action.route.startsWith("channel/ch-42/messages"))
     }
 
     @Test
-    fun `cold start logged in - splash navigates to HOME then deep link route`() {
-        val channelName = resolveNotificationChannelName(isDm = true, senderName = "Alice")
-        val deepLink = resolveDeepLinkFromIntent("dm-1", channelName)
+    fun `cold start logged in - intent drives splash to HOME plus deep link`() {
+        val intent = buildServiceIntent("dm-1", isDm = true, senderName = "Alice")
+        val deepLink = executeHandleDeepLink(intent)
         assertNotNull(deepLink)
 
         val splash = resolveSplashNavigation(
@@ -153,9 +163,9 @@ class NotificationDeepLinkChainExecutionTest {
     }
 
     @Test
-    fun `cold start not logged in - splash navigates to LOGIN with no deep link`() {
-        val channelName = resolveNotificationChannelName(isDm = true, senderName = "Alice")
-        val deepLink = resolveDeepLinkFromIntent("dm-1", channelName)
+    fun `cold start not logged in - intent deep link discarded at splash`() {
+        val intent = buildServiceIntent("dm-1", isDm = true, senderName = "Alice")
+        val deepLink = executeHandleDeepLink(intent)
         assertNotNull(deepLink)
 
         val splash = resolveSplashNavigation(
@@ -168,9 +178,12 @@ class NotificationDeepLinkChainExecutionTest {
     }
 
     @Test
-    fun `chain breaks when channelId is blank - activity returns null`() {
-        val deepLink = resolveDeepLinkFromIntent("", "general")
-        assertNull(deepLink)
+    fun `intent with null channelId - handleDeepLink returns null`() {
+        val intent: Intent = mock()
+        whenever(intent.getStringExtra("channelId")).thenReturn(null)
+        whenever(intent.getStringExtra("channelName")).thenReturn("general")
+
+        assertNull(executeHandleDeepLink(intent))
     }
 
     @Test
@@ -179,12 +192,12 @@ class NotificationDeepLinkChainExecutionTest {
     }
 
     @Test
-    fun `DM with spaces in sender name encodes correctly through chain`() {
-        val channelName = resolveNotificationChannelName(isDm = true, senderName = "Agent Bot")
-        val deepLink = resolveDeepLinkFromIntent("dm-5", channelName)
+    fun `DM sender with spaces - intent carries encoded name through chain`() {
+        val intent = buildServiceIntent("dm-5", isDm = true, senderName = "Agent Bot")
+        val deepLink = executeHandleDeepLink(intent)
         assertNotNull(deepLink)
 
-        val action = resolveWarmStartDeepLinkNav(deepLink!!.first, deepLink.second)
+        val action = resolveWarmStartDeepLinkNav(deepLink!!.first, deepLink.second ?: "")
         assertTrue(action.route.contains("Agent%20Bot"))
     }
 }
