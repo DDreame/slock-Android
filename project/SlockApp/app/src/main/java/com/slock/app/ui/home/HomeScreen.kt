@@ -190,9 +190,13 @@ private fun ChannelsTabContent(
                     }
 
                     items(filteredChannels) { channel ->
+                        val preview = channelState.channelPreviews[channel.id.orEmpty()]
                         ChannelItem(
                             channel = channel,
-                            onClick = { onChannelClick(channel.id.orEmpty(), channel.name.orEmpty()) }
+                            onClick = { onChannelClick(channel.id.orEmpty(), channel.name.orEmpty()) },
+                            lastMessageSender = preview?.senderName.orEmpty(),
+                            lastMessageContent = preview?.content.orEmpty(),
+                            lastMessageTime = preview?.createdAt.orEmpty()
                         )
                     }
 
@@ -352,7 +356,14 @@ private fun SectionHeader(title: String, onAdd: () -> Unit) {
 
 // Channel Item
 @Composable
-private fun ChannelItem(channel: Channel, onClick: () -> Unit, unreadCount: Int = 0) {
+private fun ChannelItem(
+    channel: Channel,
+    onClick: () -> Unit,
+    unreadCount: Int = 0,
+    lastMessageSender: String = "",
+    lastMessageContent: String = "",
+    lastMessageTime: String = ""
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -385,15 +396,41 @@ private fun ChannelItem(channel: Channel, onClick: () -> Unit, unreadCount: Int 
 
         // Channel info
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = "# ${channel.name.orEmpty()}",
-                style = MaterialTheme.typography.titleSmall,
-                color = if (unreadCount > 0) Black else Black,
-                fontWeight = if (unreadCount > 0) FontWeight.Bold else FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (channel.type.orEmpty().isNotBlank()) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "# ${channel.name.orEmpty()}",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Black,
+                    fontWeight = if (unreadCount > 0) FontWeight.Bold else FontWeight.Normal,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                if (lastMessageTime.isNotEmpty()) {
+                    val displayTime = formatPreviewTime(lastMessageTime)
+                    Text(
+                        text = displayTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted,
+                        fontSize = 10.sp,
+                        maxLines = 1
+                    )
+                }
+            }
+            if (lastMessageContent.isNotEmpty()) {
+                Text(
+                    text = if (lastMessageSender.isNotEmpty()) "$lastMessageSender: $lastMessageContent" else lastMessageContent,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextMuted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            } else if (channel.type.orEmpty().isNotBlank()) {
                 Text(
                     text = channel.type.orEmpty(),
                     style = MaterialTheme.typography.bodySmall,
@@ -435,6 +472,25 @@ private fun ChannelItem(channel: Channel, onClick: () -> Unit, unreadCount: Int 
                 )
             }
         }
+    }
+}
+
+// Format ISO timestamp to short display time (e.g. "14:30" or "Apr 16")
+private fun formatPreviewTime(isoTime: String): String {
+    return try {
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.getDefault())
+        sdf.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        val date = sdf.parse(isoTime) ?: return ""
+        val now = java.util.Calendar.getInstance()
+        val msgCal = java.util.Calendar.getInstance().apply { time = date }
+        if (now.get(java.util.Calendar.DATE) == msgCal.get(java.util.Calendar.DATE) &&
+            now.get(java.util.Calendar.YEAR) == msgCal.get(java.util.Calendar.YEAR)) {
+            java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault()).format(date)
+        } else {
+            java.text.SimpleDateFormat("MMM d", java.util.Locale.getDefault()).format(date)
+        }
+    } catch (e: Exception) {
+        ""
     }
 }
 

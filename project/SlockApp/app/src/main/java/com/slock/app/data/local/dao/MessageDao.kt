@@ -35,4 +35,15 @@ interface MessageDao {
 
     @Query("DELETE FROM messages")
     suspend fun deleteAllMessages()
+
+    @Query("""
+        SELECT * FROM messages
+        WHERE id IN (
+            SELECT id FROM messages
+            WHERE channelId IN (:channelIds)
+            GROUP BY channelId
+            HAVING seq = MAX(seq)
+        )
+    """)
+    suspend fun getLatestMessagePerChannel(channelIds: List<String>): List<MessageEntity>
 }

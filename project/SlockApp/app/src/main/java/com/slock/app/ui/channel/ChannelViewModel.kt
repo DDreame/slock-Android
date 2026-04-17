@@ -4,7 +4,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.model.Channel
+import com.slock.app.data.model.Message
 import com.slock.app.data.repository.ChannelRepository
+import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,6 +19,7 @@ import javax.inject.Inject
 data class ChannelUiState(
     val channels: List<Channel> = emptyList(),
     val dms: List<Channel> = emptyList(),
+    val channelPreviews: Map<String, Message> = emptyMap(),
     val serverId: String = "",
     val isLoading: Boolean = false,
     val isDmLoading: Boolean = false,
@@ -26,6 +29,7 @@ data class ChannelUiState(
 @HiltViewModel
 class ChannelViewModel @Inject constructor(
     private val channelRepository: ChannelRepository,
+    private val messageRepository: MessageRepository,
     private val activeServerHolder: ActiveServerHolder,
     private val socketIOManager: SocketIOManager
 ) : ViewModel() {
@@ -42,12 +46,18 @@ class ChannelViewModel @Inject constructor(
             _state.update { it.copy(serverId = serverId, isLoading = it.channels.isEmpty()) }
             // Get cached data first
             channelRepository.getChannels(serverId).fold(
-                onSuccess = { channels -> _state.update { it.copy(channels = channels, isLoading = false) } },
+                onSuccess = { channels ->
+                    _state.update { it.copy(channels = channels, isLoading = false) }
+                    loadChannelPreviews(channels)
+                },
                 onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
             )
             // Then refresh from cloud
             channelRepository.refreshChannels(serverId).fold(
-                onSuccess = { channels -> _state.update { it.copy(channels = channels) } },
+                onSuccess = { channels ->
+                    _state.update { it.copy(channels = channels) }
+                    loadChannelPreviews(channels)
+                },
                 onFailure = { /* keep cached data */ }
             )
         }
@@ -90,6 +100,15 @@ class ChannelViewModel @Inject constructor(
                     onError(err.message ?: "Failed to create DM")
                 }
             )
+        }
+    }
+
+    private fun loadChannelPreviews(channels: List<Channel>) {
+        viewModelScope.launch {
+            val channelIds = channels.mapNotNull { it.id }
+            if (channelIds.isEmpty()) return@launch
+            val previews = messageRepository.getLatestMessagePerChannel(channelIds)
+            _state.update { it.copy(channelPreviews = it.channelPreviews + previews) }
         }
     }
 }

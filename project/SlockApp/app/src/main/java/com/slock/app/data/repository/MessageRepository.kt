@@ -15,6 +15,7 @@ interface MessageRepository {
     suspend fun getMessages(serverId: String, channelId: String, limit: Int = 50, before: String? = null, after: String? = null): Result<List<Message>>
     suspend fun refreshMessages(serverId: String, channelId: String, limit: Int = 50): Result<List<Message>>
     suspend fun searchMessages(serverId: String, query: String, searchServerId: String? = null, channelId: String? = null): Result<List<Message>>
+    suspend fun getLatestMessagePerChannel(channelIds: List<String>): Map<String, Message>
 }
 
 class MessageRepositoryImpl @Inject constructor(
@@ -138,6 +139,17 @@ class MessageRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    override suspend fun getLatestMessagePerChannel(channelIds: List<String>): Map<String, Message> {
+        if (channelIds.isEmpty()) return emptyMap()
+        return try {
+            messageDao.getLatestMessagePerChannel(channelIds)
+                .filter { !it.channelId.isNullOrEmpty() }
+                .associate { it.channelId!! to it.toModel() }
+        } catch (e: Exception) {
+            emptyMap()
         }
     }
 }
