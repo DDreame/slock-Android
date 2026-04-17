@@ -374,7 +374,8 @@ fun SlockNavHost(
                 onToggleSearch = viewModel::toggleSearch,
                 onSearchQueryChange = viewModel::updateSearchQuery,
                 onNextSearchResult = viewModel::nextSearchResult,
-                onPreviousSearchResult = viewModel::previousSearchResult
+                onPreviousSearchResult = viewModel::previousSearchResult,
+                onToggleReaction = viewModel::toggleReaction
             )
         }
 
