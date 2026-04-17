@@ -10,7 +10,6 @@ import com.slock.app.data.model.Member
 import com.slock.app.data.model.User
 import com.slock.app.data.repository.AuthRepository
 import com.slock.app.data.repository.ServerRepository
-import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -83,8 +82,7 @@ class ProfileViewModel @Inject constructor(
     private val serverRepository: ServerRepository,
     private val activeServerHolder: ActiveServerHolder,
     private val presenceTracker: PresenceTracker,
-    private val secureTokenStorage: SecureTokenStorage,
-    private val socketIOManager: SocketIOManager
+    private val secureTokenStorage: SecureTokenStorage
 ) : ViewModel() {
 
     private val targetUserId: String? = savedStateHandle["userId"]
