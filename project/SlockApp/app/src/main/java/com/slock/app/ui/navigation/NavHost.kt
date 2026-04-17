@@ -71,6 +71,10 @@ object Routes {
     fun agentDetailRoute(agentId: String) = "agent/$agentId"
     fun machineListRoute(serverId: String) = "server/$serverId/machines"
     fun userProfileRoute(userId: String) = "profile/$userId"
+    fun dmMessagesRoute(channelId: String, channelName: String): String {
+        val encodedName = java.net.URLEncoder.encode(channelName, "UTF-8").replace("+", "%20")
+        return "channel/$channelId/messages?name=$encodedName"
+    }
 }
 
 @Composable
@@ -452,8 +456,7 @@ fun SlockNavHost(
                         agentId = agentId,
                         onSuccess = { dmChannel ->
                             val agentName = state.agents.find { it.id == agentId }?.name ?: "DM"
-                            val encodedName = Uri.encode(agentName)
-                            navController.navigate("channel/${dmChannel.id}/messages?name=$encodedName")
+                            navController.navigate(Routes.dmMessagesRoute(dmChannel.id.orEmpty(), agentName))
                         },
                         onError = { error ->
                             android.widget.Toast.makeText(context, "Failed to create DM: $error", android.widget.Toast.LENGTH_SHORT).show()
@@ -561,8 +564,7 @@ fun SlockNavHost(
                         agentId = agentId,
                         onSuccess = { dmChannel ->
                             val agentName = state.agent?.name ?: "DM"
-                            val encodedName = Uri.encode(agentName)
-                            navController.navigate("channel/${dmChannel.id}/messages?name=$encodedName")
+                            navController.navigate(Routes.dmMessagesRoute(dmChannel.id.orEmpty(), agentName))
                         },
                         onError = { error ->
                             android.widget.Toast.makeText(context, "Failed to create DM: $error", android.widget.Toast.LENGTH_SHORT).show()

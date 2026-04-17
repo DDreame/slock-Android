@@ -43,4 +43,21 @@ class ScreenRouteRegistryTest {
     fun `Routes machineListRoute produces correct path`() {
         assertEquals("server/srv-1/machines", Routes.machineListRoute("srv-1"))
     }
+
+    @Test
+    fun `Routes dmMessagesRoute produces correct path`() {
+        assertEquals("channel/dm-1/messages?name=Claude", Routes.dmMessagesRoute("dm-1", "Claude"))
+    }
+
+    @Test
+    fun `Routes dmMessagesRoute encodes special characters in name`() {
+        assertEquals("channel/dm-2/messages?name=Agent%20Bot", Routes.dmMessagesRoute("dm-2", "Agent Bot"))
+    }
+
+    @Test
+    fun `Routes dmMessagesRoute matches MESSAGES template structure`() {
+        val route = Routes.dmMessagesRoute("ch-123", "TestName")
+        assertTrue("DM route must start with channel/ prefix", route.startsWith("channel/"))
+        assertTrue("DM route must contain /messages?name=", route.contains("/messages?name="))
+    }
 }
