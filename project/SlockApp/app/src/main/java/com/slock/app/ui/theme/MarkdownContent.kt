@@ -14,7 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -223,7 +223,7 @@ private fun MarkdownBlockView(
         }
 
         MarkdownBlock.HorizontalRule -> {
-            HorizontalDivider(
+            Divider(
                 color = Black,
                 thickness = 2.dp,
                 modifier = Modifier.fillMaxWidth()
