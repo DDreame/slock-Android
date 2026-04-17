@@ -120,11 +120,14 @@ class MessageSearchTest {
         val original = makeMessages("hello", "world")
         val state1 = stateWithSearch(original, "hello")
         assertEquals(listOf(0), state1.searchMatchIndices)
+        assertEquals("msg-0", state1.currentSearchMatchMessageId)
 
         val newMsg = Message(id = "msg-new", content = "hello again", senderName = "User", senderType = "user")
         val updated = state1.copy(messages = listOf(newMsg) + state1.messages)
         val state2 = computeSearchMatches(updated)
         assertEquals(listOf(0, 1), state2.searchMatchIndices)
+        assertEquals(1, state2.currentSearchMatchPosition)
+        assertEquals("msg-0", state2.currentSearchMatchMessageId)
     }
 
     @Test
@@ -136,5 +139,44 @@ class MessageSearchTest {
         val reduced = state1.copy(messages = listOf(messages[1], messages[2]))
         val state2 = computeSearchMatches(reduced)
         assertEquals(listOf(1), state2.searchMatchIndices)
+    }
+
+    @Test
+    fun `current match tracks by message id when new match inserted before`() {
+        val messages = makeMessages("alpha", "beta", "alpha end")
+        val state1 = stateWithSearch(messages, "alpha")
+        assertEquals(listOf(0, 2), state1.searchMatchIndices)
+        assertEquals(0, state1.currentSearchMatchPosition)
+        assertEquals("msg-0", state1.currentSearchMatchMessageId)
+
+        // Navigate to second match (msg-2, "alpha end")
+        val state2 = state1.copy(
+            currentSearchMatchPosition = 1,
+            currentSearchMatchMessageId = "msg-2"
+        )
+
+        // Insert a new matching message at the front
+        val newMsg = Message(id = "msg-new", content = "alpha new", senderName = "User", senderType = "user")
+        val state3 = computeSearchMatches(state2.copy(messages = listOf(newMsg) + state2.messages))
+
+        // Matches are now [0=msg-new, 1=msg-0, 3=msg-2], current should still be on msg-2
+        assertEquals("msg-2", state3.currentSearchMatchMessageId)
+        val currentMsgIdx = state3.searchMatchIndices[state3.currentSearchMatchPosition]
+        assertEquals("msg-2", state3.messages[currentMsgIdx].id)
+    }
+
+    @Test
+    fun `current match falls back to 0 when tracked message removed`() {
+        val messages = makeMessages("hello", "world", "hello world")
+        val state1 = stateWithSearch(messages, "hello")
+        // Navigate to second match (msg-2)
+        val state2 = state1.copy(currentSearchMatchPosition = 1, currentSearchMatchMessageId = "msg-2")
+
+        // Remove msg-2
+        val reduced = state2.copy(messages = listOf(messages[0], messages[1]))
+        val state3 = computeSearchMatches(reduced)
+        assertEquals(listOf(0), state3.searchMatchIndices)
+        assertEquals(0, state3.currentSearchMatchPosition)
+        assertEquals("msg-0", state3.currentSearchMatchMessageId)
     }
 }

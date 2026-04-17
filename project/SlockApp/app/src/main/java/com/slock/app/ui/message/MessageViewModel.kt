@@ -43,7 +43,8 @@ data class MessageUiState(
     val isSearchActive: Boolean = false,
     val searchQuery: String = "",
     val searchMatchIndices: List<Int> = emptyList(),
-    val currentSearchMatchPosition: Int = -1
+    val currentSearchMatchPosition: Int = -1,
+    val currentSearchMatchMessageId: String? = null
 )
 
 fun computeSearchMatches(state: MessageUiState): MessageUiState {
@@ -53,11 +54,18 @@ fun computeSearchMatches(state: MessageUiState): MessageUiState {
     }
     val position = when {
         matches.isEmpty() -> -1
+        state.currentSearchMatchMessageId != null -> {
+            val newPos = matches.indexOfFirst { state.messages[it].id == state.currentSearchMatchMessageId }
+            if (newPos >= 0) newPos else 0
+        }
         state.currentSearchMatchPosition >= matches.size -> 0
         state.currentSearchMatchPosition < 0 -> 0
         else -> state.currentSearchMatchPosition
     }
-    return state.copy(searchMatchIndices = matches, currentSearchMatchPosition = position)
+    val messageId = if (position >= 0 && position < matches.size) {
+        state.messages.getOrNull(matches[position])?.id
+    } else null
+    return state.copy(searchMatchIndices = matches, currentSearchMatchPosition = position, currentSearchMatchMessageId = messageId)
 }
 
 @HiltViewModel
@@ -274,7 +282,7 @@ class MessageViewModel @Inject constructor(
     fun toggleSearch() {
         _state.update {
             if (it.isSearchActive) {
-                it.copy(isSearchActive = false, searchQuery = "", searchMatchIndices = emptyList(), currentSearchMatchPosition = -1)
+                it.copy(isSearchActive = false, searchQuery = "", searchMatchIndices = emptyList(), currentSearchMatchPosition = -1, currentSearchMatchMessageId = null)
             } else {
                 it.copy(isSearchActive = true)
             }
@@ -291,7 +299,8 @@ class MessageViewModel @Inject constructor(
                 }
             }
             val position = if (matches.isNotEmpty()) 0 else -1
-            current.copy(searchQuery = query, searchMatchIndices = matches, currentSearchMatchPosition = position)
+            val messageId = if (position >= 0) current.messages.getOrNull(matches[position])?.id else null
+            current.copy(searchQuery = query, searchMatchIndices = matches, currentSearchMatchPosition = position, currentSearchMatchMessageId = messageId)
         }
     }
 
@@ -299,7 +308,8 @@ class MessageViewModel @Inject constructor(
         _state.update { current ->
             if (current.searchMatchIndices.isEmpty()) return@update current
             val next = (current.currentSearchMatchPosition + 1) % current.searchMatchIndices.size
-            current.copy(currentSearchMatchPosition = next)
+            val messageId = current.messages.getOrNull(current.searchMatchIndices[next])?.id
+            current.copy(currentSearchMatchPosition = next, currentSearchMatchMessageId = messageId)
         }
     }
 
@@ -308,7 +318,8 @@ class MessageViewModel @Inject constructor(
             if (current.searchMatchIndices.isEmpty()) return@update current
             val prev = if (current.currentSearchMatchPosition <= 0) current.searchMatchIndices.size - 1
                        else current.currentSearchMatchPosition - 1
-            current.copy(currentSearchMatchPosition = prev)
+            val messageId = current.messages.getOrNull(current.searchMatchIndices[prev])?.id
+            current.copy(currentSearchMatchPosition = prev, currentSearchMatchMessageId = messageId)
         }
     }
 
