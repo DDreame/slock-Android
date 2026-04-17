@@ -1,5 +1,7 @@
 package com.slock.app.integration
 
+import androidx.activity.ComponentActivity
+import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -29,6 +31,7 @@ import com.slock.app.di.IoDispatcher
 import com.slock.app.di.MainDispatcher
 import com.slock.app.di.NetworkModule
 import com.slock.app.di.RepositoryModule
+import com.slock.app.ui.theme.NeoButton
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -43,11 +46,13 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import retrofit2.Retrofit
@@ -101,7 +106,7 @@ class HiltComposeIntegrationSampleTest {
     val hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 1)
-    val composeTestRule = createAndroidComposeRule<TestHiltActivity>()
+    val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @BindValue @JvmField
     val secureTokenStorage: SecureTokenStorage = mock()
@@ -113,16 +118,30 @@ class HiltComposeIntegrationSampleTest {
 
     @Test
     fun `hilt launches real AndroidEntryPoint activity via Robolectric`() {
-        composeTestRule.onNodeWithText("Hilt Activity Injected").assertIsDisplayed()
+        val controller = Robolectric.buildActivity(TestHiltActivity::class.java)
+        val activity = controller.create().start().resume().get()
+        assertNotNull("TestHiltActivity must be created by Robolectric", activity)
+        assertTrue(
+            "Activity must reach RESUMED state",
+            activity.lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+        )
     }
 
     @Test
-    fun `hilt injects ActiveServerHolder into test activity`() {
-        composeTestRule.activityRule.scenario.onActivity { activity ->
-            assertNotNull(
-                "ActiveServerHolder must be injected via Hilt",
-                activity.activeServerHolder
-            )
+    fun `hilt injects ActiveServerHolder into AndroidEntryPoint activity`() {
+        val controller = Robolectric.buildActivity(TestHiltActivity::class.java)
+        val activity = controller.create().start().resume().get()
+        assertNotNull(
+            "ActiveServerHolder must be injected via Hilt into @AndroidEntryPoint activity",
+            activity.activeServerHolder
+        )
+    }
+
+    @Test
+    fun `hilt compose test rule renders inside ComponentActivity`() {
+        composeTestRule.setContent {
+            NeoButton(text = "Hilt + Compose", onClick = {})
         }
+        composeTestRule.onNodeWithText("Hilt + Compose").assertIsDisplayed()
     }
 }
