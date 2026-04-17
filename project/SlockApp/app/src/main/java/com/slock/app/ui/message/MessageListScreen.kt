@@ -29,6 +29,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -1313,7 +1314,8 @@ internal fun AgentBatchControlSheet(
                         value = correctionText,
                         onValueChange = { correctionText = it },
                         placeholder = "e.g. Stop modifying the database schema \u2014 focus only on the frontend changes I described...",
-                        focusHighlight = Orange
+                        focusHighlight = Orange,
+                        modifier = Modifier.testTag("correctionTextField")
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))

@@ -3,8 +3,10 @@ package com.slock.app.ui.message
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import com.slock.app.data.model.Agent
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -143,6 +145,52 @@ class AgentBatchControlComposeTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("RESUME ALL").assertIsDisplayed()
         composeTestRule.onNodeWithText("KEEP STOPPED").assertIsDisplayed()
+    }
+
+    @Test
+    fun `Resume All sends SOS prompt with correction text via callback`() {
+        var receivedPrompt: String? = null
+        composeTestRule.setContent {
+            AgentBatchControlSheet(
+                agents = testAgents,
+                channelName = "general",
+                onDismiss = {},
+                onStopAll = { it() },
+                onResumeAllWithCorrection = { prompt, onSuccess ->
+                    receivedPrompt = prompt
+                    onSuccess()
+                },
+                onKeepStopped = {}
+            )
+        }
+        composeTestRule.onNodeWithText("STOP ALL AGENTS").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithTag("correctionTextField").performTextReplacement("Fix the frontend only")
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("RESUME ALL").performClick()
+        composeTestRule.waitForIdle()
+        val expected = buildSosPrompt("general", "Fix the frontend only")
+        assertEquals(expected, receivedPrompt)
+    }
+
+    @Test
+    fun `Keep Stopped calls onKeepStopped callback`() {
+        var keptStopped = false
+        composeTestRule.setContent {
+            AgentBatchControlSheet(
+                agents = testAgents,
+                channelName = "general",
+                onDismiss = {},
+                onStopAll = { it() },
+                onResumeAllWithCorrection = { _, _ -> },
+                onKeepStopped = { keptStopped = true }
+            )
+        }
+        composeTestRule.onNodeWithText("STOP ALL AGENTS").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("KEEP STOPPED").performClick()
+        composeTestRule.waitForIdle()
+        assertTrue(keptStopped)
     }
 }
 
