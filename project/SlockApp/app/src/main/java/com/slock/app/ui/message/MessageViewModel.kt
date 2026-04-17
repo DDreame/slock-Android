@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.model.Attachment
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.MessageRepository
@@ -45,7 +46,8 @@ data class MessageUiState(
     val searchMatchIndices: List<Int> = emptyList(),
     val currentSearchMatchPosition: Int = -1,
     val currentSearchMatchMessageId: String? = null,
-    val reactionOverridesByMessageId: Map<String, List<MessageReactionUiModel>> = emptyMap()
+    val reactionOverridesByMessageId: Map<String, List<MessageReactionUiModel>> = emptyMap(),
+    val onlineIds: Set<String> = emptySet()
 )
 
 fun computeSearchMatches(state: MessageUiState): MessageUiState {
@@ -73,19 +75,30 @@ fun computeSearchMatches(state: MessageUiState): MessageUiState {
 class MessageViewModel @Inject constructor(
     private val messageRepository: MessageRepository,
     private val socketIOManager: SocketIOManager,
-    private val activeServerHolder: ActiveServerHolder
+    private val activeServerHolder: ActiveServerHolder,
+    private val presenceTracker: PresenceTracker
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MessageUiState())
     val state: StateFlow<MessageUiState> = _state.asStateFlow()
 
     private var socketEventsJob: Job? = null
+    private var presenceJob: Job? = null
 
     private fun recomputeSearchMatches(state: MessageUiState): MessageUiState =
         computeSearchMatches(state)
 
     init {
+        observePresence()
         observeSocketEvents()
+    }
+
+    private fun observePresence() {
+        presenceJob = viewModelScope.launch {
+            presenceTracker.onlineIds.collect { onlineIds ->
+                _state.update { it.copy(onlineIds = onlineIds) }
+            }
+        }
     }
 
     private fun observeSocketEvents() {
@@ -93,6 +106,16 @@ class MessageViewModel @Inject constructor(
             try {
                 socketIOManager.events.collect { event ->
                     when (event) {
+                        is SocketIOManager.SocketEvent.UserPresence -> {
+                            if (event.status == "online") {
+                                presenceTracker.setOnline(event.userId)
+                            } else {
+                                presenceTracker.setOffline(event.userId)
+                            }
+                        }
+                        is SocketIOManager.SocketEvent.AgentActivity -> {
+                            presenceTracker.setOnline(event.data.agentId)
+                        }
                         is SocketIOManager.SocketEvent.MessageNew -> {
                             val data = event.data
                             if (data.channelId == _state.value.channelId) {
@@ -355,6 +378,7 @@ class MessageViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         socketEventsJob?.cancel()
+        presenceJob?.cancel()
         val channelId = _state.value.channelId
         if (channelId.isNotBlank()) {
             socketIOManager.leaveChannel(channelId)
