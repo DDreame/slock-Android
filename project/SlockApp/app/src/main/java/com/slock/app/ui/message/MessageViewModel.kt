@@ -21,7 +21,8 @@ data class MessageUiState(
     val channelName: String = "",
     val isLoading: Boolean = false,
     val isSending: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val replyingTo: Message? = null
 )
 
 @HiltViewModel
@@ -115,6 +116,7 @@ class MessageViewModel @Inject constructor(
             _state.update { it.copy(error = "Server not selected") }
             return
         }
+        val replyTo = _state.value.replyingTo
         // Optimistic UI: add pending message immediately
         val pendingId = "pending-${System.currentTimeMillis()}"
         val pendingMessage = Message(
@@ -123,11 +125,12 @@ class MessageViewModel @Inject constructor(
             content = content,
             senderName = "You",
             senderType = "user",
-            createdAt = java.time.Instant.now().toString()
+            createdAt = java.time.Instant.now().toString(),
+            parentMessageId = replyTo?.id
         )
         viewModelScope.launch {
-            _state.update { it.copy(isSending = true, error = null, messages = listOf(pendingMessage) + it.messages) }
-            messageRepository.sendMessage(serverId, _state.value.channelId, content).fold(
+            _state.update { it.copy(isSending = true, error = null, replyingTo = null, messages = listOf(pendingMessage) + it.messages) }
+            messageRepository.sendMessage(serverId, _state.value.channelId, content, parentMessageId = replyTo?.id).fold(
                 onSuccess = { message ->
                     _state.update { current ->
                         val updated = current.messages.map { if (it.id == pendingId) message else it }
@@ -145,6 +148,14 @@ class MessageViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun setReplyTo(message: Message) {
+        _state.update { it.copy(replyingTo = message) }
+    }
+
+    fun clearReplyTo() {
+        _state.update { it.copy(replyingTo = null) }
     }
 
     fun loadMoreMessages() {

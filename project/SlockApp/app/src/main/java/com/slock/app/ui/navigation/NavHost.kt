@@ -321,7 +321,9 @@ fun SlockNavHost(
                     val parentJson = Uri.encode(Gson().toJson(parentMessage))
                     val encodedChName = Uri.encode(channelName.ifBlank { channelId })
                     navController.navigate("thread/$threadChannelId/reply/$parentJson?channelName=$encodedChName")
-                }
+                },
+                onReplyTo = viewModel::setReplyTo,
+                onClearReply = viewModel::clearReplyTo
             )
         }
 

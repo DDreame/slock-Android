@@ -11,7 +11,7 @@ import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 
 interface MessageRepository {
-    suspend fun sendMessage(serverId: String, channelId: String, content: String, attachmentIds: List<String>? = null, asTask: Boolean = false): Result<Message>
+    suspend fun sendMessage(serverId: String, channelId: String, content: String, attachmentIds: List<String>? = null, asTask: Boolean = false, parentMessageId: String? = null): Result<Message>
     suspend fun getMessages(serverId: String, channelId: String, limit: Int = 50, before: String? = null, after: String? = null): Result<List<Message>>
     suspend fun refreshMessages(serverId: String, channelId: String, limit: Int = 50): Result<List<Message>>
     suspend fun searchMessages(serverId: String, query: String, searchServerId: String? = null, channelId: String? = null): Result<List<Message>>
@@ -29,11 +29,12 @@ class MessageRepositoryImpl @Inject constructor(
         channelId: String,
         content: String,
         attachmentIds: List<String>?,
-        asTask: Boolean
+        asTask: Boolean,
+        parentMessageId: String?
     ): Result<Message> {
         return try {
             activeServerHolder.serverId = serverId
-            val response = apiService.sendMessage(SendMessageRequest(channelId, content, attachmentIds, asTask))
+            val response = apiService.sendMessage(SendMessageRequest(channelId, content, attachmentIds, asTask, parentMessageId))
             if (response.isSuccessful && response.body() != null) {
                 val message = response.body()!!
                 messageDao.insertMessage(message.toEntity())

@@ -35,7 +35,9 @@ fun MessageListScreen(
     onSendMessage: (String) -> Unit,
     onLoadMore: () -> Unit,
     onNavigateBack: () -> Unit,
-    onNavigateToThread: (threadChannelId: String, parentMessage: Message) -> Unit
+    onNavigateToThread: (threadChannelId: String, parentMessage: Message) -> Unit,
+    onReplyTo: (Message) -> Unit = {},
+    onClearReply: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
 
@@ -99,17 +101,30 @@ fun MessageListScreen(
                             if (message.senderType.orEmpty() == "system") {
                                 SystemMessageDivider(message.content.orEmpty())
                             } else {
+                                val quotedMessage = if (message.parentMessageId != null) {
+                                    state.messages.find { it.id == message.parentMessageId }
+                                } else null
                                 NeoMessage(
                                     message = message,
+                                    quotedMessage = quotedMessage,
                                     onThreadClick = if (message.threadChannelId != null) {
                                         { onNavigateToThread(message.threadChannelId!!, message) }
-                                    } else null
+                                    } else null,
+                                    onReply = { onReplyTo(message) }
                                 )
                             }
                         }
                     }
                 }
             }
+        }
+
+        // Quote reply preview
+        if (state.replyingTo != null) {
+            ReplyPreviewBanner(
+                message = state.replyingTo,
+                onDismiss = onClearReply
+            )
         }
 
         // Compose Bar
@@ -179,7 +194,9 @@ private fun MiniIconButton(icon: String, onClick: () -> Unit = {}) {
 @Composable
 private fun NeoMessage(
     message: Message,
-    onThreadClick: (() -> Unit)? = null
+    quotedMessage: Message? = null,
+    onThreadClick: (() -> Unit)? = null,
+    onReply: () -> Unit = {}
 ) {
     val isAgent = message.isAgent
     val isPending = message.id.orEmpty().startsWith("pending-")
@@ -265,6 +282,39 @@ private fun NeoMessage(
             }
 
             Spacer(modifier = Modifier.height(3.dp))
+
+            // Inline quoted message
+            if (quotedMessage != null) {
+                Row(
+                    modifier = Modifier
+                        .padding(bottom = 4.dp)
+                        .background(Color(0xFFF0F0F0))
+                        .height(IntrinsicSize.Min)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .fillMaxHeight()
+                            .background(Lavender)
+                    )
+                    Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)) {
+                        Text(
+                            text = quotedMessage.senderName.orEmpty().ifEmpty { "Unknown" },
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Black.copy(alpha = 0.7f),
+                            fontSize = 11.sp
+                        )
+                        Text(
+                            text = quotedMessage.content.orEmpty(),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            fontSize = 12.sp
+                        )
+                    }
+                }
+            }
 
             // Message content with markdown rendering
             NeoMessageContent(content = message.content.orEmpty())
@@ -355,6 +405,7 @@ private fun NeoMessage(
             hasThread = onThreadClick != null,
             onDismiss = { showMenu = false },
             onReplyThread = { showMenu = false; onThreadClick?.invoke() },
+            onQuoteReply = { showMenu = false; onReply() },
             onConvertToTask = { showMenu = false /* TODO: Convert to task */ },
             onPinMessage = { showMenu = false /* TODO: Pin message */ },
             onSaveMessage = { showMenu = false /* TODO: Save message */ },
@@ -373,6 +424,7 @@ private fun MessageActionSheet(
     hasThread: Boolean,
     onDismiss: () -> Unit,
     onReplyThread: () -> Unit,
+    onQuoteReply: () -> Unit,
     onConvertToTask: () -> Unit,
     onPinMessage: () -> Unit,
     onSaveMessage: () -> Unit,
@@ -398,6 +450,11 @@ private fun MessageActionSheet(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .navigationBarsPadding()
         ) {
+            ActionSheetItem(
+                icon = "\u21A9\uFE0F",
+                label = "Quote Reply",
+                onClick = onQuoteReply
+            )
             if (hasThread) {
                 ActionSheetItem(
                     icon = "\uD83D\uDCAC",
@@ -590,4 +647,51 @@ private fun SystemMessageDivider(content: String) {
             color = Color(0xFFCCCCCC)
         )
     }
+}
+
+// Reply preview banner above compose bar
+@Composable
+private fun ReplyPreviewBanner(message: Message, onDismiss: () -> Unit) {
+    Surface(color = Color(0xFFF5F5F5)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(3.dp)
+                    .height(32.dp)
+                    .background(Cyan)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Replying to ${message.senderName.orEmpty().ifEmpty { "Unknown" }}",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Black
+                )
+                Text(
+                    text = message.content.orEmpty(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .background(Cream)
+                    .border(1.5.dp, Black, RectangleShape)
+                    .clickable(onClick = onDismiss),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "\u2715", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Black)
+            }
+        }
+    }
+    Divider(thickness = 1.dp, color = Black.copy(alpha = 0.2f))
 }

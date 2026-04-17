@@ -54,7 +54,9 @@ data class SendMessageRequest(
     @SerializedName("attachmentIds")
     val attachmentIds: List<String>? = null,
     @SerializedName("asTask")
-    val asTask: Boolean = false
+    val asTask: Boolean = false,
+    @SerializedName("parentMessageId")
+    val parentMessageId: String? = null
 )
 
 data class Thread(
