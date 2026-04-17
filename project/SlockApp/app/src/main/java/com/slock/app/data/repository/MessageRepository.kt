@@ -71,6 +71,7 @@ class MessageRepositoryImpl @Inject constructor(
             val messages = fetchMessages(channelId, limit, before, after)
             if (messages != null) {
                 messageDao.insertMessages(messages.map { it.toEntity() })
+                messageDao.trimMessages(channelId, 200)
                 Result.success(messages)
             } else {
                 Result.failure(Exception("Get messages failed"))

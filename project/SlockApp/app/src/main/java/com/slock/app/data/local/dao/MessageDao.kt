@@ -30,6 +30,9 @@ interface MessageDao {
     @Delete
     suspend fun deleteMessage(message: MessageEntity)
 
+    @Query("DELETE FROM messages WHERE channelId = :channelId AND id NOT IN (SELECT id FROM messages WHERE channelId = :channelId ORDER BY seq DESC LIMIT :keep)")
+    suspend fun trimMessages(channelId: String, keep: Int = 200)
+
     @Query("DELETE FROM messages WHERE channelId = :channelId")
     suspend fun deleteMessagesByChannel(channelId: String)
 
