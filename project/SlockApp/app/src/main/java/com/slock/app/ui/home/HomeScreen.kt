@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -98,19 +99,34 @@ fun HomeScreen(
                     isReconnecting = isReconnecting
                 )
                 Box(modifier = Modifier.weight(1f)) {
-                when (selectedTab) {
-                    0 -> ChannelsTabContent(
-                        channelState = channelState,
-                        searchQuery = searchQuery,
-                        onSearchQueryChange = { searchQuery = it },
-                        onChannelClick = onChannelClick,
-                        onDmClick = onDmClick,
-                        onShowCreateChannel = { showCreateChannelDialog = true }
+                    // All tabs stay composed to preserve scroll/selection state.
+                    // Visible tab gets zIndex(1f) so it draws on top and receives touches first.
+                    val tabs = listOf<@Composable () -> Unit>(
+                        {
+                            ChannelsTabContent(
+                                channelState = channelState,
+                                searchQuery = searchQuery,
+                                onSearchQueryChange = { searchQuery = it },
+                                onChannelClick = onChannelClick,
+                                onDmClick = onDmClick,
+                                onShowCreateChannel = { showCreateChannelDialog = true }
+                            )
+                        },
+                        { threadsContent() },
+                        { membersContent() },
+                        { tasksContent() }
                     )
-                    1 -> threadsContent()
-                    2 -> membersContent()
-                    3 -> tasksContent()
-                }
+                    tabs.forEachIndexed { index, tab ->
+                        val isVisible = index == selectedTab
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .zIndex(if (isVisible) 1f else 0f)
+                                .graphicsLayer(alpha = if (isVisible) 1f else 0f)
+                        ) {
+                            tab()
+                        }
+                    }
                 }
             }
         }
