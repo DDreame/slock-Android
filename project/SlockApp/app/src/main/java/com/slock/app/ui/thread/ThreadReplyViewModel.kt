@@ -24,7 +24,7 @@ data class ThreadReplyUiState(
     val threadChannelId: String = "",
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
-    val hasMoreReplies: Boolean = true,
+    val hasMoreReplies: Boolean = false,
     val isSending: Boolean = false,
     val error: String? = null
 )
@@ -129,7 +129,7 @@ class ThreadReplyViewModel @Inject constructor(
                 )
             }
 
-            _state.update { it.copy(replies = replies ?: emptyList(), isLoading = false, error = if (replies == null) "Failed to load replies" else null) }
+            _state.update { it.copy(replies = replies ?: emptyList(), isLoading = false, hasMoreReplies = (replies?.size ?: 0) >= 50, error = if (replies == null) "Failed to load replies" else null) }
             socketManager.joinChannel(threadChannelId)
         }
     }
