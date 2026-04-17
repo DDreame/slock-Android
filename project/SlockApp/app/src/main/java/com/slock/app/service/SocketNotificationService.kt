@@ -14,7 +14,9 @@ import androidx.core.app.NotificationCompat
 import com.slock.app.MainActivity
 import com.slock.app.R
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.NotificationPreference
 import com.slock.app.data.local.SecureTokenStorage
+import com.slock.app.data.local.SettingsPreferencesStore
 import com.slock.app.data.local.dao.ChannelDao
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,6 +28,20 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+internal object NotificationDecision {
+    fun shouldNotify(
+        preference: NotificationPreference,
+        isDm: Boolean,
+        isMentioned: Boolean
+    ): Boolean {
+        return when (preference) {
+            NotificationPreference.ALL_MESSAGES -> true
+            NotificationPreference.MENTIONS_ONLY -> isDm || isMentioned
+            NotificationPreference.MUTE -> false
+        }
+    }
+}
 
 @AndroidEntryPoint
 class SocketNotificationService : Service() {
@@ -54,6 +70,7 @@ class SocketNotificationService : Service() {
 
     @Inject lateinit var socketManager: SocketIOManager
     @Inject lateinit var secureTokenStorage: SecureTokenStorage
+    @Inject lateinit var settingsPreferencesStore: SettingsPreferencesStore
     @Inject lateinit var activeServerHolder: ActiveServerHolder
     @Inject lateinit var lifecycleTracker: AppLifecycleTracker
     @Inject lateinit var channelDao: ChannelDao
@@ -130,7 +147,15 @@ class SocketNotificationService : Service() {
             isMentionedInContent(data.content, currentUserId, currentUserName)
         } else false
 
-        // Show notification for ALL messages (DM, @mention, or regular)
+        val notificationPreference = settingsPreferencesStore.getNotificationPreference()
+        val shouldNotify = NotificationDecision.shouldNotify(
+            preference = notificationPreference,
+            isDm = isDm,
+            isMentioned = isMentioned
+        )
+
+        if (!shouldNotify) return
+
         showMessageNotification(data, isDm, isMentioned)
     }
 

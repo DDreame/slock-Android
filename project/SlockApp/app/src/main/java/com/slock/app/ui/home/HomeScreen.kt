@@ -27,8 +27,6 @@ import com.slock.app.data.model.Server
 import com.slock.app.ui.channel.ChannelUiState
 import com.slock.app.ui.server.ServerUiState
 import com.slock.app.ui.theme.*
-import com.slock.app.util.LogCollector
-import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -47,7 +45,7 @@ fun HomeScreen(
     onCreateServer: (name: String, slug: String) -> Unit,
     onSearchMessageClick: (Message) -> Unit = {},
     onSearchAgentClick: (Agent) -> Unit = {},
-    onLogout: () -> Unit,
+    onOpenSettings: () -> Unit,
     isConnected: Boolean = true,
     isReconnecting: Boolean = false,
     onTabSelected: (Int) -> Unit = {},
@@ -57,7 +55,6 @@ fun HomeScreen(
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var showCreateChannelDialog by remember { mutableStateOf(false) }
-    var showSettingsMenu by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
@@ -82,7 +79,7 @@ fun HomeScreen(
                     serverInitial = selectedServer?.name?.take(1)?.uppercase() ?: "?",
                     onServerSelectorClick = { scope.launch { drawerState.open() } },
                     onNotificationClick = { },
-                    onSettingsClick = { showSettingsMenu = true }
+                    onSettingsClick = onOpenSettings
                 )
             },
             bottomBar = {
@@ -148,18 +145,6 @@ fun HomeScreen(
                 onCreateChannel(name, "text")
                 showCreateChannelDialog = false
             }
-        )
-    }
-
-    if (showSettingsMenu) {
-        val context = LocalContext.current
-        SettingsNeoDialog(
-            onDismiss = { showSettingsMenu = false },
-            onLogout = {
-                showSettingsMenu = false
-                onLogout()
-            },
-            onSendFeedback = { LogCollector.shareReport(context) }
         )
     }
 }
@@ -1234,51 +1219,6 @@ private fun CreateServerNeoDialog(
                     text = "CREATE",
                     onClick = { if (name.isNotBlank() && slug.isNotBlank()) onCreate(name, slug) },
                     enabled = name.isNotBlank() && slug.isNotBlank()
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                NeoButtonSecondary(
-                    text = "Cancel",
-                    onClick = onDismiss,
-                    containerColor = Cream
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun SettingsNeoDialog(
-    onDismiss: () -> Unit,
-    onLogout: () -> Unit,
-    onSendFeedback: () -> Unit = {}
-) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Black
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                NeoButton(
-                    text = "SEND FEEDBACK",
-                    onClick = { onDismiss(); onSendFeedback() },
-                    containerColor = Cyan,
-                    contentColor = Black
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                NeoButton(
-                    text = "LOG OUT",
-                    onClick = onLogout,
-                    containerColor = Pink,
-                    contentColor = Black
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
