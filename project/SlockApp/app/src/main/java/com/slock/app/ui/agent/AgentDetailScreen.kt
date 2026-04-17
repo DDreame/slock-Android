@@ -38,6 +38,7 @@ fun AgentDetailScreen(
     onStartAgent: () -> Unit = {},
     onStopAgent: () -> Unit = {},
     onDmClick: () -> Unit = {},
+    onMachineClick: (machineId: String) -> Unit = {},
     onRetry: () -> Unit = {}
 ) {
     Column(
@@ -236,6 +237,46 @@ fun AgentDetailScreen(
                             color = Color.Black.copy(alpha = 0.6f),
                             lineHeight = 18.sp
                         )
+                    }
+                }
+            }
+
+            // ── Running On ──
+            val machineId = agent.machineId
+            val machineName = agent.machineName
+            if (!machineId.isNullOrBlank()) {
+                SectionTitle("Running On")
+                NeoCard(stripColor = NeoGold) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onMachineClick(machineId) },
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(32.dp)
+                                .border(2.dp, Color.Black, RectangleShape)
+                                .background(NeoGold, RectangleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("\uD83D\uDCBB", fontSize = 16.sp)
+                        }
+                        Column {
+                            Text(
+                                machineName.orEmpty().ifEmpty { "Machine" },
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 14.sp
+                            )
+                            Text(
+                                "tap to view \u2192",
+                                fontFamily = SpaceGrotesk,
+                                fontSize = 11.sp,
+                                color = Color.Black.copy(alpha = 0.4f)
+                            )
+                        }
                     }
                 }
             }

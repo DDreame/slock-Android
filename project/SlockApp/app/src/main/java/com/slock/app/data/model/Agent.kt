@@ -14,7 +14,11 @@ data class Agent(
     @SerializedName("activityDetail")
     val activityDetail: String? = null,
     @SerializedName("createdAt")
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    @SerializedName("machineId")
+    val machineId: String? = null,
+    @SerializedName("machineName")
+    val machineName: String? = null
 )
 
 data class CreateAgentRequest(
