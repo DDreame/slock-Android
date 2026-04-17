@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.slock.app.data.model.Agent
 import com.slock.app.ui.theme.NeoPressableBox
 import com.slock.app.ui.theme.NeoConfirmDialog
 import com.slock.app.ui.theme.NeoSkeletonCardList
@@ -31,6 +32,18 @@ private val NeoLime = Color(0xFFA6FF00)
 private val NeoPink = Color(0xFFFF6B9D)
 private val NeoGold = Color(0xFFFFD700)
 
+internal sealed interface AgentDetailContentState {
+    data object Loading : AgentDetailContentState
+    data class Error(val message: String) : AgentDetailContentState
+    data class Content(val agent: Agent) : AgentDetailContentState
+}
+
+internal fun resolveAgentDetailContentState(state: AgentDetailUiState): AgentDetailContentState = when {
+    state.agent != null -> AgentDetailContentState.Content(state.agent)
+    state.error != null -> AgentDetailContentState.Error(state.error)
+    else -> AgentDetailContentState.Loading
+}
+
 @Composable
 fun AgentDetailScreen(
     state: AgentDetailUiState,
@@ -41,6 +54,8 @@ fun AgentDetailScreen(
     onMachineClick: (machineId: String) -> Unit = {},
     onRetry: () -> Unit = {}
 ) {
+    val contentState = resolveAgentDetailContentState(state)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -75,230 +90,232 @@ fun AgentDetailScreen(
         }
         Box(Modifier.fillMaxWidth().height(3.dp).background(Color.Black))
 
-        // ── Loading / Error ──
-        if (state.isLoading && state.agent == null) {
-            NeoSkeletonCardList(count = 3)
-            return@Column
-        }
-        if (state.error != null && state.agent == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(state.error, fontFamily = SpaceGrotesk, fontSize = 14.sp)
-                    Spacer(Modifier.height(12.dp))
-                    NeoPressableBox(onClick = onRetry, size = 40.dp, backgroundColor = NeoOrange) {
-                        Text("↻", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            return@Column
-        }
-
-        val agent = state.agent ?: return@Column
-        var showStopConfirm by remember { mutableStateOf(false) }
-        val agentName = agent.name.orEmpty().ifEmpty { "Agent" }
-        val agentModel = agent.model.orEmpty()
-        val isActive = agent.status == "active"
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-        ) {
-            // ── Hero Section ──
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-                    .border(width = 0.dp, color = Color.Transparent, shape = RectangleShape)
-                    .padding(20.dp),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                // Avatar with shadow
-                Box(modifier = Modifier.size(59.dp)) {
-                    // Shadow
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .offset(3.dp, 3.dp)
-                            .background(Color.Black, RectangleShape)
-                    )
-                    // Avatar
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .border(2.dp, Color.Black, RectangleShape)
-                            .background(NeoOrange, RectangleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            agentName.take(1).uppercase(),
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.Bold,
-                            fontFamily = SpaceGrotesk
-                        )
-                    }
-                }
-                // Info
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        agentName,
-                        fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    if (agentModel.isNotEmpty()) {
-                        val displayModel = agentModel
-                            .replace("claude-", "Claude ")
-                            .replace("-", " ")
-                            .split(" ")
-                            .joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            displayModel,
-                            fontFamily = SpaceMono,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .border(1.dp, Color.Black, RectangleShape)
-                                .background(NeoCream)
-                                .padding(horizontal = 8.dp, vertical = 2.dp)
-                        )
-                    }
-                    Spacer(Modifier.height(6.dp))
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(10.dp)
-                                .border(1.5.dp, Color.Black, RectangleShape)
-                                .background(if (isActive) NeoLime else Color.Gray)
-                        )
-                        Text(
-                            if (isActive) "Active" else "Stopped",
-                            fontFamily = SpaceGrotesk,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 12.sp
-                        )
-                    }
-                }
-            }
-            Box(Modifier.fillMaxWidth().height(3.dp).background(Color.Black))
-
-            // ── Action Buttons ──
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                ActionButton("💬 DM", NeoCyan, Modifier.weight(1f), onDmClick)
-                if (isActive) {
-                    ActionButton("⏹ Stop", NeoPink, Modifier.weight(1f)) { showStopConfirm = true }
-                } else {
-                    ActionButton("▶ Start", NeoLime, Modifier.weight(1f), onStartAgent)
-                }
+        when (contentState) {
+            AgentDetailContentState.Loading -> {
+                NeoSkeletonCardList(count = 3)
             }
 
-            // Stop confirmation dialog
-            if (showStopConfirm) {
-                NeoConfirmDialog(
-                    title = "Stop Agent",
-                    message = "确定要停止 ${agent?.name.orEmpty()} 吗？停止后 Agent 将不再处理消息。",
-                    confirmText = "STOP",
-                    confirmColor = NeoPink,
-                    onConfirm = onStopAgent,
-                    onDismiss = { showStopConfirm = false }
-                )
-            }
-
-            // ── Current Activity ──
-            val activity = state.latestActivity ?: agent.activity
-            if (activity != null) {
-                SectionTitle("Current Activity")
-                NeoCard(stripColor = NeoLime) {
-                    Text(
-                        "⚡ $activity",
-                        fontFamily = SpaceGrotesk,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                    val detail = state.latestActivityDetail ?: agent.activityDetail
-                    if (detail != null) {
-                        Spacer(Modifier.height(4.dp))
-                        Text(
-                            detail,
-                            fontFamily = SpaceMono,
-                            fontSize = 12.sp,
-                            color = Color.Black.copy(alpha = 0.6f),
-                            lineHeight = 18.sp
-                        )
+            is AgentDetailContentState.Error -> {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(contentState.message, fontFamily = SpaceGrotesk, fontSize = 14.sp)
+                        Spacer(Modifier.height(12.dp))
+                        NeoPressableBox(onClick = onRetry, size = 40.dp, backgroundColor = NeoOrange) {
+                            Text("↻", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
 
-            // ── Running On ──
-            val machineId = agent.machineId
-            val machineName = agent.machineName
-            if (!machineId.isNullOrBlank()) {
-                SectionTitle("Running On")
-                NeoCard(stripColor = NeoGold) {
+            is AgentDetailContentState.Content -> {
+                val agent = contentState.agent
+                var showStopConfirm by remember(agent.id) { mutableStateOf(false) }
+                val agentName = agent.name.orEmpty().ifEmpty { "Agent" }
+                val agentModel = agent.model.orEmpty()
+                val isActive = agent.status == "active"
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    // ── Hero Section ──
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onMachineClick(machineId) },
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .background(Color.White)
+                            .border(width = 0.dp, color = Color.Transparent, shape = RectangleShape)
+                            .padding(20.dp),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.Top
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(32.dp)
-                                .border(2.dp, Color.Black, RectangleShape)
-                                .background(NeoGold, RectangleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("\uD83D\uDCBB", fontSize = 16.sp)
+                        // Avatar with shadow
+                        Box(modifier = Modifier.size(59.dp)) {
+                            // Shadow
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .offset(3.dp, 3.dp)
+                                    .background(Color.Black, RectangleShape)
+                            )
+                            // Avatar
+                            Box(
+                                modifier = Modifier
+                                    .size(56.dp)
+                                    .border(2.dp, Color.Black, RectangleShape)
+                                    .background(NeoOrange, RectangleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    agentName.take(1).uppercase(),
+                                    fontSize = 24.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = SpaceGrotesk
+                                )
+                            }
                         }
-                        Column {
+                        // Info
+                        Column(modifier = Modifier.weight(1f)) {
                             Text(
-                                machineName.orEmpty().ifEmpty { "Machine" },
+                                agentName,
                                 fontFamily = SpaceGrotesk,
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
+                                fontSize = 20.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
-                            Text(
-                                "tap to view \u2192",
-                                fontFamily = SpaceGrotesk,
-                                fontSize = 11.sp,
-                                color = Color.Black.copy(alpha = 0.4f)
-                            )
+                            if (agentModel.isNotEmpty()) {
+                                val displayModel = agentModel
+                                    .replace("claude-", "Claude ")
+                                    .replace("-", " ")
+                                    .split(" ")
+                                    .joinToString(" ") { it.replaceFirstChar { c -> c.uppercaseChar() } }
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    displayModel,
+                                    fontFamily = SpaceMono,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier
+                                        .border(1.dp, Color.Black, RectangleShape)
+                                        .background(NeoCream)
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+                            Spacer(Modifier.height(6.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(10.dp)
+                                        .border(1.5.dp, Color.Black, RectangleShape)
+                                        .background(if (isActive) NeoLime else Color.Gray)
+                                )
+                                Text(
+                                    if (isActive) "Active" else "Stopped",
+                                    fontFamily = SpaceGrotesk,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 12.sp
+                                )
+                            }
                         }
                     }
+                    Box(Modifier.fillMaxWidth().height(3.dp).background(Color.Black))
+
+                    // ── Action Buttons ──
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        ActionButton("💬 DM", NeoCyan, Modifier.weight(1f), onDmClick)
+                        if (isActive) {
+                            ActionButton("⏹ Stop", NeoPink, Modifier.weight(1f)) { showStopConfirm = true }
+                        } else {
+                            ActionButton("▶ Start", NeoLime, Modifier.weight(1f), onStartAgent)
+                        }
+                    }
+
+                    // Stop confirmation dialog
+                    if (showStopConfirm) {
+                        NeoConfirmDialog(
+                            title = "Stop Agent",
+                            message = "确定要停止 ${agent.name.orEmpty()} 吗？停止后 Agent 将不再处理消息。",
+                            confirmText = "STOP",
+                            confirmColor = NeoPink,
+                            onConfirm = onStopAgent,
+                            onDismiss = { showStopConfirm = false }
+                        )
+                    }
+
+                    // ── Current Activity ──
+                    val activity = state.latestActivity ?: agent.activity
+                    if (activity != null) {
+                        SectionTitle("Current Activity")
+                        NeoCard(stripColor = NeoLime) {
+                            Text(
+                                "⚡ $activity",
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 13.sp
+                            )
+                            val detail = state.latestActivityDetail ?: agent.activityDetail
+                            if (detail != null) {
+                                Spacer(Modifier.height(4.dp))
+                                Text(
+                                    detail,
+                                    fontFamily = SpaceMono,
+                                    fontSize = 12.sp,
+                                    color = Color.Black.copy(alpha = 0.6f),
+                                    lineHeight = 18.sp
+                                )
+                            }
+                        }
+                    }
+
+                    // ── Running On ──
+                    val machineId = agent.machineId
+                    val machineName = agent.machineName
+                    if (!machineId.isNullOrBlank()) {
+                        SectionTitle("Running On")
+                        NeoCard(stripColor = NeoGold) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onMachineClick(machineId) },
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .border(2.dp, Color.Black, RectangleShape)
+                                        .background(NeoGold, RectangleShape),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text("\uD83D\uDCBB", fontSize = 16.sp)
+                                }
+                                Column {
+                                    Text(
+                                        machineName.orEmpty().ifEmpty { "Machine" },
+                                        fontFamily = SpaceGrotesk,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp
+                                    )
+                                    Text(
+                                        "tap to view \u2192",
+                                        fontFamily = SpaceGrotesk,
+                                        fontSize = 11.sp,
+                                        color = Color.Black.copy(alpha = 0.4f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // ── Details Card ──
+                    SectionTitle("Details")
+                    NeoCard(stripColor = NeoOrange) {
+                        InfoRow("Model", agentModel.ifEmpty { "—" }, isMono = true)
+                        InfoRow("Status", if (isActive) "Active" else "Stopped")
+                        if (agent.createdAt.orEmpty().isNotEmpty()) {
+                            InfoRow("Created", agent.createdAt.orEmpty().take(10), isMono = true)
+                        }
+                    }
+
+                    // ── System Prompt ──
+                    val prompt = agent.prompt
+                    if (!prompt.isNullOrBlank()) {
+                        SectionTitle("System Prompt")
+                        PromptCard(prompt)
+                    }
+
+                    Spacer(Modifier.height(24.dp))
                 }
             }
-
-            // ── Details Card ──
-            SectionTitle("Details")
-            NeoCard(stripColor = NeoOrange) {
-                InfoRow("Model", agentModel.ifEmpty { "—" }, isMono = true)
-                InfoRow("Status", if (isActive) "Active" else "Stopped")
-                if (agent.createdAt.orEmpty().isNotEmpty()) {
-                    InfoRow("Created", agent.createdAt.orEmpty().take(10), isMono = true)
-                }
-            }
-
-            // ── System Prompt ──
-            val prompt = agent.prompt
-            if (!prompt.isNullOrBlank()) {
-                SectionTitle("System Prompt")
-                PromptCard(prompt)
-            }
-
-            Spacer(Modifier.height(24.dp))
         }
     }
 }
