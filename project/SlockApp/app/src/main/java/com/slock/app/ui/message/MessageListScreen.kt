@@ -1,6 +1,9 @@
 package com.slock.app.ui.message
 
+import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -44,6 +47,9 @@ import com.slock.app.data.model.Agent
 import com.slock.app.data.model.Message
 import com.slock.app.ui.theme.*
 import com.slock.app.util.LogCollector
+import java.io.ByteArrayOutputStream
+import java.io.File
+import java.util.Locale
 
 @Composable
 fun MessageListScreen(
@@ -297,6 +303,101 @@ fun MessageListScreen(
 
 internal fun resolveChannelHeaderContext(contextLabel: String): String? =
     contextLabel.trim().takeIf { it.isNotEmpty() }
+
+private const val MaxAttachmentSizeBytes = 10 * 1024 * 1024
+private const val CameraCompressionQuality = 92
+
+internal fun isPendingAttachmentImage(attachment: PendingAttachment): Boolean =
+    attachment.mimeType.startsWith("image/", ignoreCase = true)
+
+internal fun pendingAttachmentTypeLabel(attachment: PendingAttachment): String {
+    val extension = attachment.name.substringAfterLast('.', missingDelimiterValue = "")
+        .trim()
+        .uppercase(Locale.ROOT)
+        .takeIf { it.isNotEmpty() }
+    val subtype = attachment.mimeType.substringAfter('/', missingDelimiterValue = "")
+        .substringBefore(';')
+        .trim()
+        .uppercase(Locale.ROOT)
+        .takeIf { it.isNotEmpty() }
+
+    if (isPendingAttachmentImage(attachment)) {
+        return extension ?: subtype?.take(6) ?: "IMAGE"
+    }
+
+    return when {
+        extension != null -> extension.take(6)
+        subtype == null || subtype == "*" || subtype == "OCTET-STREAM" -> "FILE"
+        else -> subtype.take(6)
+    }
+}
+
+private fun fallbackExtensionForMimeType(mimeType: String): String {
+    val subtype = mimeType.substringAfter('/', missingDelimiterValue = "")
+        .substringBefore(';')
+        .trim()
+
+    return when {
+        mimeType.startsWith("image/", ignoreCase = true) && subtype == "*" -> "jpg"
+        subtype.isBlank() || subtype == "*" -> "bin"
+        mimeType.startsWith("image/", ignoreCase = true) -> subtype
+        subtype == "octet-stream" -> "bin"
+        else -> subtype
+    }
+}
+
+private fun resolveAttachmentName(context: Context, uri: Uri, mimeType: String, prefix: String = "attachment"): String {
+    val resolver = context.contentResolver
+    resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (nameIndex >= 0 && cursor.moveToFirst()) {
+            cursor.getString(nameIndex)?.trim()?.takeIf { it.isNotEmpty() }?.let { return it }
+        }
+    }
+
+    val extension = fallbackExtensionForMimeType(mimeType)
+    return "${prefix}_${System.currentTimeMillis()}.$extension"
+}
+
+private fun readPendingAttachment(
+    context: Context,
+    uri: Uri,
+    fallbackMimeType: String,
+    fallbackPrefix: String = "attachment"
+): PendingAttachment? {
+    val resolver = context.contentResolver
+    val mimeType = resolver.getType(uri)?.takeIf { it.isNotBlank() } ?: fallbackMimeType
+    val name = resolveAttachmentName(context, uri, mimeType, fallbackPrefix)
+    val bytes = resolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+
+    if (bytes.size > MaxAttachmentSizeBytes) {
+        android.widget.Toast.makeText(context, "附件超过 10MB 限制: $name", android.widget.Toast.LENGTH_SHORT).show()
+        return null
+    }
+
+    return PendingAttachment(uri = uri, name = name, mimeType = mimeType, bytes = bytes)
+}
+
+private fun createCameraAttachment(context: Context, bitmap: Bitmap): PendingAttachment? {
+    val output = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.JPEG, CameraCompressionQuality, output)
+    val bytes = output.toByteArray()
+    val fileName = "camera_${System.currentTimeMillis()}.jpg"
+
+    if (bytes.size > MaxAttachmentSizeBytes) {
+        android.widget.Toast.makeText(context, "附件超过 10MB 限制: $fileName", android.widget.Toast.LENGTH_SHORT).show()
+        return null
+    }
+
+    val tempFile = File(context.cacheDir, fileName)
+    tempFile.outputStream().use { it.write(bytes) }
+    return PendingAttachment(
+        uri = Uri.fromFile(tempFile),
+        name = fileName,
+        mimeType = "image/jpeg",
+        bytes = bytes
+    )
+}
 
 // Channel Header
 @Composable
@@ -938,23 +1039,32 @@ private fun NeoComposeBar(
     isUploading: Boolean = false
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    var showAttachmentMenu by remember { mutableStateOf(false) }
     val context = LocalContext.current
 
-    val imagePicker = rememberLauncherForActivityResult(
+    val photoPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetMultipleContents()
     ) { uris: List<Uri> ->
         uris.forEach { uri ->
-            val contentResolver = context.contentResolver
-            val mimeType = contentResolver.getType(uri) ?: "image/*"
-            val name = "image_${System.currentTimeMillis()}.${mimeType.substringAfter("/")}"
-            val bytes = contentResolver.openInputStream(uri)?.readBytes()
-            if (bytes != null) {
-                if (bytes.size > 10 * 1024 * 1024) {
-                    android.widget.Toast.makeText(context, "图片超过 10MB 限制: $name", android.widget.Toast.LENGTH_SHORT).show()
-                } else {
-                    onAddAttachment(PendingAttachment(uri = uri, name = name, mimeType = mimeType, bytes = bytes))
-                }
-            }
+            readPendingAttachment(context, uri, fallbackMimeType = "image/*", fallbackPrefix = "photo")
+                ?.let(onAddAttachment)
+        }
+    }
+
+    val filePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        uris.forEach { uri ->
+            readPendingAttachment(context, uri, fallbackMimeType = "application/octet-stream", fallbackPrefix = "file")
+                ?.let(onAddAttachment)
+        }
+    }
+
+    val cameraPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicturePreview()
+    ) { bitmap: Bitmap? ->
+        bitmap?.let {
+            createCameraAttachment(context, it)?.let(onAddAttachment)
         }
     }
 
@@ -971,42 +1081,11 @@ private fun NeoComposeBar(
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(pendingAttachments) { attachment ->
-                        Box(modifier = Modifier.size(72.dp)) {
-                            // Shadow
-                            Box(
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .offset(3.dp, 3.dp)
-                                    .background(Color.Black, RectangleShape)
-                            )
-                            // Thumbnail
-                            AsyncImage(
-                                model = ImageRequest.Builder(context)
-                                    .data(attachment.uri)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = attachment.name,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .border(2.dp, Color.Black, RectangleShape)
-                                    .clip(RectangleShape)
-                            )
-                            // Remove button
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = 2.dp, y = (-2).dp)
-                                    .size(20.dp)
-                                    .background(Pink, RectangleShape)
-                                    .border(1.5.dp, Color.Black, RectangleShape)
-                                    .clickable { onRemoveAttachment(attachment.uri) },
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text("\u2715", fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
+                    items(pendingAttachments, key = { it.uri.toString() }) { attachment ->
+                        PendingAttachmentPreview(
+                            attachment = attachment,
+                            onRemove = { onRemoveAttachment(attachment.uri) }
+                        )
                     }
                 }
                 if (isUploading) {
@@ -1018,6 +1097,23 @@ private fun NeoComposeBar(
                         modifier = Modifier.padding(start = 12.dp, bottom = 4.dp)
                     )
                 }
+            }
+
+            if (showAttachmentMenu) {
+                AttachmentMenu(
+                    onPhotoClick = {
+                        showAttachmentMenu = false
+                        photoPicker.launch("image/*")
+                    },
+                    onFileClick = {
+                        showAttachmentMenu = false
+                        filePicker.launch("*/*")
+                    },
+                    onCameraClick = {
+                        showAttachmentMenu = false
+                        cameraPicker.launch(null)
+                    }
+                )
             }
 
             // Input row
@@ -1034,7 +1130,7 @@ private fun NeoComposeBar(
                         .size(40.dp)
                         .background(Cream)
                         .border(2.dp, Black, RectangleShape)
-                        .clickable { imagePicker.launch("image/*") },
+                        .clickable { showAttachmentMenu = !showAttachmentMenu },
                     contentAlignment = Alignment.Center
                 ) {
                     Text(text = "+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Black)
@@ -1084,6 +1180,156 @@ private fun NeoComposeBar(
                     Text(text = "\u27A4", fontSize = 18.sp, color = if (canSend) Black else TextMuted)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AttachmentMenu(
+    onPhotoClick: () -> Unit,
+    onFileClick: () -> Unit,
+    onCameraClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        AttachmentMenuButton(
+            label = "Photo",
+            modifier = Modifier.weight(1f),
+            onClick = onPhotoClick
+        )
+        AttachmentMenuButton(
+            label = "File",
+            modifier = Modifier.weight(1f),
+            onClick = onFileClick
+        )
+        AttachmentMenuButton(
+            label = "Camera",
+            modifier = Modifier.weight(1f),
+            onClick = onCameraClick
+        )
+    }
+}
+
+@Composable
+private fun AttachmentMenuButton(
+    label: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = modifier
+            .background(Cream)
+            .border(2.dp, Black, RectangleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+            color = Black
+        )
+    }
+}
+
+@Composable
+private fun PendingAttachmentPreview(
+    attachment: PendingAttachment,
+    onRemove: () -> Unit
+) {
+    Box {
+        if (isPendingAttachmentImage(attachment)) {
+            PendingImageAttachmentPreview(attachment = attachment)
+        } else {
+            PendingFileAttachmentCard(attachment = attachment)
+        }
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = 2.dp, y = (-2).dp)
+                .size(20.dp)
+                .background(Pink, RectangleShape)
+                .border(1.5.dp, Color.Black, RectangleShape)
+                .clickable(onClick = onRemove),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("\u2715", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun PendingImageAttachmentPreview(attachment: PendingAttachment) {
+    Box(modifier = Modifier.size(72.dp)) {
+        Box(
+            modifier = Modifier
+                .size(68.dp)
+                .offset(3.dp, 3.dp)
+                .background(Color.Black, RectangleShape)
+        )
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(attachment.uri)
+                .crossfade(true)
+                .build(),
+            contentDescription = attachment.name,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(68.dp)
+                .border(2.dp, Color.Black, RectangleShape)
+                .clip(RectangleShape)
+        )
+    }
+}
+
+@Composable
+private fun PendingFileAttachmentCard(attachment: PendingAttachment) {
+    Row(
+        modifier = Modifier
+            .width(180.dp)
+            .heightIn(min = 68.dp)
+            .background(Cream)
+            .border(2.dp, Black, RectangleShape)
+            .padding(horizontal = 10.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(34.dp)
+                .background(White)
+                .border(1.5.dp, Black, RectangleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = pendingAttachmentTypeLabel(attachment),
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+                color = Black,
+                maxLines = 1
+            )
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = attachment.name.ifBlank { "Unnamed attachment" },
+                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
+                color = Black,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = attachment.mimeType.ifBlank { "FILE" },
+                style = MaterialTheme.typography.labelSmall,
+                color = TextMuted,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
