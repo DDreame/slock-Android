@@ -145,6 +145,36 @@ class DMChainRegressionTest {
     }
 
     @Test
+    fun `createDM guards against getDMs failure — does not blindly proceed`() {
+        val createDMBlock = viewModelSource
+            .substringAfter("fun createDM(")
+            .substringBefore("fun findExistingDM(")
+        assertTrue(
+            "createDM must check dmsLoaded result before proceeding",
+            createDMBlock.contains("if (!loaded)")
+        )
+        assertTrue(
+            "createDM must call onError when DMs failed to load",
+            createDMBlock.contains("onError(")
+        )
+    }
+
+    @Test
+    fun `refreshDMs resets dmsLoaded gate for sync with createDM`() {
+        val refreshBlock = viewModelSource
+            .substringAfter("fun refreshDMs()")
+            .substringBefore("fun loadChannels(")
+        assertTrue(
+            "refreshDMs must reset dmsLoaded to new CompletableDeferred",
+            refreshBlock.contains("dmsLoaded = CompletableDeferred()")
+        )
+        assertTrue(
+            "refreshDMs must complete dmsLoaded on success",
+            refreshBlock.contains("dmsLoaded.complete(true)")
+        )
+    }
+
+    @Test
     fun `AgentList screen ensures DMs are loaded before createDM`() {
         val agentListIdx = navHostSource.indexOf("AgentListScreen(")
         assertTrue("AgentListScreen composable must exist", agentListIdx > 0)

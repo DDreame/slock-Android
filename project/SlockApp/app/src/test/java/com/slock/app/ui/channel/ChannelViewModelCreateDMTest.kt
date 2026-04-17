@@ -272,6 +272,59 @@ class ChannelViewModelCreateDMTest {
     }
 
     @Test
+    fun `createDM errors when getDMs fails — does not blindly call create API`() = runTest {
+        val repo = FakeChannelRepository(
+            getDMsResult = Result.failure(RuntimeException("Network error")),
+            createDMResult = Result.success(Channel(id = "should-not-appear"))
+        )
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        var errorMsg: String? = null
+        var successCalled = false
+        vm.createDM(agentId = "agent1", onSuccess = { successCalled = true }, onError = { errorMsg = it })
+        advanceUntilIdle()
+
+        assertFalse("createDM should not succeed when DMs failed to load", successCalled)
+        assertNotNull("createDM should report error when DMs failed to load", errorMsg)
+        assertFalse(
+            "state should not contain phantom DM from create API",
+            vm.state.value.dms.any { it.id == "should-not-appear" }
+        )
+    }
+
+    @Test
+    fun `DMNew then reopen reuses refreshed DM — no duplicate create API call`() = runTest {
+        val newDm = Channel(
+            id = "dm-new", name = "DM with Agent", type = "dm",
+            members = listOf(ChannelMember(agentId = "agent1"))
+        )
+        val repo = SequentialDMRepository(
+            getDMsResults = listOf(
+                Result.success(emptyList()),
+                Result.success(listOf(newDm))
+            ),
+            createDMResult = Result.failure(RuntimeException("Should not call create API"))
+        )
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        vm.loadDMs()
+        advanceUntilIdle()
+
+        eventFlow.emit(SocketIOManager.SocketEvent.DMNew(
+            SocketIOManager.DMNewData(id = "dm-new", name = "DM with Agent", type = "dm")
+        ))
+        advanceUntilIdle()
+
+        var successChannel: Channel? = null
+        vm.createDM(agentId = "agent1", onSuccess = { successChannel = it })
+        advanceUntilIdle()
+
+        assertEquals("dm-new", successChannel?.id)
+    }
+
+    @Test
     fun `createDM after API success stores channel with members for future reuse`() = runTest {
         val newDm = Channel(
             id = "dm-new", name = "DM", type = "dm",
@@ -321,6 +374,29 @@ private class DelayedDMRepository(
     override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
     override suspend fun getDMs(serverId: String) = getDMsGate.await()
+    override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
+    override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
+    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())
+}
+
+private class SequentialDMRepository(
+    private val getDMsResults: List<Result<List<Channel>>>,
+    private val createDMResult: Result<Channel> = Result.success(Channel(id = "dm-default"))
+) : ChannelRepository {
+    private var getDMsCallCount = 0
+    override suspend fun getChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun refreshChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun createChannel(serverId: String, name: String, type: String) = Result.failure<Channel>(NotImplementedError())
+    override suspend fun updateChannel(serverId: String, channelId: String, name: String) = Result.failure<Channel>(NotImplementedError())
+    override suspend fun deleteChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun joinChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun getDMs(serverId: String): Result<List<Channel>> {
+        val idx = getDMsCallCount.coerceAtMost(getDMsResults.lastIndex)
+        getDMsCallCount++
+        return getDMsResults[idx]
+    }
     override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
     override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
     override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())
