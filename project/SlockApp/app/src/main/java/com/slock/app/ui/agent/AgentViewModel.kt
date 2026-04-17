@@ -17,11 +17,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class AgentActivityInfo(
+    val activity: String,
+    val message: String? = null
+)
+
 data class AgentUiState(
     val agents: List<Agent> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val agentActivities: Map<String, String> = emptyMap(),
+    val agentActivities: Map<String, AgentActivityInfo> = emptyMap(),
     val availableModels: List<String> = DEFAULT_AGENT_MODEL_OPTIONS
 )
 
@@ -91,7 +96,10 @@ class AgentViewModel @Inject constructor(
                     is SocketIOManager.SocketEvent.AgentActivity -> {
                         _state.update { current ->
                             current.copy(
-                                agentActivities = current.agentActivities + (event.data.agentId to event.data.activity)
+                                agentActivities = current.agentActivities + (event.data.agentId to AgentActivityInfo(
+                                    activity = event.data.activity,
+                                    message = event.data.message
+                                ))
                             )
                         }
                     }
@@ -130,7 +138,12 @@ class AgentViewModel @Inject constructor(
             agentRepository.getAgents(serverId).fold(
                 onSuccess = { agents ->
                     val activities = agents.mapNotNull { agent ->
-                        agent.activity?.let { agent.id.orEmpty() to it }
+                        agent.activity?.let {
+                            agent.id.orEmpty() to AgentActivityInfo(
+                                activity = it,
+                                message = agent.activityDetail
+                            )
+                        }
                     }.toMap()
                     _state.update {
                         it.copy(
@@ -150,7 +163,12 @@ class AgentViewModel @Inject constructor(
             agentRepository.refreshAgents(serverId).fold(
                 onSuccess = { agents ->
                     val activities = agents.mapNotNull { agent ->
-                        agent.activity?.let { agent.id.orEmpty() to it }
+                        agent.activity?.let {
+                            agent.id.orEmpty() to AgentActivityInfo(
+                                activity = it,
+                                message = agent.activityDetail
+                            )
+                        }
                     }.toMap()
                     _state.update {
                         it.copy(
