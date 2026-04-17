@@ -355,6 +355,23 @@ fun SlockNavHost(
                         3 -> serverTasksViewModel.retryIfEmpty()
                     }
                 },
+                members = membersState.members,
+                onNewDmMemberSelected = { member ->
+                    val agentId = if (member.isAgent) member.id else null
+                    val userId = if (!member.isAgent) member.userId else null
+                    channelViewModel.createDM(
+                        agentId = agentId,
+                        userId = userId,
+                        onSuccess = { dmChannel ->
+                            navController.navigate(
+                                Routes.dmMessagesRoute(dmChannel.id.orEmpty(), member.name)
+                            )
+                        },
+                        onError = { error ->
+                            android.widget.Toast.makeText(context, "Failed to create DM: $error", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                },
                 threadsContent = {
                     ThreadListScreen(
                         state = threadListState,
