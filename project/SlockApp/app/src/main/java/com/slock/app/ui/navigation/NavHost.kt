@@ -46,6 +46,9 @@ import com.slock.app.ui.thread.ThreadReplyViewModel
 import com.slock.app.ui.thread.ThreadListScreen
 import com.slock.app.ui.thread.ThreadListViewModel
 import com.slock.app.ui.home.SearchViewModel
+import com.slock.app.ui.settings.SettingsScreen
+import com.slock.app.ui.settings.SettingsViewModel
+import com.slock.app.util.LogCollector
 
 object Routes {
     const val SPLASH = "splash"
@@ -60,6 +63,7 @@ object Routes {
     const val TASK_LIST = "server/{serverId}/tasks"
     const val AGENT_DETAIL = "agent/{agentId}"
     const val MACHINE_LIST = "server/{serverId}/machines"
+    const val SETTINGS = "settings"
     fun agentDetailRoute(agentId: String) = "agent/$agentId"
     fun machineListRoute(serverId: String) = "server/$serverId/machines"
 }
@@ -263,14 +267,7 @@ fun SlockNavHost(
                         navController.navigate(Routes.agentDetailRoute(agentId))
                     }
                 },
-                onLogout = {
-                    authViewModel.logout {
-                        SocketNotificationService.stop(context)
-                        navController.navigate(Routes.LOGIN) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    }
-                },
+                onOpenSettings = { navController.navigate(Routes.SETTINGS) },
                 onTabSelected = { tab ->
                     when (tab) {
                         2 -> membersViewModel.retryIfEmpty()
@@ -313,6 +310,29 @@ fun SlockNavHost(
                         onRetry = { selectedServer?.id?.let { serverTasksViewModel.loadAllTasks(it) } },
                         showHeader = false
                     )
+                }
+            )
+        }
+
+        composable(Routes.SETTINGS) {
+            val viewModel: SettingsViewModel = hiltViewModel()
+            val authViewModel: AuthViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+            val context = androidx.compose.ui.platform.LocalContext.current
+
+            SettingsScreen(
+                state = state,
+                onNavigateBack = { navController.popBackStack() },
+                onNotificationPreferenceChange = viewModel::updateNotificationPreference,
+                onRefreshAccount = { viewModel.refreshAccount() },
+                onSendFeedback = { LogCollector.shareReport(context) },
+                onLogout = {
+                    authViewModel.logout {
+                        SocketNotificationService.stop(context)
+                        navController.navigate(Routes.LOGIN) {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
                 }
             )
         }
