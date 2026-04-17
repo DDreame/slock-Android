@@ -39,7 +39,11 @@ data class MessageUiState(
     val error: String? = null,
     val replyingTo: Message? = null,
     val pendingAttachments: List<PendingAttachment> = emptyList(),
-    val previewImageUrl: String? = null
+    val previewImageUrl: String? = null,
+    val isSearchActive: Boolean = false,
+    val searchQuery: String = "",
+    val searchMatchIndices: List<Int> = emptyList(),
+    val currentSearchMatchPosition: Int = -1
 )
 
 @HiltViewModel
@@ -247,6 +251,47 @@ class MessageViewModel @Inject constructor(
                     _state.update { it.copy(isLoadingMore = false) }
                 }
             )
+        }
+    }
+
+    fun toggleSearch() {
+        _state.update {
+            if (it.isSearchActive) {
+                it.copy(isSearchActive = false, searchQuery = "", searchMatchIndices = emptyList(), currentSearchMatchPosition = -1)
+            } else {
+                it.copy(isSearchActive = true)
+            }
+        }
+    }
+
+    fun updateSearchQuery(query: String) {
+        _state.update { current ->
+            val matches = if (query.isBlank()) {
+                emptyList()
+            } else {
+                current.messages.indices.filter { i ->
+                    current.messages[i].content.orEmpty().contains(query, ignoreCase = true)
+                }
+            }
+            val position = if (matches.isNotEmpty()) 0 else -1
+            current.copy(searchQuery = query, searchMatchIndices = matches, currentSearchMatchPosition = position)
+        }
+    }
+
+    fun nextSearchResult() {
+        _state.update { current ->
+            if (current.searchMatchIndices.isEmpty()) return@update current
+            val next = (current.currentSearchMatchPosition + 1) % current.searchMatchIndices.size
+            current.copy(currentSearchMatchPosition = next)
+        }
+    }
+
+    fun previousSearchResult() {
+        _state.update { current ->
+            if (current.searchMatchIndices.isEmpty()) return@update current
+            val prev = if (current.currentSearchMatchPosition <= 0) current.searchMatchIndices.size - 1
+                       else current.currentSearchMatchPosition - 1
+            current.copy(currentSearchMatchPosition = prev)
         }
     }
 

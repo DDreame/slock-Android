@@ -420,14 +420,14 @@ fun NeoErrorState(
 // Inline text styling: @mentions (Cyan/30 + bold) and `inline code` (Yellow/40 + mono)
 private val inlinePattern = Regex("`[^`]+`|@[\\w.-]+")
 
-fun buildMentionAnnotatedString(content: String): AnnotatedString {
+fun buildMentionAnnotatedString(content: String, highlightQuery: String = ""): AnnotatedString {
     return buildAnnotatedString {
         var lastIndex = 0
         inlinePattern.findAll(content).forEach { match ->
-            append(content.substring(lastIndex, match.range.first))
+            val segment = content.substring(lastIndex, match.range.first)
+            appendHighlighted(segment, highlightQuery)
             val value = match.value
             if (value.startsWith("`") && value.endsWith("`")) {
-                // Inline code
                 withStyle(
                     SpanStyle(
                         fontFamily = FontFamily.Monospace,
@@ -438,7 +438,6 @@ fun buildMentionAnnotatedString(content: String): AnnotatedString {
                     append(value.removeSurrounding("`"))
                 }
             } else {
-                // @mention
                 withStyle(
                     SpanStyle(
                         fontWeight = FontWeight.Bold,
@@ -451,8 +450,30 @@ fun buildMentionAnnotatedString(content: String): AnnotatedString {
             lastIndex = match.range.last + 1
         }
         if (lastIndex < content.length) {
-            append(content.substring(lastIndex))
+            appendHighlighted(content.substring(lastIndex), highlightQuery)
         }
+    }
+}
+
+private fun AnnotatedString.Builder.appendHighlighted(text: String, query: String) {
+    if (query.isBlank()) {
+        append(text)
+        return
+    }
+    var start = 0
+    val lowerText = text.lowercase()
+    val lowerQuery = query.lowercase()
+    while (start < text.length) {
+        val idx = lowerText.indexOf(lowerQuery, start)
+        if (idx < 0) {
+            append(text.substring(start))
+            break
+        }
+        if (idx > start) append(text.substring(start, idx))
+        withStyle(SpanStyle(background = Yellow.copy(alpha = 0.6f), fontWeight = FontWeight.Bold)) {
+            append(text.substring(idx, idx + query.length))
+        }
+        start = idx + query.length
     }
 }
 
@@ -463,7 +484,8 @@ private val codeBlockRegex = Regex("```(?:\\w*\\n)?([\\s\\S]*?)```")
 fun NeoMessageContent(
     content: String,
     modifier: Modifier = Modifier,
-    textColor: Color = Color(0xFF222222)
+    textColor: Color = Color(0xFF222222),
+    highlightQuery: String = ""
 ) {
     // Split content by code blocks
     val segments = mutableListOf<Pair<String, String>>() // type to content
@@ -520,7 +542,7 @@ fun NeoMessageContent(
                                         .background(Black)
                                 )
                                 Text(
-                                    text = buildMentionAnnotatedString(quoteLines.joinToString("\n")),
+                                    text = buildMentionAnnotatedString(quoteLines.joinToString("\n"), highlightQuery),
                                     style = MaterialTheme.typography.bodyMedium.copy(
                                         fontStyle = FontStyle.Italic,
                                         fontSize = 13.sp
@@ -537,7 +559,7 @@ fun NeoMessageContent(
                                 i++
                             }
                             Text(
-                                text = buildMentionAnnotatedString(normalLines.joinToString("\n")),
+                                text = buildMentionAnnotatedString(normalLines.joinToString("\n"), highlightQuery),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = textColor,
                                 lineHeight = 21.sp

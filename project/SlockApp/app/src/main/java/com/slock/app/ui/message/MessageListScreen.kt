@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -56,7 +57,11 @@ fun MessageListScreen(
     onAddAttachment: (PendingAttachment) -> Unit = {},
     onRemoveAttachment: (Uri) -> Unit = {},
     onImageClick: (String) -> Unit = {},
-    onDismissPreview: () -> Unit = {}
+    onDismissPreview: () -> Unit = {},
+    onToggleSearch: () -> Unit = {},
+    onSearchQueryChange: (String) -> Unit = {},
+    onNextSearchResult: () -> Unit = {},
+    onPreviousSearchResult: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
 
@@ -68,8 +73,22 @@ fun MessageListScreen(
         // Channel Header
         ChannelHeader(
             channelName = "# $channelName",
-            onBack = onNavigateBack
+            onBack = onNavigateBack,
+            onSearchClick = onToggleSearch
         )
+
+        // Search bar (shown when search is active)
+        if (state.isSearchActive) {
+            SearchBar(
+                query = state.searchQuery,
+                onQueryChange = onSearchQueryChange,
+                matchCount = state.searchMatchIndices.size,
+                currentMatch = state.currentSearchMatchPosition,
+                onNext = onNextSearchResult,
+                onPrevious = onPreviousSearchResult,
+                onClose = onToggleSearch
+            )
+        }
 
         // Pinned message banner (stub — shown when pinned messages exist)
         // TODO: Wire to actual pinned message data
@@ -115,6 +134,18 @@ fun MessageListScreen(
                 else -> {
                     val listState = rememberLazyListState()
 
+                    // Scroll to current search match
+                    val targetIndex = if (state.isSearchActive && state.currentSearchMatchPosition >= 0 && state.searchMatchIndices.isNotEmpty()) {
+                        state.searchMatchIndices[state.currentSearchMatchPosition]
+                    } else -1
+                    LaunchedEffect(targetIndex) {
+                        if (targetIndex >= 0) {
+                            listState.animateScrollToItem(targetIndex)
+                        }
+                    }
+
+                    val currentHighlightMessageIndex = if (targetIndex >= 0) targetIndex else -1
+
                     // Trigger load more when scrolled near the end (oldest messages)
                     val shouldLoadMore = remember {
                         derivedStateOf {
@@ -135,16 +166,20 @@ fun MessageListScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         reverseLayout = true
                     ) {
-                        items(state.messages) { message ->
+                        items(state.messages.size) { index ->
+                            val message = state.messages[index]
                             if (message.senderType.orEmpty() == "system") {
                                 SystemMessageDivider(message.content.orEmpty())
                             } else {
                                 val quotedMessage = if (message.parentMessageId != null) {
                                     state.messages.find { it.id == message.parentMessageId }
                                 } else null
+                                val isCurrentMatch = index == currentHighlightMessageIndex
                                 NeoMessage(
                                     message = message,
                                     quotedMessage = quotedMessage,
+                                    highlightQuery = if (state.isSearchActive) state.searchQuery else "",
+                                    isCurrentSearchMatch = isCurrentMatch,
                                     onThreadClick = if (message.threadChannelId != null) {
                                         { onNavigateToThread(message.threadChannelId!!, message) }
                                     } else null,
@@ -210,7 +245,7 @@ fun MessageListScreen(
 
 // Channel Header
 @Composable
-private fun ChannelHeader(channelName: String, onBack: () -> Unit) {
+private fun ChannelHeader(channelName: String, onBack: () -> Unit, onSearchClick: () -> Unit = {}) {
     Surface(color = White) {
         Row(
             modifier = Modifier
@@ -239,7 +274,7 @@ private fun ChannelHeader(channelName: String, onBack: () -> Unit) {
 
             // Action buttons
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                MiniIconButton(icon = "\uD83D\uDD0D")
+                MiniIconButton(icon = "\uD83D\uDD0D", onClick = onSearchClick)
                 MiniIconButton(icon = "\u22EE")
             }
         }
@@ -254,12 +289,84 @@ private fun MiniIconButton(icon: String, onClick: () -> Unit = {}) {
     }
 }
 
+// In-channel search bar
+@Composable
+private fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    matchCount: Int,
+    currentMatch: Int,
+    onNext: () -> Unit,
+    onPrevious: () -> Unit,
+    onClose: () -> Unit
+) {
+    val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+
+    Surface(color = Cream) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TextField(
+                value = query,
+                onValueChange = onQueryChange,
+                placeholder = {
+                    Text(
+                        text = "搜索消息...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextMuted
+                    )
+                },
+                singleLine = true,
+                shape = RectangleShape,
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = White,
+                    unfocusedContainerColor = White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    cursorColor = Black
+                ),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 36.dp, max = 36.dp)
+                    .neoShadowSmall()
+                    .border(2.dp, Black, RectangleShape)
+                    .focusable(),
+                textStyle = MaterialTheme.typography.bodyMedium
+            )
+
+            if (query.isNotBlank()) {
+                Text(
+                    text = if (matchCount > 0) "${currentMatch + 1}/$matchCount" else "0/0",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = if (matchCount > 0) Black else TextMuted
+                )
+
+                MiniIconButton(icon = "\u25B2", onClick = onPrevious)
+                MiniIconButton(icon = "\u25BC", onClick = onNext)
+            }
+
+            MiniIconButton(icon = "\u2715", onClick = onClose)
+        }
+    }
+    Divider(thickness = 2.dp, color = Black)
+}
+
 // Message Item
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun NeoMessage(
     message: Message,
     quotedMessage: Message? = null,
+    highlightQuery: String = "",
+    isCurrentSearchMatch: Boolean = false,
     onThreadClick: (() -> Unit)? = null,
     onReply: () -> Unit = {},
     onImageClick: (String) -> Unit = {}
@@ -270,7 +377,11 @@ private fun NeoMessage(
     val alpha = if (isPending) 0.5f else 1f
     var showMenu by remember { mutableStateOf(false) }
 
-    val messageBgColor = if (isAgent) Color(0xFFFFF5EB) else Color.Transparent
+    val messageBgColor = when {
+        isCurrentSearchMatch -> Yellow.copy(alpha = 0.3f)
+        isAgent -> Color(0xFFFFF5EB)
+        else -> Color.Transparent
+    }
 
     Row(
         modifier = Modifier
@@ -388,7 +499,7 @@ private fun NeoMessage(
             }
 
             // Message content with markdown rendering
-            NeoMessageContent(content = message.content.orEmpty())
+            NeoMessageContent(content = message.content.orEmpty(), highlightQuery = highlightQuery)
 
             // Image attachments
             val imageAttachments = message.attachments.filter {
