@@ -22,6 +22,7 @@ class DeepLinkNavigationTest {
         assertNotNull(result.deepLinkRoute)
         assertTrue(result.deepLinkRoute!!.startsWith("channel/ch-123/messages"))
         assertTrue(result.deepLinkRoute!!.contains("name=general"))
+        assertTrue(result.deepLinkRoute!!.contains("context="))
     }
 
     @Test
@@ -81,7 +82,7 @@ class DeepLinkNavigationTest {
         )
 
         assertNotNull(result.deepLinkRoute)
-        assertEquals("channel/dm-1/messages?name=Agent%20Bot", result.deepLinkRoute)
+        assertEquals("channel/dm-1/messages?name=Agent%20Bot&context=", result.deepLinkRoute)
     }
 
     @Test

@@ -59,7 +59,7 @@ class ScreenRouteRegistryTest {
 
     @Test
     fun `Routes agentDetailRoute produces correct path`() {
-        assertEquals("agent/test-agent-123", Routes.agentDetailRoute("test-agent-123"))
+        assertEquals("agent/test-agent-123?context=", Routes.agentDetailRoute("test-agent-123"))
     }
 
     @Test
@@ -69,12 +69,12 @@ class ScreenRouteRegistryTest {
 
     @Test
     fun `Routes dmMessagesRoute produces correct path`() {
-        assertEquals("channel/dm-1/messages?name=Claude", Routes.dmMessagesRoute("dm-1", "Claude"))
+        assertEquals("channel/dm-1/messages?name=Claude&context=", Routes.dmMessagesRoute("dm-1", "Claude"))
     }
 
     @Test
     fun `Routes dmMessagesRoute encodes special characters in name`() {
-        assertEquals("channel/dm-2/messages?name=Agent%20Bot", Routes.dmMessagesRoute("dm-2", "Agent Bot"))
+        assertEquals("channel/dm-2/messages?name=Agent%20Bot&context=", Routes.dmMessagesRoute("dm-2", "Agent Bot"))
     }
 
     @Test
@@ -82,5 +82,39 @@ class ScreenRouteRegistryTest {
         val route = Routes.dmMessagesRoute("ch-123", "TestName")
         assertTrue("DM route must start with channel/ prefix", route.startsWith("channel/"))
         assertTrue("DM route must contain /messages?name=", route.contains("/messages?name="))
+    }
+
+    @Test
+    fun `Routes buildContextLabel joins non blank parts`() {
+        assertEquals("Acme Server · Members", Routes.buildContextLabel("Acme Server", "Members"))
+    }
+
+    @Test
+    fun `Routes messagesRoute appends encoded context`() {
+        assertEquals(
+            "channel/ch-1/messages?name=general&context=Acme%20Server%20%C2%B7%20Search%20Results",
+            Routes.messagesRoute("ch-1", "general", "Acme Server · Search Results")
+        )
+    }
+
+    @Test
+    fun `Routes userProfileRoute appends encoded context`() {
+        assertEquals(
+            "profile/u-1?context=Acme%20Server%20%C2%B7%20Members",
+            Routes.userProfileRoute("u-1", "Acme Server · Members")
+        )
+    }
+
+    @Test
+    fun `Routes threadReplyRoute appends encoded context`() {
+        assertEquals(
+            "thread/thread-1/reply/%7Bjson%7D?channelName=general&context=Acme%20Server%20%C2%B7%20Threads",
+            Routes.threadReplyRoute(
+                threadChannelId = "thread-1",
+                parentMessageJson = "%7Bjson%7D",
+                channelName = "general",
+                contextLabel = "Acme Server · Threads"
+            )
+        )
     }
 }

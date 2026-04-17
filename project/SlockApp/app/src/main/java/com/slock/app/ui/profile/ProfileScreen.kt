@@ -36,6 +36,7 @@ internal fun resolveProfileContentState(state: ProfileUiState): ProfileContentSt
 @Composable
 fun ProfileScreen(
     state: ProfileUiState,
+    contextLabel: String = "",
     onNavigateBack: () -> Unit = {},
     onStartEditing: () -> Unit = {},
     onCancelEditing: () -> Unit = {},
@@ -45,6 +46,7 @@ fun ProfileScreen(
     onRetry: () -> Unit = {}
 ) {
     val contentState = resolveProfileContentState(state)
+    val headerContextLabel = resolveProfileHeaderContext(state.isOwnProfile, contextLabel)
     val profileKey = state.user?.id ?: state.member?.userId ?: state.isOwnProfile.toString()
     var showLogoutConfirm by remember(profileKey) { mutableStateOf(false) }
 
@@ -72,12 +74,31 @@ fun ProfileScreen(
                 ) {
                     Text("\u2190", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
-                Text(
-                    if (state.isOwnProfile) "My Profile" else "User Profile",
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
+                if (headerContextLabel != null) {
+                    Column {
+                        Text(
+                            if (state.isOwnProfile) "My Profile" else "User Profile",
+                            fontFamily = SpaceGrotesk,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                        Text(
+                            headerContextLabel,
+                            fontFamily = SpaceMono,
+                            fontSize = 11.sp,
+                            color = Color.Black.copy(alpha = 0.65f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                } else {
+                    Text(
+                        if (state.isOwnProfile) "My Profile" else "User Profile",
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
             }
         }
         Divider(thickness = 3.dp, color = Color.Black)
@@ -275,6 +296,11 @@ fun ProfileScreen(
             }
         }
     }
+}
+
+internal fun resolveProfileHeaderContext(isOwnProfile: Boolean, contextLabel: String): String? {
+    if (isOwnProfile) return null
+    return contextLabel.trim().takeIf { it.isNotEmpty() }
 }
 
 @Composable

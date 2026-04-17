@@ -23,6 +23,7 @@ import com.slock.app.ui.theme.*
 @Composable
 fun ThreadReplyScreen(
     channelName: String = "",
+    contextLabel: String = "",
     state: ThreadReplyUiState,
     onSendReply: (String) -> Unit,
     onLoadMore: () -> Unit,
@@ -40,6 +41,7 @@ fun ThreadReplyScreen(
         ThreadHeader(
             replyCount = state.replies.size,
             channelName = channelName,
+            contextLabel = resolveThreadHeaderContext(contextLabel),
             onBack = onNavigateBack
         )
 
@@ -121,11 +123,15 @@ fun ThreadReplyScreen(
     }
 }
 
+internal fun resolveThreadHeaderContext(contextLabel: String): String? =
+    contextLabel.trim().takeIf { it.isNotEmpty() }
+
 // Lavender thread header
 @Composable
 private fun ThreadHeader(
     replyCount: Int,
     channelName: String,
+    contextLabel: String?,
     onBack: () -> Unit
 ) {
     Surface(color = Lavender) {
@@ -150,6 +156,13 @@ private fun ThreadHeader(
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = Black
                 )
+                if (contextLabel != null) {
+                    Text(
+                        text = contextLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Black.copy(alpha = 0.7f)
+                    )
+                }
                 Text(
                     text = "# $channelName \u00B7 $replyCount replies",
                     style = MaterialTheme.typography.labelSmall,

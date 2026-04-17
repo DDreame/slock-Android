@@ -12,8 +12,10 @@ fun resolveSplashNavigation(
 ): SplashNavResult {
     val target = if (isLoggedIn) Routes.HOME else Routes.LOGIN
     val deepLinkRoute = if (isLoggedIn && !deepLinkChannelId.isNullOrBlank()) {
-        val encodedName = java.net.URLEncoder.encode(deepLinkChannelName ?: "", "UTF-8").replace("+", "%20")
-        "channel/$deepLinkChannelId/messages?name=$encodedName"
+        Routes.messagesRoute(
+            channelId = deepLinkChannelId,
+            channelName = deepLinkChannelName ?: ""
+        )
     } else null
     return SplashNavResult(target, deepLinkRoute)
 }
