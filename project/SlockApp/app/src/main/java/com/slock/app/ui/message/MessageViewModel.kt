@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.model.Attachment
+import com.slock.app.data.model.ConvertMessageToTaskRequest
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
+import com.slock.app.data.repository.TaskRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -28,6 +30,16 @@ data class PendingAttachment(
     override fun equals(other: Any?): Boolean = other is PendingAttachment && uri == other.uri
     override fun hashCode(): Int = uri.hashCode()
 }
+
+data class ConvertToTaskDraft(
+    val sourceMessage: Message,
+    val channelName: String,
+    val title: String,
+    val status: String = "todo",
+    val isSubmitting: Boolean = false
+)
+
+internal val convertTaskStatusOptions = listOf("todo", "in_progress", "in_review")
 
 data class MessageUiState(
     val messages: List<Message> = emptyList(),
@@ -52,7 +64,9 @@ data class MessageUiState(
     val onlineIds: Set<String> = emptySet(),
     val isCurrentChannelSaved: Boolean = false,
     val isSavedStatusLoading: Boolean = false,
-    val savedChannelFeedbackMessage: String? = null
+    val savedChannelFeedbackMessage: String? = null,
+    val convertToTaskDraft: ConvertToTaskDraft? = null,
+    val convertTaskFeedbackMessage: String? = null
 )
 
 private fun saveChannelFailureMessage(isRemoving: Boolean, error: Throwable): String {
@@ -62,6 +76,24 @@ private fun saveChannelFailureMessage(isRemoving: Boolean, error: Throwable): St
         "Failed to save channel"
     }
     return error.message?.takeIf { it.isNotBlank() } ?: fallback
+}
+
+private fun convertTaskFailureMessage(error: Throwable): String =
+    error.message?.takeIf { it.isNotBlank() } ?: "Failed to create task from message"
+
+internal fun prefillConvertTaskTitle(message: Message): String {
+    val normalized = message.content.orEmpty()
+        .lineSequence()
+        .map { it.trim() }
+        .firstOrNull { it.isNotEmpty() }
+        .orEmpty()
+        .replace(Regex("\\s+"), " ")
+
+    return when {
+        normalized.isNotEmpty() -> normalized.take(80)
+        !message.senderName.isNullOrBlank() -> "Follow up with ${message.senderName}"
+        else -> "Follow up on message"
+    }
 }
 
 fun computeSearchMatches(state: MessageUiState): MessageUiState {
@@ -88,6 +120,7 @@ fun computeSearchMatches(state: MessageUiState): MessageUiState {
 @HiltViewModel
 class MessageViewModel @Inject constructor(
     private val messageRepository: MessageRepository,
+    private val taskRepository: TaskRepository,
     private val channelRepository: ChannelRepository,
     private val socketIOManager: SocketIOManager,
     private val activeServerHolder: ActiveServerHolder,
@@ -311,6 +344,105 @@ class MessageViewModel @Inject constructor(
 
     fun consumeSavedChannelFeedback() {
         _state.update { it.copy(savedChannelFeedbackMessage = null) }
+    }
+
+    fun showConvertToTask(message: Message, channelName: String) {
+        if (message.id.isNullOrBlank() || message.isTask) return
+        _state.update {
+            it.copy(
+                convertToTaskDraft = ConvertToTaskDraft(
+                    sourceMessage = message,
+                    channelName = channelName,
+                    title = prefillConvertTaskTitle(message)
+                ),
+                convertTaskFeedbackMessage = null
+            )
+        }
+    }
+
+    fun dismissConvertToTask() {
+        _state.update { it.copy(convertToTaskDraft = null) }
+    }
+
+    fun updateConvertToTaskStatus(status: String) {
+        if (status !in convertTaskStatusOptions) return
+        _state.update { current ->
+            current.copy(
+                convertToTaskDraft = current.convertToTaskDraft?.copy(status = status)
+            )
+        }
+    }
+
+    fun consumeConvertTaskFeedback() {
+        _state.update { it.copy(convertTaskFeedbackMessage = null) }
+    }
+
+    fun submitConvertToTask() {
+        val serverId = activeServerHolder.serverId
+        val draft = _state.value.convertToTaskDraft ?: return
+        val messageId = draft.sourceMessage.id.orEmpty()
+        if (draft.isSubmitting || messageId.isBlank()) return
+
+        if (serverId.isNullOrBlank()) {
+            _state.update { it.copy(convertTaskFeedbackMessage = "Server not selected") }
+            return
+        }
+
+        viewModelScope.launch {
+            _state.update { current ->
+                current.copy(
+                    convertToTaskDraft = current.convertToTaskDraft?.copy(isSubmitting = true),
+                    convertTaskFeedbackMessage = null
+                )
+            }
+
+            taskRepository.convertMessageToTask(
+                serverId = serverId,
+                request = ConvertMessageToTaskRequest(
+                    messageId = messageId,
+                    title = draft.title.takeIf { it.isNotBlank() },
+                    status = draft.status,
+                    channelId = _state.value.channelId.takeIf { it.isNotBlank() }
+                )
+            ).fold(
+                onSuccess = { createdTask ->
+                    val finalResult = if (draft.status != "todo" && !createdTask.id.isNullOrBlank()) {
+                        taskRepository.updateTaskStatus(serverId, createdTask.id, draft.status)
+                    } else {
+                        Result.success(createdTask)
+                    }
+
+                    finalResult.fold(
+                        onSuccess = {
+                            _state.update {
+                                it.copy(
+                                    convertToTaskDraft = null,
+                                    convertTaskFeedbackMessage = "Task created from message"
+                                )
+                            }
+                            loadMessages(_state.value.channelId)
+                        },
+                        onFailure = {
+                            _state.update {
+                                it.copy(
+                                    convertToTaskDraft = null,
+                                    convertTaskFeedbackMessage = "Task created, but failed to update status"
+                                )
+                            }
+                            loadMessages(_state.value.channelId)
+                        }
+                    )
+                },
+                onFailure = { error ->
+                    _state.update { current ->
+                        current.copy(
+                            convertToTaskDraft = current.convertToTaskDraft?.copy(isSubmitting = false),
+                            convertTaskFeedbackMessage = convertTaskFailureMessage(error)
+                        )
+                    }
+                }
+            )
+        }
     }
 
     private suspend fun refreshSavedChannelState(serverId: String, channelId: String, loadToken: Long) {

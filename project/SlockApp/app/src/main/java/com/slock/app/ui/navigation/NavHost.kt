@@ -572,7 +572,12 @@ fun SlockNavHost(
                 channelAgents = channelAgents,
                 channelName_raw = channelName.ifBlank { channelId },
                 onStopAllAgents = { onSuccess, onError -> channelVM.stopAllChannelAgents(onSuccess, onError) },
-                onResumeAllAgents = { prompt, onSuccess, onError -> channelVM.resumeAllChannelAgents(prompt, onSuccess, onError) }
+                onResumeAllAgents = { prompt, onSuccess, onError -> channelVM.resumeAllChannelAgents(prompt, onSuccess, onError) },
+                onShowConvertToTask = viewModel::showConvertToTask,
+                onDismissConvertToTask = viewModel::dismissConvertToTask,
+                onConvertTaskStatusChange = viewModel::updateConvertToTaskStatus,
+                onSubmitConvertToTask = viewModel::submitConvertToTask,
+                onConvertTaskFeedbackShown = viewModel::consumeConvertTaskFeedback
             )
         }
 

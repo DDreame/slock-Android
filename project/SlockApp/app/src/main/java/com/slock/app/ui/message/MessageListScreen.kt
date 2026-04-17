@@ -96,7 +96,12 @@ fun MessageListScreen(
     channelAgents: List<Agent> = emptyList(),
     channelName_raw: String = "",
     onStopAllAgents: (onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit = { s, _ -> s() },
-    onResumeAllAgents: (prompt: String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit = { _, s, _ -> s() }
+    onResumeAllAgents: (prompt: String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit = { _, s, _ -> s() },
+    onShowConvertToTask: (Message, String) -> Unit = { _, _ -> },
+    onDismissConvertToTask: () -> Unit = {},
+    onConvertTaskStatusChange: (String) -> Unit = {},
+    onSubmitConvertToTask: () -> Unit = {},
+    onConvertTaskFeedbackShown: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -112,6 +117,12 @@ fun MessageListScreen(
         val message = state.sendError ?: return@LaunchedEffect
         android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
         onSendErrorShown()
+    }
+
+    LaunchedEffect(state.convertTaskFeedbackMessage) {
+        val message = state.convertTaskFeedbackMessage ?: return@LaunchedEffect
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        onConvertTaskFeedbackShown()
     }
 
     Column(
@@ -245,6 +256,7 @@ fun MessageListScreen(
                                         } else null,
                                         onReply = { onReplyTo(message) },
                                         onToggleReaction = { emoji -> onToggleReaction(message, emoji) },
+                                        onConvertToTask = { onShowConvertToTask(message, channelName) },
                                         onImageClick = onImageClick
                                     )
                                 }
@@ -323,6 +335,15 @@ fun MessageListScreen(
         ImagePreviewOverlay(
             imageUrl = imageUrl,
             onDismiss = onDismissPreview
+        )
+    }
+
+    state.convertToTaskDraft?.let { draft ->
+        ConvertToTaskSheet(
+            draft = draft,
+            onDismiss = onDismissConvertToTask,
+            onStatusChange = onConvertTaskStatusChange,
+            onSubmit = onSubmitConvertToTask
         )
     }
 }
@@ -591,6 +612,7 @@ private fun NeoMessage(
     onThreadClick: (() -> Unit)? = null,
     onReply: () -> Unit = {},
     onToggleReaction: (String) -> Unit = {},
+    onConvertToTask: () -> Unit = {},
     onImageClick: (String) -> Unit = {}
 ) {
     val isAgent = message.isAgent
@@ -819,11 +841,13 @@ private fun NeoMessage(
         MessageActionSheet(
             hasThread = onThreadClick != null,
             canCopyLink = copyTargets.link != null,
+            canConvertToTask = !message.isTask,
             reactions = reactions,
             onDismiss = { showMenu = false },
             onToggleReaction = { emoji -> showMenu = false; onToggleReaction(emoji) },
             onReplyThread = { showMenu = false; onThreadClick?.invoke() },
             onQuoteReply = { showMenu = false; onReply() },
+            onConvertToTask = { showMenu = false; onConvertToTask() },
             onCopyMarkdown = {
                 clipboardManager.setText(AnnotatedString(copyTargets.markdown))
                 showMenu = false
@@ -886,11 +910,13 @@ private fun MessageAvatar(
 private fun MessageActionSheet(
     hasThread: Boolean,
     canCopyLink: Boolean,
+    canConvertToTask: Boolean,
     reactions: List<MessageReactionUiModel>,
     onDismiss: () -> Unit,
     onToggleReaction: (String) -> Unit,
     onReplyThread: () -> Unit,
     onQuoteReply: () -> Unit,
+    onConvertToTask: () -> Unit,
     onCopyMarkdown: () -> Unit,
     onCopyLink: () -> Unit
 ) {
@@ -924,6 +950,13 @@ private fun MessageActionSheet(
                 label = "Quote Reply",
                 onClick = onQuoteReply
             )
+            if (canConvertToTask) {
+                ActionSheetItem(
+                    icon = "\u2611\uFE0F",
+                    label = "Convert to Task",
+                    onClick = onConvertToTask
+                )
+            }
             if (hasThread) {
                 ActionSheetItem(
                     icon = "\uD83D\uDCAC",
@@ -944,6 +977,154 @@ private fun MessageActionSheet(
                 )
             }
             Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+private data class ConvertTaskStatusUi(
+    val value: String,
+    val label: String,
+    val color: Color
+)
+
+private val convertTaskStatuses = listOf(
+    ConvertTaskStatusUi("todo", "TODO", Yellow),
+    ConvertTaskStatusUi("in_progress", "IN PROGRESS", Cyan),
+    ConvertTaskStatusUi("in_review", "IN REVIEW", Lavender)
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ConvertToTaskSheet(
+    draft: ConvertToTaskDraft,
+    onDismiss: () -> Unit,
+    onStatusChange: (String) -> Unit,
+    onSubmit: () -> Unit
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = White,
+        shape = RectangleShape,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 12.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(Black)
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+                .navigationBarsPadding()
+        ) {
+            Text(
+                text = "Create Task",
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                color = Black
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            NeoLabel("TASK TITLE")
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(White)
+                    .border(2.dp, Black, RectangleShape)
+                    .neoShadowSmall()
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                Text(
+                    text = draft.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Black
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            NeoLabel("SOURCE MESSAGE")
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Cream)
+                    .border(2.dp, Black, RectangleShape)
+                    .neoShadowSmall()
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = "${draft.sourceMessage.senderName.orEmpty().ifBlank { "Unknown" }} in # ${draft.channelName}",
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Black
+                )
+                Text(
+                    text = draft.sourceMessage.content.orEmpty().ifBlank { "No message content" },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Black,
+                    maxLines = 4,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            NeoLabel("STATUS")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                convertTaskStatuses.forEach { status ->
+                    val selected = draft.status == status.value
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .background(if (selected) status.color else White)
+                            .border(2.dp, Black, RectangleShape)
+                            .clickable(enabled = !draft.isSubmitting) { onStatusChange(status.value) }
+                            .padding(horizontal = 10.dp, vertical = 10.dp)
+                    ) {
+                        Text(
+                            text = status.label,
+                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            color = Black,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            NeoLabel("CHANNEL")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(White)
+                    .border(2.dp, Black, RectangleShape)
+                    .neoShadowSmall()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "# ${draft.channelName}",
+                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Black
+                )
+            }
+
+            Spacer(modifier = Modifier.height(18.dp))
+
+            NeoButton(
+                text = if (draft.isSubmitting) "CREATING..." else "CREATE TASK",
+                onClick = onSubmit,
+                enabled = !draft.isSubmitting
+            )
         }
     }
 }

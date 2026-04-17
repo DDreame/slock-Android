@@ -106,6 +106,19 @@ data class CreateTaskRequest(
     val messageId: String? = null
 )
 
+data class ConvertMessageToTaskRequest(
+    @SerializedName("messageId")
+    val messageId: String,
+    val title: String? = null,
+    val status: String? = null,
+    @SerializedName("channelId")
+    val channelId: String? = null
+)
+
+data class ConvertMessageToTaskResponse(
+    val task: Task
+)
+
 data class UpdateTaskStatusRequest(
     val status: String
 )

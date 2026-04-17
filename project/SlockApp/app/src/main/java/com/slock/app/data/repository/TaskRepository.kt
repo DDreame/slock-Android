@@ -17,6 +17,7 @@ interface TaskRepository {
     suspend fun getAllServerTasks(serverId: String, channelIds: List<String>): Result<List<Task>>
     suspend fun getServerTasks(serverId: String): Result<List<Task>>
     suspend fun createTask(serverId: String, channelId: String, title: String, description: String?, assigneeId: String?, messageId: String?): Result<Task>
+    suspend fun convertMessageToTask(serverId: String, request: ConvertMessageToTaskRequest): Result<Task>
     suspend fun updateTaskStatus(serverId: String, taskId: String, status: String): Result<Task>
     suspend fun deleteTask(serverId: String, taskId: String): Result<Unit>
 }
@@ -143,6 +144,22 @@ class TaskRepositoryImpl @Inject constructor(
                 Result.success(task)
             } else {
                 Result.failure(Exception("Create task failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun convertMessageToTask(serverId: String, request: ConvertMessageToTaskRequest): Result<Task> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.convertMessageToTask(request)
+            if (response.isSuccessful && response.body() != null) {
+                val task = response.body()!!.task
+                taskDao.insertTask(task.toEntity())
+                Result.success(task)
+            } else {
+                Result.failure(Exception("Convert message to task failed: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)
