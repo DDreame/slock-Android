@@ -513,7 +513,8 @@ fun SlockNavHost(
                 onNextSearchResult = viewModel::nextSearchResult,
                 onPreviousSearchResult = viewModel::previousSearchResult,
                 onToggleReaction = viewModel::toggleReaction,
-                onToggleSavedChannel = viewModel::toggleSavedChannel
+                onToggleSavedChannel = viewModel::toggleSavedChannel,
+                onSavedChannelFeedbackShown = viewModel::consumeSavedChannelFeedback
             )
         }
 
@@ -541,7 +542,8 @@ fun SlockNavHost(
                     }
                 },
                 onRemoveSavedChannel = viewModel::removeSavedChannel,
-                onRetry = viewModel::loadSavedChannels
+                onRetry = viewModel::loadSavedChannels,
+                onFeedbackShown = viewModel::consumeFeedback
             )
         }
 

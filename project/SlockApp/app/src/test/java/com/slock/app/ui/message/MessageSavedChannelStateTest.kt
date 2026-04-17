@@ -10,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -91,6 +92,64 @@ class MessageSavedChannelStateTest {
         advanceUntilIdle()
 
         assertFalse(viewModel.state.value.isCurrentChannelSaved)
+        verify(channelRepository).removeSavedChannel("server-1", "channel-1")
+    }
+
+    @Test
+    fun toggleSavedChannel_exposesFeedbackWhenSaveFails() = runTest {
+        whenever(socketIOManager.events).thenReturn(emptyFlow())
+        whenever(activeServerHolder.serverId).thenReturn("server-1")
+        whenever(channelRepository.isChannelSaved("server-1", "channel-1")).thenReturn(Result.success(false))
+        whenever(channelRepository.saveChannel("server-1", "channel-1"))
+            .thenReturn(Result.failure(IllegalStateException("save failed")))
+        whenever(messageRepository.getMessages("server-1", "channel-1", 50, null, null))
+            .thenReturn(Result.success(emptyList()))
+        whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
+            .thenReturn(Result.success(emptyList()))
+
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
+        viewModel.loadMessages("channel-1")
+        advanceUntilIdle()
+
+        viewModel.toggleSavedChannel()
+        advanceUntilIdle()
+
+        assertFalse(viewModel.state.value.isCurrentChannelSaved)
+        assertFalse(viewModel.state.value.isSavedStatusLoading)
+        assertEquals("save failed", viewModel.state.value.savedChannelFeedbackMessage)
+
+        viewModel.consumeSavedChannelFeedback()
+
+        assertEquals(null, viewModel.state.value.savedChannelFeedbackMessage)
+        verify(channelRepository).saveChannel("server-1", "channel-1")
+    }
+
+    @Test
+    fun toggleSavedChannel_exposesFeedbackWhenRemoveFails() = runTest {
+        whenever(socketIOManager.events).thenReturn(emptyFlow())
+        whenever(activeServerHolder.serverId).thenReturn("server-1")
+        whenever(channelRepository.isChannelSaved("server-1", "channel-1")).thenReturn(Result.success(true))
+        whenever(channelRepository.removeSavedChannel("server-1", "channel-1"))
+            .thenReturn(Result.failure(IllegalStateException("remove failed")))
+        whenever(messageRepository.getMessages("server-1", "channel-1", 50, null, null))
+            .thenReturn(Result.success(emptyList()))
+        whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
+            .thenReturn(Result.success(emptyList()))
+
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
+        viewModel.loadMessages("channel-1")
+        advanceUntilIdle()
+
+        viewModel.toggleSavedChannel()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.isCurrentChannelSaved)
+        assertFalse(viewModel.state.value.isSavedStatusLoading)
+        assertEquals("remove failed", viewModel.state.value.savedChannelFeedbackMessage)
+
+        viewModel.consumeSavedChannelFeedback()
+
+        assertEquals(null, viewModel.state.value.savedChannelFeedbackMessage)
         verify(channelRepository).removeSavedChannel("server-1", "channel-1")
     }
 }
