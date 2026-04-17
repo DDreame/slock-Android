@@ -12,7 +12,7 @@ import javax.inject.Inject
 interface AgentRepository {
     suspend fun getAgents(serverId: String): Result<List<Agent>>
     suspend fun refreshAgents(serverId: String): Result<List<Agent>>
-    suspend fun createAgent(serverId: String, name: String, description: String, prompt: String, model: String = "claude-sonnet-4-20250514", avatar: String? = null): Result<Agent>
+    suspend fun createAgent(serverId: String, name: String, description: String, prompt: String, model: String = DEFAULT_AGENT_MODEL_ID, avatar: String? = null): Result<Agent>
     suspend fun updateAgent(serverId: String, agentId: String, name: String?, description: String?, prompt: String?): Result<Agent>
     suspend fun deleteAgent(serverId: String, agentId: String): Result<Unit>
     suspend fun startAgent(serverId: String, agentId: String): Result<Unit>

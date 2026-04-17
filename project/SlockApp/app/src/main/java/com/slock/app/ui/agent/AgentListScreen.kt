@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.data.model.Agent
+import com.slock.app.data.model.DEFAULT_AGENT_MODEL_OPTIONS
 import com.slock.app.ui.theme.*
 import com.slock.app.util.LogCollector
 import android.widget.Toast
@@ -173,6 +174,7 @@ fun AgentListScreen(
     // Create Agent Bottom Sheet
     if (showCreateDialog) {
         CreateAgentSheet(
+            availableModels = state.availableModels,
             onDismiss = { showCreateDialog = false },
             onCreate = { name, desc, prompt, model ->
                 onCreateAgent(name, desc, prompt, model)
@@ -679,15 +681,27 @@ private fun NeoToggle(checked: Boolean, onToggle: () -> Unit) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CreateAgentSheet(
+    availableModels: List<String>,
     onDismiss: () -> Unit,
     onCreate: (name: String, desc: String, prompt: String, model: String) -> Unit
 ) {
-    val modelOptions = listOf("claude-sonnet-4-20250514", "claude-haiku-4-5-20251001", "claude-opus-4-20250514")
-    val modelLabels = listOf("Sonnet", "Haiku", "Opus")
+    val modelOptions = remember(availableModels) {
+        availableModels.ifEmpty { DEFAULT_AGENT_MODEL_OPTIONS }
+    }
     var name by remember { mutableStateOf("") }
     var desc by remember { mutableStateOf("") }
     var prompt by remember { mutableStateOf("") }
-    var selectedModelIndex by remember { mutableIntStateOf(0) }
+    var selectedModel by remember { mutableStateOf(modelOptions.firstOrNull().orEmpty()) }
+    var useCustomModel by remember { mutableStateOf(false) }
+    var customModelId by remember { mutableStateOf("") }
+
+    LaunchedEffect(modelOptions) {
+        if (selectedModel.isBlank() || selectedModel !in modelOptions) {
+            selectedModel = modelOptions.firstOrNull().orEmpty()
+        }
+    }
+
+    val resolvedModel = if (useCustomModel) customModelId.trim() else selectedModel.trim()
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -747,24 +761,52 @@ private fun CreateAgentSheet(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // Model selector
-            SettingsRow(label = "MODEL") {
-                Box(
-                    modifier = Modifier
-                        .background(White)
-                        .border(2.dp, Black, RectangleShape)
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                        .clickable {
-                            selectedModelIndex = (selectedModelIndex + 1) % modelOptions.size
+            NeoLabel("MODEL")
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                modelOptions.forEach { modelId ->
+                    ModelOptionChip(
+                        label = getModelShortName(modelId),
+                        isSelected = !useCustomModel && selectedModel == modelId,
+                        onClick = {
+                            selectedModel = modelId
+                            useCustomModel = false
                         }
-                ) {
-                    Text(
-                        text = modelLabels[selectedModelIndex],
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Black
                     )
                 }
+
+                ModelOptionChip(
+                    label = "Custom",
+                    isSelected = useCustomModel,
+                    onClick = {
+                        useCustomModel = true
+                        if (customModelId.isBlank()) {
+                            customModelId = selectedModel
+                        }
+                    }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            if (useCustomModel) {
+                NeoTextField(
+                    value = customModelId,
+                    onValueChange = { customModelId = it },
+                    placeholder = "Custom model ID",
+                    focusHighlight = Orange
+                )
+            } else if (selectedModel.isNotBlank()) {
+                Text(
+                    text = selectedModel,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -772,11 +814,35 @@ private fun CreateAgentSheet(
             NeoButton(
                 text = "CREATE AGENT",
                 onClick = {
-                    if (name.isNotBlank()) onCreate(name, desc, prompt, modelOptions[selectedModelIndex])
+                    if (name.isNotBlank() && resolvedModel.isNotBlank()) {
+                        onCreate(name, desc, prompt, resolvedModel)
+                    }
                 },
-                enabled = name.isNotBlank()
+                enabled = name.isNotBlank() && resolvedModel.isNotBlank()
             )
         }
+    }
+}
+
+@Composable
+private fun ModelOptionChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .background(if (isSelected) Yellow else White)
+            .border(2.dp, Black, RectangleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Black
+        )
     }
 }
 
