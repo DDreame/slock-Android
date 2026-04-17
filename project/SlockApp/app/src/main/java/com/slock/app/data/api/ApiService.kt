@@ -140,6 +140,12 @@ interface ApiService {
     @POST("agents/{agentId}/reset")
     suspend fun resetAgent(@Path("agentId") agentId: String, @Body request: ResetAgentRequest): Response<Unit>
 
+    @GET("agents/{agentId}/activity-log")
+    suspend fun getAgentActivityLog(
+        @Path("agentId") agentId: String,
+        @Query("limit") limit: Int = 50
+    ): Response<List<ActivityLogEntry>>
+
     // Threads (X-Server-Id header added automatically by ServerIdInterceptor)
     @GET("channels/threads/followed")
     suspend fun getFollowedThreads(): Response<FollowedThreadsResponse>

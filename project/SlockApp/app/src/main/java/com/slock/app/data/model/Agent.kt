@@ -59,3 +59,10 @@ data class MachineAgent(
     val name: String? = null,
     val status: String? = null
 )
+
+data class ActivityLogEntry(
+    val timestamp: String? = null,
+    val activity: String? = null,
+    val detail: String? = null,
+    val entry: Any? = null
+)
