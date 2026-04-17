@@ -196,9 +196,15 @@ class MembersViewModel @Inject constructor(
         }
     }
 
-    private fun buildAgentSubtitle(agent: Agent): String {
+    internal fun buildAgentSubtitle(agent: Agent): String {
         val statusText = when {
-            agent.activity != null && agent.status == "active" -> agent.activity
+            agent.activity != null && agent.status == "active" -> {
+                if (!agent.activityDetail.isNullOrBlank()) {
+                    "${agent.activity} — ${agent.activityDetail}"
+                } else {
+                    agent.activity
+                }
+            }
             agent.status == "active" -> "Working"
             else -> "Hibernating"
         }
