@@ -659,15 +659,19 @@ private fun NeoComposeBar(
     val context = LocalContext.current
 
     val imagePicker = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent()
-    ) { uri: Uri? ->
-        uri?.let {
+        contract = ActivityResultContracts.GetMultipleContents()
+    ) { uris: List<Uri> ->
+        uris.forEach { uri ->
             val contentResolver = context.contentResolver
-            val mimeType = contentResolver.getType(it) ?: "image/*"
+            val mimeType = contentResolver.getType(uri) ?: "image/*"
             val name = "image_${System.currentTimeMillis()}.${mimeType.substringAfter("/")}"
-            val bytes = contentResolver.openInputStream(it)?.readBytes()
+            val bytes = contentResolver.openInputStream(uri)?.readBytes()
             if (bytes != null) {
-                onAddAttachment(PendingAttachment(uri = it, name = name, mimeType = mimeType, bytes = bytes))
+                if (bytes.size > 10 * 1024 * 1024) {
+                    android.widget.Toast.makeText(context, "图片超过 10MB 限制: $name", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    onAddAttachment(PendingAttachment(uri = uri, name = name, mimeType = mimeType, bytes = bytes))
+                }
             }
         }
     }

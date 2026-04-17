@@ -152,15 +152,28 @@ class MessageViewModel @Inject constructor(
 
             // Upload attachments first
             val attachmentIds = mutableListOf<String>()
+            var uploadFailCount = 0
             for (attachment in attachments) {
                 messageRepository.uploadFile(serverId, attachment.name, attachment.mimeType, attachment.bytes).fold(
                     onSuccess = { uploadResponse ->
                         uploadResponse.id?.let { attachmentIds.add(it) }
                     },
-                    onFailure = { /* continue with other attachments */ }
+                    onFailure = { uploadFailCount++ }
                 )
             }
             _state.update { it.copy(isUploading = false) }
+
+            if (uploadFailCount > 0 && attachmentIds.isEmpty() && content.isBlank()) {
+                // All uploads failed and no text content — abort send
+                _state.update { current ->
+                    current.copy(
+                        messages = current.messages.filter { it.id != pendingId },
+                        isSending = false,
+                        error = "图片上传失败，消息未发送"
+                    )
+                }
+                return@launch
+            }
 
             val finalAttachmentIds = attachmentIds.ifEmpty { null }
             messageRepository.sendMessage(serverId, _state.value.channelId, content, attachmentIds = finalAttachmentIds, parentMessageId = replyTo?.id).fold(
