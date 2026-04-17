@@ -186,7 +186,9 @@ class ChannelRepositoryImpl @Inject constructor(
             activeServerHolder.serverId = serverId
             val response = apiService.createDM(CreateDMRequest(agentId = agentId, userId = userId))
             if (response.isSuccessful && response.body() != null) {
-                Result.success(response.body()!!)
+                val channel = response.body()!!
+                channelDao.insertChannel(channel.toEntity(serverId))
+                Result.success(channel)
             } else {
                 Result.failure(Exception("Create DM failed: ${response.code()}"))
             }

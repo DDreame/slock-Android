@@ -11,6 +11,7 @@ import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +47,7 @@ class ChannelViewModel @Inject constructor(
     private var socketEventsJob: Job? = null
     private var connectionJob: Job? = null
     private var currentServerId: String? = null
+    private var dmsLoaded = CompletableDeferred<Boolean>()
 
     init {
         observeSocketEvents()
@@ -56,7 +58,6 @@ class ChannelViewModel @Inject constructor(
         connectionJob = viewModelScope.launch {
             socketIOManager.connectionState.collect { state ->
                 if (state == SocketIOManager.ConnectionState.CONNECTED) {
-                    // Clear stale presence on reconnect, will be re-seeded
                     presenceTracker.clear()
                     val serverId = activeServerHolder.serverId ?: return@collect
                     agentRepository.getAgents(serverId).onSuccess { agents ->
@@ -90,7 +91,6 @@ class ChannelViewModel @Inject constructor(
                         _state.update { it.copy(onlineIds = presenceTracker.onlineIds.value) }
                     }
                     is SocketIOManager.SocketEvent.AgentActivity -> {
-                        // Agent is active if we receive activity events
                         presenceTracker.setOnline(event.data.agentId)
                         _state.update { it.copy(onlineIds = presenceTracker.onlineIds.value) }
                     }
@@ -103,8 +103,11 @@ class ChannelViewModel @Inject constructor(
                         }
                     }
                     is SocketIOManager.SocketEvent.DMNew -> {
-                        if (currentServerId != null || activeServerHolder.serverId != null) {
-                            loadDMs()
+                        val dmId = event.data.id
+                        val alreadyExists = _state.value.dms.any { it.id == dmId }
+                        if (!alreadyExists) {
+                            socketIOManager.joinChannel(dmId)
+                            refreshDMs()
                         }
                     }
                     is SocketIOManager.SocketEvent.MessageNew -> {
@@ -151,13 +154,35 @@ class ChannelViewModel @Inject constructor(
         }
     }
 
+    fun ensureDMsLoaded() {
+        if (!dmsLoaded.isCompleted) {
+            loadDMs()
+        } else if (dmsLoaded.getCompleted() == false) {
+            dmsLoaded = CompletableDeferred()
+            loadDMs()
+        }
+    }
+
+    private fun refreshDMs() {
+        val serverId = activeServerHolder.serverId ?: return
+        dmsLoaded = CompletableDeferred()
+        viewModelScope.launch {
+            channelRepository.getDMs(serverId).fold(
+                onSuccess = { dms ->
+                    _state.update { it.copy(dms = dms) }
+                    dmsLoaded.complete(true)
+                },
+                onFailure = { dmsLoaded.complete(false) }
+            )
+        }
+    }
+
     fun loadChannels(serverId: String) {
         currentServerId = serverId
         activeServerHolder.serverId = serverId
         socketIOManager.connect(serverId)
         viewModelScope.launch {
             _state.update { it.copy(serverId = serverId, isLoading = it.channels.isEmpty()) }
-            // Get cached data first
             channelRepository.getChannels(serverId).fold(
                 onSuccess = { channels ->
                     _state.update { it.copy(channels = channels, isLoading = false) }
@@ -165,7 +190,6 @@ class ChannelViewModel @Inject constructor(
                 },
                 onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
             )
-            // Then refresh from cloud
             channelRepository.refreshChannels(serverId).fold(
                 onSuccess = { channels ->
                     _state.update { it.copy(channels = channels) }
@@ -191,10 +215,15 @@ class ChannelViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isDmLoading = it.dms.isEmpty()) }
             channelRepository.getDMs(serverId).fold(
-                onSuccess = { dms -> _state.update { it.copy(dms = dms, isDmLoading = false) } },
-                onFailure = { err -> _state.update { it.copy(isDmLoading = false, error = err.message) } }
+                onSuccess = { dms ->
+                    _state.update { it.copy(dms = dms, isDmLoading = false) }
+                    dmsLoaded.complete(true)
+                },
+                onFailure = { err ->
+                    _state.update { it.copy(isDmLoading = false, error = err.message) }
+                    dmsLoaded.complete(false)
+                }
             )
-            // Seed agent online status from agents list
             agentRepository.getAgents(serverId).onSuccess { agents ->
                 agents.forEach { agent ->
                     if (agent.status == "active") {
@@ -208,13 +237,28 @@ class ChannelViewModel @Inject constructor(
 
     fun createDM(agentId: String? = null, userId: String? = null, onSuccess: (Channel) -> Unit, onError: (String) -> Unit = {}) {
         val serverId = activeServerHolder.serverId ?: return
+
         viewModelScope.launch {
+            ensureDMsLoaded()
+            val loaded = dmsLoaded.await()
+            if (!loaded) {
+                onError("Unable to load existing conversations — please try again")
+                return@launch
+            }
+
+            val existingDm = findExistingDM(agentId, userId)
+            if (existingDm != null) {
+                onSuccess(existingDm)
+                return@launch
+            }
+
             channelRepository.createDM(serverId, agentId = agentId, userId = userId).fold(
                 onSuccess = { dmChannel ->
                     _state.update { current ->
                         val exists = current.dms.any { it.id == dmChannel.id }
                         if (!exists) current.copy(dms = current.dms + dmChannel) else current
                     }
+                    socketIOManager.joinChannel(dmChannel.id.orEmpty())
                     onSuccess(dmChannel)
                 },
                 onFailure = { err ->
@@ -225,18 +269,25 @@ class ChannelViewModel @Inject constructor(
         }
     }
 
+    internal fun findExistingDM(agentId: String?, userId: String?): Channel? {
+        return _state.value.dms.firstOrNull { dm ->
+            dm.members?.any { member ->
+                (agentId != null && member.agentId == agentId) ||
+                    (userId != null && member.userId == userId)
+            } == true
+        }
+    }
+
     private fun loadChannelPreviews(channels: List<Channel>) {
         viewModelScope.launch {
             val channelIds = channels.mapNotNull { it.id }
             if (channelIds.isEmpty()) return@launch
 
-            // 1. Try Room cache first
             val cached = messageRepository.getLatestMessagePerChannel(channelIds)
             if (cached.isNotEmpty()) {
                 _state.update { it.copy(channelPreviews = it.channelPreviews + cached) }
             }
 
-            // 2. For channels missing from cache, fetch 1 message from API
             val missingIds = channelIds.filter { it !in cached }
             if (missingIds.isEmpty()) return@launch
 

@@ -118,6 +118,119 @@ class ChannelViewModelCreateDMTest {
     }
 
     @Test
+    fun `createDM reuses existing DM when matching agent member found`() = runTest {
+        val existingDm = Channel(
+            id = "dm-existing",
+            name = "DM with Agent",
+            type = "dm",
+            members = listOf(ChannelMember(agentId = "agent1"))
+        )
+        val repo = FakeChannelRepository(
+            getDMsResult = Result.success(listOf(existingDm)),
+            createDMResult = Result.failure(RuntimeException("Should not be called"))
+        )
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        vm.loadDMs()
+        advanceUntilIdle()
+
+        var successChannel: Channel? = null
+        vm.createDM(agentId = "agent1", onSuccess = { successChannel = it })
+        advanceUntilIdle()
+
+        assertEquals("dm-existing", successChannel?.id)
+    }
+
+    @Test
+    fun `createDM reuses existing DM when matching user member found`() = runTest {
+        val existingDm = Channel(
+            id = "dm-user",
+            name = "DM with User",
+            type = "dm",
+            members = listOf(ChannelMember(userId = "user1"))
+        )
+        val repo = FakeChannelRepository(
+            getDMsResult = Result.success(listOf(existingDm)),
+            createDMResult = Result.failure(RuntimeException("Should not be called"))
+        )
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        vm.loadDMs()
+        advanceUntilIdle()
+
+        var successChannel: Channel? = null
+        vm.createDM(userId = "user1", onSuccess = { successChannel = it })
+        advanceUntilIdle()
+
+        assertEquals("dm-user", successChannel?.id)
+    }
+
+    @Test
+    fun `createDM calls API when no matching DM exists in state`() = runTest {
+        val newDm = Channel(id = "dm-new", name = "New DM", type = "dm")
+        val repo = FakeChannelRepository(
+            getDMsResult = Result.success(listOf(
+                Channel(id = "dm-other", name = "Other DM", type = "dm", members = listOf(ChannelMember(agentId = "other-agent")))
+            )),
+            createDMResult = Result.success(newDm)
+        )
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        vm.loadDMs()
+        advanceUntilIdle()
+
+        var successChannel: Channel? = null
+        vm.createDM(agentId = "agent1", onSuccess = { successChannel = it })
+        advanceUntilIdle()
+
+        assertEquals("dm-new", successChannel?.id)
+        assertTrue(vm.state.value.dms.any { it.id == "dm-new" })
+    }
+
+    @Test
+    fun `findExistingDM returns null when dms list is empty`() = runTest {
+        val vm = createViewModel()
+        advanceUntilIdle()
+        assertNull(vm.findExistingDM("agent1", null))
+    }
+
+    @Test
+    fun `findExistingDM matches by agentId in members`() = runTest {
+        val dmWithAgent = Channel(
+            id = "dm-1", name = "DM", type = "dm",
+            members = listOf(ChannelMember(agentId = "agent1"))
+        )
+        val repo = FakeChannelRepository(getDMsResult = Result.success(listOf(dmWithAgent)))
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        vm.loadDMs()
+        advanceUntilIdle()
+
+        val found = vm.findExistingDM("agent1", null)
+        assertEquals("dm-1", found?.id)
+    }
+
+    @Test
+    fun `findExistingDM returns null when no member matches`() = runTest {
+        val dmWithOther = Channel(
+            id = "dm-1", name = "DM", type = "dm",
+            members = listOf(ChannelMember(agentId = "other-agent"))
+        )
+        val repo = FakeChannelRepository(getDMsResult = Result.success(listOf(dmWithOther)))
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        vm.loadDMs()
+        advanceUntilIdle()
+
+        assertNull(vm.findExistingDM("agent1", null))
+    }
+
+    @Test
     fun `createDM with no serverId does nothing`() = runTest {
         whenever(secureTokenStorage.serverId).thenReturn(null)
         activeServerHolder = ActiveServerHolder(secureTokenStorage)
@@ -133,7 +246,8 @@ class ChannelViewModelCreateDMTest {
 }
 
 private class FakeChannelRepository(
-    private val createDMResult: Result<Channel> = Result.success(Channel(id = "dm-default"))
+    private val createDMResult: Result<Channel> = Result.success(Channel(id = "dm-default")),
+    private val getDMsResult: Result<List<Channel>> = Result.success(emptyList())
 ) : ChannelRepository {
     override suspend fun getChannels(serverId: String) = Result.success(emptyList<Channel>())
     override suspend fun refreshChannels(serverId: String) = Result.success(emptyList<Channel>())
@@ -143,7 +257,7 @@ private class FakeChannelRepository(
     override suspend fun joinChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
-    override suspend fun getDMs(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun getDMs(serverId: String) = getDMsResult
     override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
     override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
     override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())
