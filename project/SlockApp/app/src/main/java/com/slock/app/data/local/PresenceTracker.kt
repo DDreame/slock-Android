@@ -3,6 +3,7 @@ package com.slock.app.data.local
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -17,20 +18,20 @@ class PresenceTracker @Inject constructor() {
     val onlineIds: StateFlow<Set<String>> = _onlineIds.asStateFlow()
 
     fun setOnline(id: String) {
-        _onlineIds.value = _onlineIds.value + id
+        _onlineIds.update { it + id }
     }
 
     fun setOffline(id: String) {
-        _onlineIds.value = _onlineIds.value - id
+        _onlineIds.update { it - id }
     }
 
     fun isOnline(id: String): Boolean = id in _onlineIds.value
 
     fun updateBulk(onlineUserIds: List<String>) {
-        _onlineIds.value = onlineUserIds.toSet()
+        _onlineIds.update { onlineUserIds.toSet() }
     }
 
     fun clear() {
-        _onlineIds.value = emptySet()
+        _onlineIds.update { emptySet() }
     }
 }

@@ -6,14 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
@@ -544,11 +543,10 @@ private fun DMItem(
             // Online/Agent status dot
             Box(
                 modifier = Modifier
-                    .size(12.dp)
+                    .size(10.dp)
                     .align(Alignment.BottomEnd)
-                    .clip(CircleShape)
-                    .background(if (isAgent) Orange else if (isOnline) Success else TextMuted)
-                    .border(2.dp, White, CircleShape)
+                    .background(if (isOnline) Lime else Color(0xFFCCCCCC))
+                    .border(1.5.dp, Black, RectangleShape)
             )
         }
 
