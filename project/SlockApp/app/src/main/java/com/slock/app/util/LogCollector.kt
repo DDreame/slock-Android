@@ -15,10 +15,23 @@ object LogCollector {
             val logs = reader.readText()
             reader.close()
             process.waitFor()
-            logs
+            sanitize(logs)
         } catch (e: Exception) {
             "Failed to collect logs: ${e.message}"
         }
+    }
+
+    private val SENSITIVE_PATTERNS = listOf(
+        Regex("(Authorization|Bearer|token|accessToken|refreshToken)[\":\\s]*[A-Za-z0-9._\\-]+", RegexOption.IGNORE_CASE),
+        Regex("(password|secret|apiKey)[\":\\s]*[^\\s,}\"]+", RegexOption.IGNORE_CASE)
+    )
+
+    private fun sanitize(text: String): String {
+        var result = text
+        SENSITIVE_PATTERNS.forEach { pattern ->
+            result = pattern.replace(result, "[REDACTED]")
+        }
+        return result
     }
 
     private fun collectDeviceInfo(context: Context): String {

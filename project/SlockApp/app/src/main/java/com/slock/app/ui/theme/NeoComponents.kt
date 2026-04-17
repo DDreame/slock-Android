@@ -407,7 +407,7 @@ fun NeoErrorState(
                 }
                 if (onSendLog != null) {
                     NeoButton(
-                        text = "发送日志",
+                        text = "发送错误报告",
                         onClick = onSendLog,
                         containerColor = Cream
                     )
