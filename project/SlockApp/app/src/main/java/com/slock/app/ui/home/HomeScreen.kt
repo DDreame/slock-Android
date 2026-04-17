@@ -1454,8 +1454,7 @@ private fun NewDmDialog(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     val filteredMembers = remember(members, searchQuery) {
-        if (searchQuery.isBlank()) members
-        else members.filter { it.name.contains(searchQuery, ignoreCase = true) }
+        filterMembersByQuery(members, searchQuery)
     }
 
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
@@ -1592,4 +1591,9 @@ private fun NewDmMemberRow(member: MemberItem, onClick: () -> Unit) {
             }
         }
     }
+}
+
+internal fun filterMembersByQuery(members: List<MemberItem>, query: String): List<MemberItem> {
+    if (query.isBlank()) return members
+    return members.filter { it.name.contains(query, ignoreCase = true) }
 }
