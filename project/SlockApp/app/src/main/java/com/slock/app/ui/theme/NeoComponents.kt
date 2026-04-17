@@ -683,3 +683,56 @@ fun NeoSkeletonCardList(count: Int = 4) {
         }
     }
 }
+
+/**
+ * Neo-Brutalism confirmation dialog for destructive operations.
+ */
+@Composable
+fun NeoConfirmDialog(
+    title: String,
+    message: String,
+    confirmText: String = "确认",
+    confirmColor: Color = Pink,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
+                Text(
+                    text = "⚠️ $title",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = Black
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Black.copy(alpha = 0.7f)
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                NeoButton(
+                    text = confirmText,
+                    onClick = {
+                        onConfirm()
+                        onDismiss()
+                    },
+                    containerColor = confirmColor,
+                    contentColor = Black
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                NeoButtonSecondary(
+                    text = "取消",
+                    onClick = onDismiss,
+                    containerColor = Cream
+                )
+            }
+        }
+    }
+}

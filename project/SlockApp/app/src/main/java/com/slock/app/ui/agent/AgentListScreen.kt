@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.sp
 import com.slock.app.data.model.Agent
 import com.slock.app.ui.theme.*
 import com.slock.app.util.LogCollector
+import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -53,6 +54,10 @@ fun AgentListScreen(
 ) {
     var showCreateDialog by remember { mutableStateOf(false) }
     var showSettingsAgent by remember { mutableStateOf<Agent?>(null) }
+    var confirmStopAgent by remember { mutableStateOf<Agent?>(null) }
+    var confirmDeleteAgent by remember { mutableStateOf<Agent?>(null) }
+    var confirmStopAll by remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Column(
         modifier = Modifier
@@ -69,8 +74,12 @@ fun AgentListScreen(
 
         // Quick actions bar
         QuickActionsBar(
-            onResumeAll = { state.agents.filter { it.status != "active" }.forEach { onStartAgent(it.id.orEmpty()) } },
-            onStopAll = { state.agents.filter { it.status == "active" }.forEach { onStopAgent(it.id.orEmpty()) } },
+            onResumeAll = {
+                val count = state.agents.count { it.status != "active" }
+                state.agents.filter { it.status != "active" }.forEach { onStartAgent(it.id.orEmpty()) }
+                if (count > 0) Toast.makeText(context, "正在启动 $count 个 Agent", Toast.LENGTH_SHORT).show()
+            },
+            onStopAll = { confirmStopAll = true },
             onRefresh = { /* TODO: Refresh status */ }
         )
 
@@ -132,7 +141,7 @@ fun AgentListScreen(
                                     agent = agent,
                                     activity = state.agentActivities[agent.id.orEmpty()],
                                     onDm = { onDmAgent(agent.id.orEmpty()) },
-                                    onToggle = { onStopAgent(agent.id.orEmpty()) },
+                                    onToggle = { confirmStopAgent = agent },
                                     onConfig = { showSettingsAgent = agent }
                                 )
                             }
@@ -146,7 +155,10 @@ fun AgentListScreen(
                                     agent = agent,
                                     activity = state.agentActivities[agent.id.orEmpty()],
                                     onDm = { onDmAgent(agent.id.orEmpty()) },
-                                    onToggle = { onStartAgent(agent.id.orEmpty()) },
+                                    onToggle = {
+                                        onStartAgent(agent.id.orEmpty())
+                                        Toast.makeText(context, "${agent.name.orEmpty()} 已启动", Toast.LENGTH_SHORT).show()
+                                    },
                                     onConfig = { showSettingsAgent = agent }
                                 )
                             }
@@ -186,9 +198,58 @@ fun AgentListScreen(
                 showSettingsAgent = null
             },
             onDelete = {
-                onDeleteAgent(agent.id.orEmpty())
                 showSettingsAgent = null
+                confirmDeleteAgent = agent
             }
+        )
+    }
+
+    // Stop single agent confirmation
+    confirmStopAgent?.let { agent ->
+        NeoConfirmDialog(
+            title = "Stop Agent",
+            message = "确定要停止 ${agent.name.orEmpty()} 吗？停止后 Agent 将不再处理消息。",
+            confirmText = "STOP",
+            confirmColor = Pink,
+            onConfirm = {
+                onStopAgent(agent.id.orEmpty())
+                confirmStopAgent = null
+                Toast.makeText(context, "${agent.name.orEmpty()} 已停止", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { confirmStopAgent = null }
+        )
+    }
+
+    // Delete agent confirmation
+    confirmDeleteAgent?.let { agent ->
+        NeoConfirmDialog(
+            title = "Delete Agent",
+            message = "确定要删除 ${agent.name.orEmpty()} 吗？此操作不可撤销，所有相关数据将被永久删除。",
+            confirmText = "DELETE",
+            confirmColor = Pink,
+            onConfirm = {
+                onDeleteAgent(agent.id.orEmpty())
+                confirmDeleteAgent = null
+                Toast.makeText(context, "${agent.name.orEmpty()} 已删除", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { confirmDeleteAgent = null }
+        )
+    }
+
+    // Stop all agents confirmation
+    if (confirmStopAll) {
+        val activeCount = state.agents.count { it.status == "active" }
+        NeoConfirmDialog(
+            title = "Stop All Agents",
+            message = "确定要停止所有 $activeCount 个活跃的 Agent 吗？停止后它们将不再处理消息。",
+            confirmText = "STOP ALL",
+            confirmColor = Pink,
+            onConfirm = {
+                state.agents.filter { it.status == "active" }.forEach { onStopAgent(it.id.orEmpty()) }
+                confirmStopAll = false
+                Toast.makeText(context, "已停止 $activeCount 个 Agent", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { confirmStopAll = false }
         )
     }
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.ui.theme.NeoPressableBox
+import com.slock.app.ui.theme.NeoConfirmDialog
 import com.slock.app.ui.theme.NeoSkeletonCardList
 import com.slock.app.ui.theme.SpaceGrotesk
 import com.slock.app.ui.theme.SpaceMono
@@ -92,10 +93,9 @@ fun AgentDetailScreen(
         }
 
         val agent = state.agent ?: return@Column
-        @Suppress("SENSELESS_COMPARISON")
-        val agentName = if (agent.name != null) agent.name else "Agent"
-        @Suppress("SENSELESS_COMPARISON")
-        val agentModel = if (agent.model != null) agent.model else ""
+        var showStopConfirm by remember { mutableStateOf(false) }
+        val agentName = agent.name.orEmpty().ifEmpty { "Agent" }
+        val agentModel = agent.model.orEmpty()
         val isActive = agent.status == "active"
 
         Column(
@@ -197,10 +197,22 @@ fun AgentDetailScreen(
             ) {
                 ActionButton("💬 DM", NeoCyan, Modifier.weight(1f), onDmClick)
                 if (isActive) {
-                    ActionButton("⏹ Stop", NeoPink, Modifier.weight(1f), onStopAgent)
+                    ActionButton("⏹ Stop", NeoPink, Modifier.weight(1f)) { showStopConfirm = true }
                 } else {
                     ActionButton("▶ Start", NeoLime, Modifier.weight(1f), onStartAgent)
                 }
+            }
+
+            // Stop confirmation dialog
+            if (showStopConfirm) {
+                NeoConfirmDialog(
+                    title = "Stop Agent",
+                    message = "确定要停止 ${agent?.name.orEmpty()} 吗？停止后 Agent 将不再处理消息。",
+                    confirmText = "STOP",
+                    confirmColor = NeoPink,
+                    onConfirm = onStopAgent,
+                    onDismiss = { showStopConfirm = false }
+                )
             }
 
             // ── Current Activity ──
