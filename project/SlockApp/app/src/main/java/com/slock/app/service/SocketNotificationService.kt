@@ -127,6 +127,20 @@ class SocketNotificationService : Service() {
                     is SocketIOManager.SocketEvent.MessageNew -> {
                         launch(Dispatchers.IO) { handleNewMessage(event.data) }
                     }
+                    is SocketIOManager.SocketEvent.DMNew -> {
+                        socketManager.joinChannel(event.data.id)
+                        try {
+                            val serverId = activeServerHolder.serverId ?: return@collect
+                            channelDao.insertChannel(
+                                com.slock.app.data.local.entity.ChannelEntity(
+                                    id = event.data.id,
+                                    serverId = serverId,
+                                    name = event.data.name,
+                                    type = event.data.type
+                                )
+                            )
+                        } catch (_: Exception) { }
+                    }
                     else -> { /* only care about messages for notifications */ }
                 }
             }

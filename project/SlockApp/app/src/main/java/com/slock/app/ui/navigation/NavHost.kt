@@ -548,6 +548,7 @@ fun SlockNavHost(
 
             LaunchedEffect(serverId) {
                 viewModel.loadAgents(serverId)
+                channelVM.ensureDMsLoaded()
             }
 
             AgentListScreen(
@@ -670,6 +671,10 @@ fun SlockNavHost(
             val state by viewModel.state.collectAsState()
             val context = androidx.compose.ui.platform.LocalContext.current
             val contextLabel = backStackEntry.arguments?.getString("contextLabel").orEmpty()
+
+            LaunchedEffect(Unit) {
+                channelVM.ensureDMsLoaded()
+            }
 
             AgentDetailScreen(
                 state = state,
