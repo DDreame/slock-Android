@@ -20,6 +20,8 @@ data class MessageUiState(
     val channelId: String = "",
     val channelName: String = "",
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasMoreMessages: Boolean = true,
     val isSending: Boolean = false,
     val error: String? = null,
     val replyingTo: Message? = null
@@ -159,7 +161,33 @@ class MessageViewModel @Inject constructor(
     }
 
     fun loadMoreMessages() {
-        // Pagination logic - could be implemented with before cursor
+        val current = _state.value
+        if (current.isLoadingMore || !current.hasMoreMessages) return
+        val serverId = activeServerHolder.serverId
+        if (serverId.isNullOrBlank()) return
+
+        val oldestMessage = current.messages.lastOrNull() ?: return
+        val beforeCursor = oldestMessage.id ?: return
+
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingMore = true) }
+            messageRepository.getMessages(serverId, current.channelId, limit = 50, before = beforeCursor).fold(
+                onSuccess = { olderMessages ->
+                    _state.update { state ->
+                        val existingIds = state.messages.map { it.id }.toSet()
+                        val newMessages = olderMessages.reversed().filter { it.id !in existingIds }
+                        state.copy(
+                            messages = state.messages + newMessages,
+                            isLoadingMore = false,
+                            hasMoreMessages = olderMessages.size >= 50
+                        )
+                    }
+                },
+                onFailure = {
+                    _state.update { it.copy(isLoadingMore = false) }
+                }
+            )
+        }
     }
 
     override fun onCleared() {

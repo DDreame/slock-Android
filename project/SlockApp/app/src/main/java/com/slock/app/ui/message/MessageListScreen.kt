@@ -8,6 +8,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -92,7 +93,24 @@ fun MessageListScreen(
                     }
                 }
                 else -> {
+                    val listState = rememberLazyListState()
+
+                    // Trigger load more when scrolled near the end (oldest messages)
+                    val shouldLoadMore = remember {
+                        derivedStateOf {
+                            val totalItems = listState.layoutInfo.totalItemsCount
+                            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            lastVisibleItem >= totalItems - 5 && totalItems > 0
+                        }
+                    }
+                    LaunchedEffect(shouldLoadMore.value) {
+                        if (shouldLoadMore.value && state.hasMoreMessages && !state.isLoadingMore) {
+                            onLoadMore()
+                        }
+                    }
+
                     LazyColumn(
+                        state = listState,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         reverseLayout = true
@@ -112,6 +130,20 @@ fun MessageListScreen(
                                     } else null,
                                     onReply = { onReplyTo(message) }
                                 )
+                            }
+                        }
+                        if (state.isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        color = Black,
+                                        strokeWidth = 2.dp
+                                    )
+                                }
                             }
                         }
                     }
