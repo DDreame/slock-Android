@@ -107,8 +107,27 @@ class ChannelViewModel @Inject constructor(
         viewModelScope.launch {
             val channelIds = channels.mapNotNull { it.id }
             if (channelIds.isEmpty()) return@launch
-            val previews = messageRepository.getLatestMessagePerChannel(channelIds)
-            _state.update { it.copy(channelPreviews = it.channelPreviews + previews) }
+
+            // 1. Try Room cache first
+            val cached = messageRepository.getLatestMessagePerChannel(channelIds)
+            if (cached.isNotEmpty()) {
+                _state.update { it.copy(channelPreviews = it.channelPreviews + cached) }
+            }
+
+            // 2. For channels missing from cache, fetch 1 message from API
+            val missingIds = channelIds.filter { it !in cached }
+            if (missingIds.isEmpty()) return@launch
+
+            val serverId = _state.value.serverId
+            val apiPreviews = mutableMapOf<String, Message>()
+            for (channelId in missingIds) {
+                messageRepository.refreshMessages(serverId, channelId, limit = 1).onSuccess { messages ->
+                    messages.lastOrNull()?.let { apiPreviews[channelId] = it }
+                }
+            }
+            if (apiPreviews.isNotEmpty()) {
+                _state.update { it.copy(channelPreviews = it.channelPreviews + apiPreviews) }
+            }
         }
     }
 }
