@@ -3,7 +3,9 @@ package com.slock.app.ui.agent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.SettingsPreferencesStore
 import com.slock.app.data.model.Agent
+import com.slock.app.data.model.DEFAULT_AGENT_MODEL_OPTIONS
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,23 +21,67 @@ data class AgentUiState(
     val agents: List<Agent> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val agentActivities: Map<String, String> = emptyMap()
+    val agentActivities: Map<String, String> = emptyMap(),
+    val availableModels: List<String> = DEFAULT_AGENT_MODEL_OPTIONS
 )
+
+internal fun deriveAvailableAgentModels(
+    recentModels: List<String>,
+    discoveredModels: List<String>,
+    seedModels: List<String> = DEFAULT_AGENT_MODEL_OPTIONS
+): List<String> {
+    val mergedModels = LinkedHashSet<String>()
+
+    fun addModels(models: List<String>) {
+        models.forEach { model ->
+            val trimmed = model.trim()
+            if (trimmed.isNotEmpty()) {
+                mergedModels += trimmed
+            }
+        }
+    }
+
+    addModels(recentModels)
+    addModels(discoveredModels)
+    addModels(seedModels)
+
+    return mergedModels.toList()
+}
 
 @HiltViewModel
 class AgentViewModel @Inject constructor(
     private val agentRepository: AgentRepository,
     private val socketIOManager: SocketIOManager,
-    private val activeServerHolder: ActiveServerHolder
+    private val activeServerHolder: ActiveServerHolder,
+    private val settingsPreferencesStore: SettingsPreferencesStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(AgentUiState())
     val state: StateFlow<AgentUiState> = _state.asStateFlow()
 
     private var socketEventsJob: Job? = null
+    private var recentModelsJob: Job? = null
+    private var recentModels: List<String> = emptyList()
 
     init {
+        observeRecentAgentModels()
         observeAgentActivities()
+    }
+
+    private fun observeRecentAgentModels() {
+        recentModelsJob = viewModelScope.launch {
+            settingsPreferencesStore.recentAgentModelsFlow.collect { models ->
+                recentModels = models
+                _state.update { current ->
+                    current.copy(
+                        availableModels = deriveAvailableAgentModels(
+                            recentModels = recentModels,
+                            discoveredModels = current.agents.mapNotNull { it.model }
+                        )
+                    )
+                }
+            }
+        }
     }
 
     private fun observeAgentActivities() {
@@ -70,6 +116,7 @@ class AgentViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         socketEventsJob?.cancel()
+        recentModelsJob?.cancel()
     }
 
     private var currentServerId: String? = null
@@ -85,7 +132,17 @@ class AgentViewModel @Inject constructor(
                     val activities = agents.mapNotNull { agent ->
                         agent.activity?.let { agent.id.orEmpty() to it }
                     }.toMap()
-                    _state.update { it.copy(agents = agents, agentActivities = it.agentActivities + activities, isLoading = false) }
+                    _state.update {
+                        it.copy(
+                            agents = agents,
+                            agentActivities = it.agentActivities + activities,
+                            isLoading = false,
+                            availableModels = deriveAvailableAgentModels(
+                                recentModels = recentModels,
+                                discoveredModels = agents.mapNotNull { agent -> agent.model }
+                            )
+                        )
+                    }
                 },
                 onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
             )
@@ -95,7 +152,17 @@ class AgentViewModel @Inject constructor(
                     val activities = agents.mapNotNull { agent ->
                         agent.activity?.let { agent.id.orEmpty() to it }
                     }.toMap()
-                    _state.update { it.copy(agents = agents, agentActivities = it.agentActivities + activities, error = null) }
+                    _state.update {
+                        it.copy(
+                            agents = agents,
+                            agentActivities = it.agentActivities + activities,
+                            error = null,
+                            availableModels = deriveAvailableAgentModels(
+                                recentModels = recentModels,
+                                discoveredModels = agents.mapNotNull { agent -> agent.model }
+                            )
+                        )
+                    }
                 },
                 onFailure = { /* keep cached data */ }
             )
@@ -114,7 +181,20 @@ class AgentViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             agentRepository.createAgent(serverId, name, description, prompt, model).fold(
-                onSuccess = { agent -> _state.update { it.copy(agents = it.agents + agent, isLoading = false) } },
+                onSuccess = { agent ->
+                    settingsPreferencesStore.addRecentAgentModel(model)
+                    _state.update {
+                        val updatedAgents = it.agents + agent
+                        it.copy(
+                            agents = updatedAgents,
+                            isLoading = false,
+                            availableModels = deriveAvailableAgentModels(
+                                recentModels = recentModels,
+                                discoveredModels = updatedAgents.mapNotNull { existing -> existing.model } + model
+                            )
+                        )
+                    }
+                },
                 onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
             )
         }

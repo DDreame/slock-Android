@@ -47,6 +47,9 @@ class SettingsPreferencesStore @Inject constructor(
 ) {
     companion object {
         private val NOTIFICATION_PREFERENCE = stringPreferencesKey("notification_preference")
+        private val RECENT_AGENT_MODELS = stringPreferencesKey("recent_agent_models")
+        private const val AGENT_MODELS_SEPARATOR = "\n"
+        private const val MAX_RECENT_AGENT_MODELS = 8
     }
 
     val notificationPreferenceFlow: Flow<NotificationPreference> = dataStore.data
@@ -61,6 +64,22 @@ class SettingsPreferencesStore @Inject constructor(
             NotificationPreference.fromStorageValue(preferences[NOTIFICATION_PREFERENCE])
         }
 
+    val recentAgentModelsFlow: Flow<List<String>> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            preferences[RECENT_AGENT_MODELS]
+                .orEmpty()
+                .split(AGENT_MODELS_SEPARATOR)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+        }
+
     suspend fun setNotificationPreference(preference: NotificationPreference) {
         dataStore.edit { preferences ->
             preferences[NOTIFICATION_PREFERENCE] = preference.storageValue
@@ -69,5 +88,21 @@ class SettingsPreferencesStore @Inject constructor(
 
     suspend fun getNotificationPreference(): NotificationPreference {
         return notificationPreferenceFlow.first()
+    }
+
+    suspend fun addRecentAgentModel(modelId: String) {
+        val trimmedModelId = modelId.trim()
+        if (trimmedModelId.isEmpty()) return
+
+        dataStore.edit { preferences ->
+            val existingModels = preferences[RECENT_AGENT_MODELS]
+                .orEmpty()
+                .split(AGENT_MODELS_SEPARATOR)
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+
+            val updatedModels = listOf(trimmedModelId) + existingModels.filterNot { it == trimmedModelId }
+            preferences[RECENT_AGENT_MODELS] = updatedModels.take(MAX_RECENT_AGENT_MODELS).joinToString(AGENT_MODELS_SEPARATOR)
+        }
     }
 }

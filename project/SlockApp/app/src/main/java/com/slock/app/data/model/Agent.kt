@@ -2,6 +2,14 @@ package com.slock.app.data.model
 
 import com.google.gson.annotations.SerializedName
 
+const val DEFAULT_AGENT_MODEL_ID = "claude-sonnet-4-20250514"
+
+val DEFAULT_AGENT_MODEL_OPTIONS = listOf(
+    DEFAULT_AGENT_MODEL_ID,
+    "claude-haiku-4-5-20251001",
+    "claude-opus-4-20250514"
+)
+
 data class Agent(
     val id: String? = null,
     val name: String? = null,
@@ -25,7 +33,7 @@ data class CreateAgentRequest(
     val name: String,
     val description: String,
     val prompt: String,
-    val model: String = "claude-sonnet-4-20250514",
+    val model: String = DEFAULT_AGENT_MODEL_ID,
     val avatar: String? = null
 )
 
