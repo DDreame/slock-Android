@@ -29,9 +29,13 @@ class ScreenRouteRegistryTest {
 
     @Test
     fun `bottomNavItems is not accessible as a top-level declaration`() {
-        val topLevelFields = Class.forName("com.slock.app.ui.navigation.ScreenKt").declaredFields
-        val names = topLevelFields.map { it.name }.toSet()
-        assertFalse("bottomNavItems should be removed", names.contains("bottomNavItems"))
+        try {
+            val topLevelFields = Class.forName("com.slock.app.ui.navigation.ScreenKt").declaredFields
+            val names = topLevelFields.map { it.name }.toSet()
+            assertFalse("bottomNavItems should be removed", names.contains("bottomNavItems"))
+        } catch (_: ClassNotFoundException) {
+            // ScreenKt class doesn't exist = no top-level declarations remain = pass
+        }
     }
 
     @Test

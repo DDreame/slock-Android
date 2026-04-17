@@ -7,11 +7,15 @@ import java.io.File
 
 class CleanupRegressionTest {
 
-    private val srcRoot = File("src/main/java/com/slock/app/ui")
+    private val srcRoot: File = listOf(
+        File("src/main/java/com/slock/app/ui"),
+        File("app/src/main/java/com/slock/app/ui")
+    ).firstOrNull { it.isDirectory }
+        ?: error("Cannot locate source root. Working dir: ${System.getProperty("user.dir")}")
 
     private fun readSource(relativePath: String): String {
         val file = File(srcRoot, relativePath)
-        assertTrue("Source file must exist: ${file.path}", file.exists())
+        assertTrue("Source file must exist: ${file.absolutePath}", file.exists())
         return file.readText()
     }
 
