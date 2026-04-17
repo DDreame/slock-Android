@@ -7,6 +7,7 @@ import com.slock.app.data.model.ActivityLogEntry
 import com.slock.app.data.model.Agent
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -201,11 +202,49 @@ class AgentDetailViewModelTest {
 
         assertEquals("Agent not found", vm.state.value.error)
     }
+
+    @Test
+    fun `socket event during history load is preserved after merge`() = runTest {
+        val logGate = CompletableDeferred<Unit>()
+        val historicalEntries = listOf(
+            ActivityLogEntry(timestamp = "2026-04-17T09:00:00Z", activity = "Historical", detail = "Old entry")
+        )
+        val repo = FakeAgentRepository(
+            agentsResult = Result.success(listOf(testAgent)),
+            activityLogResult = Result.success(historicalEntries),
+            activityLogGate = logGate
+        )
+
+        val vm = createViewModel(agentRepository = repo)
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.isLoadingLog)
+
+        eventFlow.emit(
+            SocketIOManager.SocketEvent.AgentActivity(
+                SocketIOManager.AgentActivityData("agent1", "Live event", "Real-time entry")
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, vm.state.value.activityLog.size)
+        assertEquals("Live event", vm.state.value.activityLog[0].activity)
+
+        logGate.complete(Unit)
+        advanceUntilIdle()
+
+        val state = vm.state.value
+        assertFalse(state.isLoadingLog)
+        assertEquals(2, state.activityLog.size)
+        assertEquals("Live event", state.activityLog[0].activity)
+        assertEquals("Historical", state.activityLog[1].activity)
+    }
 }
 
 private class FakeAgentRepository(
     private val agentsResult: Result<List<Agent>> = Result.success(emptyList()),
-    private val activityLogResult: Result<List<ActivityLogEntry>> = Result.success(emptyList())
+    private val activityLogResult: Result<List<ActivityLogEntry>> = Result.success(emptyList()),
+    private val activityLogGate: CompletableDeferred<Unit>? = null
 ) : AgentRepository {
     override suspend fun getAgents(serverId: String) = agentsResult
     override suspend fun refreshAgents(serverId: String) = agentsResult
@@ -215,5 +254,8 @@ private class FakeAgentRepository(
     override suspend fun startAgent(serverId: String, agentId: String) = Result.success(Unit)
     override suspend fun stopAgent(serverId: String, agentId: String) = Result.success(Unit)
     override suspend fun resetAgent(serverId: String, agentId: String, mode: String) = Result.failure<Unit>(NotImplementedError())
-    override suspend fun getActivityLog(serverId: String, agentId: String, limit: Int) = activityLogResult
+    override suspend fun getActivityLog(serverId: String, agentId: String, limit: Int): Result<List<ActivityLogEntry>> {
+        activityLogGate?.await()
+        return activityLogResult
+    }
 }

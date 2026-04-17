@@ -44,6 +44,7 @@ class AgentDetailViewModel @Inject constructor(
     val serverId: String? get() = activeServerHolder.serverId
 
     private var socketJob: Job? = null
+    private var socketEntriesDuringLoad = 0
 
     companion object {
         private const val MAX_LOG_ENTRIES = 200
@@ -90,10 +91,17 @@ class AgentDetailViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         if (agentId.isBlank()) return
         viewModelScope.launch {
+            socketEntriesDuringLoad = 0
             _state.update { it.copy(isLoadingLog = true) }
             agentRepository.getActivityLog(serverId, agentId).fold(
                 onSuccess = { entries ->
-                    _state.update { it.copy(activityLog = entries, isLoadingLog = false) }
+                    _state.update { currentState ->
+                        val liveEntries = currentState.activityLog.take(socketEntriesDuringLoad)
+                        currentState.copy(
+                            activityLog = (liveEntries + entries).take(MAX_LOG_ENTRIES),
+                            isLoadingLog = false
+                        )
+                    }
                 },
                 onFailure = {
                     _state.update { it.copy(isLoadingLog = false) }
@@ -119,6 +127,9 @@ class AgentDetailViewModel @Inject constructor(
                                     latestActivityDetail = event.data.message,
                                     activityLog = (listOf(newEntry) + it.activityLog).take(MAX_LOG_ENTRIES)
                                 )
+                            }
+                            if (_state.value.isLoadingLog) {
+                                socketEntriesDuringLoad++
                             }
                         }
                     }
