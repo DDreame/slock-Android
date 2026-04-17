@@ -185,7 +185,7 @@ private fun MarkdownBlockView(
                         )
                         MarkdownAnnotatedText(
                             text = item,
-                            style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp),
+                            style = MessageTextStyles.bodyStyle(MaterialTheme.typography),
                             color = textColor,
                             modifier = Modifier.weight(1f)
                         )
@@ -205,7 +205,7 @@ private fun MarkdownBlockView(
         is MarkdownBlock.Paragraph -> {
             MarkdownAnnotatedText(
                 text = block.text,
-                style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp),
+                style = MessageTextStyles.bodyStyle(MaterialTheme.typography),
                 color = textColor
             )
         }

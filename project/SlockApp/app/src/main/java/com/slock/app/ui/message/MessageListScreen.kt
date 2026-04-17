@@ -434,17 +434,15 @@ private fun NeoMessage(
                     ) {
                         Text(
                             text = "AGENT",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            style = MessageTextStyles.agentBadgeStyle(MaterialTheme.typography),
                             color = Black
                         )
                     }
                 }
                 Text(
                     text = message.createdAt.orEmpty().split("T").getOrNull(1)?.take(5) ?: "",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    ),
-                    color = com.slock.app.ui.theme.TextSecondary
+                    style = MessageTextStyles.timestampStyle(MaterialTheme.typography),
+                    color = MessageTextStyles.timestampColor
                 )
             }
 

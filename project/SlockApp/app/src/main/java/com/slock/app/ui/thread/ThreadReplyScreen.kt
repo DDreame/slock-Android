@@ -290,17 +290,15 @@ private fun OriginalMessageCard(message: Message) {
                         ) {
                             Text(
                                 text = "AGENT",
-                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                style = MessageTextStyles.agentBadgeStyle(MaterialTheme.typography),
                                 color = Black
                             )
                         }
                     }
                     Text(
                         text = message.createdAt.orEmpty().split("T").getOrNull(1)?.take(5) ?: "",
-                        style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                        ),
-                        color = TextSecondary
+                        style = MessageTextStyles.timestampStyle(MaterialTheme.typography),
+                        color = MessageTextStyles.timestampColor
                     )
                 }
 
@@ -392,17 +390,15 @@ private fun ThreadReply(message: Message) {
                     ) {
                         Text(
                             text = "AGENT",
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                            style = MessageTextStyles.agentBadgeStyle(MaterialTheme.typography),
                             color = Black
                         )
                     }
                 }
                 Text(
                     text = message.createdAt.orEmpty().split("T").getOrNull(1)?.take(5) ?: "",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
-                    ),
-                    color = TextSecondary
+                    style = MessageTextStyles.timestampStyle(MaterialTheme.typography),
+                    color = MessageTextStyles.timestampColor
                 )
             }
 

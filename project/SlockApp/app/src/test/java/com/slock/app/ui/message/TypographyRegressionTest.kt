@@ -113,6 +113,26 @@ class TypographyRegressionTest {
         )
     }
 
+    @Test
+    fun `timestamps use MessageTextStyles not inline style construction`() {
+        val timestampBlocks = extractTimestampBlocks(messageListSource) + extractTimestampBlocks(threadReplySource)
+        assertTrue("At least one timestamp block should exist", timestampBlocks.isNotEmpty())
+        timestampBlocks.forEach { block ->
+            assertTrue(
+                "Timestamp must use MessageTextStyles.timestampStyle, found: ${block.take(120)}",
+                block.contains("MessageTextStyles")
+            )
+        }
+    }
+
+    @Test
+    fun `markdown paragraph and list use MessageTextStyles bodyStyle`() {
+        assertTrue(
+            "MarkdownContent paragraphs must use MessageTextStyles.bodyStyle",
+            markdownSource.contains("MessageTextStyles.bodyStyle")
+        )
+    }
+
     private fun extractTimestampBlocks(source: String): List<String> {
         val pattern = Regex("""split\("T"\)[^}]*\}""", RegexOption.DOT_MATCHES_ALL)
         return pattern.findAll(source).map { it.value }.toList()
