@@ -43,10 +43,10 @@ class ProfileViewModelTest {
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         presenceTracker = PresenceTracker()
-        activeServerHolder = ActiveServerHolder()
-        activeServerHolder.serverId = "server1"
         secureTokenStorage = mock()
         whenever(secureTokenStorage.userId).thenReturn("u1")
+        whenever(secureTokenStorage.serverId).thenReturn("server1")
+        activeServerHolder = ActiveServerHolder(secureTokenStorage)
     }
 
     @After
