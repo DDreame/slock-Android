@@ -7,6 +7,7 @@ import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.model.Attachment
 import com.slock.app.data.model.Message
+import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -47,7 +48,9 @@ data class MessageUiState(
     val currentSearchMatchPosition: Int = -1,
     val currentSearchMatchMessageId: String? = null,
     val reactionOverridesByMessageId: Map<String, List<MessageReactionUiModel>> = emptyMap(),
-    val onlineIds: Set<String> = emptySet()
+    val onlineIds: Set<String> = emptySet(),
+    val isCurrentChannelSaved: Boolean = false,
+    val isSavedStatusLoading: Boolean = false
 )
 
 fun computeSearchMatches(state: MessageUiState): MessageUiState {
@@ -74,6 +77,7 @@ fun computeSearchMatches(state: MessageUiState): MessageUiState {
 @HiltViewModel
 class MessageViewModel @Inject constructor(
     private val messageRepository: MessageRepository,
+    private val channelRepository: ChannelRepository,
     private val socketIOManager: SocketIOManager,
     private val activeServerHolder: ActiveServerHolder,
     private val presenceTracker: PresenceTracker
@@ -169,11 +173,30 @@ class MessageViewModel @Inject constructor(
     fun loadMessages(channelId: String) {
         val serverId = activeServerHolder.serverId
         if (serverId.isNullOrBlank()) {
-            _state.update { it.copy(channelId = channelId, isLoading = false, error = "Server not selected") }
+            _state.update {
+                it.copy(
+                    channelId = channelId,
+                    isLoading = false,
+                    error = "Server not selected",
+                    isSavedStatusLoading = false,
+                    isCurrentChannelSaved = false
+                )
+            }
             return
         }
         viewModelScope.launch {
-            _state.update { it.copy(channelId = channelId, isLoading = it.messages.isEmpty(), error = null) }
+            _state.update {
+                it.copy(
+                    channelId = channelId,
+                    isLoading = it.messages.isEmpty(),
+                    error = null,
+                    isSavedStatusLoading = true,
+                    isCurrentChannelSaved = false
+                )
+            }
+
+            refreshSavedChannelState(serverId, channelId)
+
             // Get cached data first
             messageRepository.getMessages(serverId, channelId).fold(
                 onSuccess = { messages ->
@@ -192,6 +215,53 @@ class MessageViewModel @Inject constructor(
             )
             socketIOManager.joinChannel(channelId)
         }
+    }
+
+    fun toggleSavedChannel() {
+        val serverId = activeServerHolder.serverId
+        val channelId = _state.value.channelId
+        if (serverId.isNullOrBlank() || channelId.isBlank() || _state.value.isSavedStatusLoading) return
+
+        viewModelScope.launch {
+            val currentlySaved = _state.value.isCurrentChannelSaved
+            _state.update { it.copy(isSavedStatusLoading = true) }
+
+            val result = if (currentlySaved) {
+                channelRepository.removeSavedChannel(serverId, channelId)
+            } else {
+                channelRepository.saveChannel(serverId, channelId)
+            }
+
+            result.fold(
+                onSuccess = {
+                    _state.update {
+                        it.copy(
+                            isCurrentChannelSaved = !currentlySaved,
+                            isSavedStatusLoading = false
+                        )
+                    }
+                },
+                onFailure = {
+                    _state.update { it.copy(isSavedStatusLoading = false) }
+                }
+            )
+        }
+    }
+
+    private suspend fun refreshSavedChannelState(serverId: String, channelId: String) {
+        channelRepository.isChannelSaved(serverId, channelId).fold(
+            onSuccess = { isSaved ->
+                _state.update {
+                    it.copy(
+                        isCurrentChannelSaved = isSaved,
+                        isSavedStatusLoading = false
+                    )
+                }
+            },
+            onFailure = {
+                _state.update { it.copy(isSavedStatusLoading = false) }
+            }
+        )
     }
 
     fun sendMessage(content: String) {

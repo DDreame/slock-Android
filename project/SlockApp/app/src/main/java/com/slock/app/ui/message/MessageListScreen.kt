@@ -63,7 +63,8 @@ fun MessageListScreen(
     onSearchQueryChange: (String) -> Unit = {},
     onNextSearchResult: () -> Unit = {},
     onPreviousSearchResult: () -> Unit = {},
-    onToggleReaction: (Message, String) -> Unit = { _, _ -> }
+    onToggleReaction: (Message, String) -> Unit = { _, _ -> },
+    onToggleSavedChannel: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
 
@@ -77,7 +78,10 @@ fun MessageListScreen(
             channelName = "# $channelName",
             contextLabel = resolveChannelHeaderContext(contextLabel),
             onBack = onNavigateBack,
-            onSearchClick = onToggleSearch
+            onSearchClick = onToggleSearch,
+            isSaved = state.isCurrentChannelSaved,
+            isSavedStatusLoading = state.isSavedStatusLoading,
+            onToggleSavedChannel = onToggleSavedChannel
         )
 
         // Search bar (shown when search is active)
@@ -254,7 +258,10 @@ private fun ChannelHeader(
     channelName: String,
     contextLabel: String?,
     onBack: () -> Unit,
-    onSearchClick: () -> Unit = {}
+    onSearchClick: () -> Unit = {},
+    isSaved: Boolean = false,
+    isSavedStatusLoading: Boolean = false,
+    onToggleSavedChannel: () -> Unit = {}
 ) {
     Surface(color = White) {
         Row(
@@ -293,6 +300,14 @@ private fun ChannelHeader(
 
             // Action buttons
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                MiniIconButton(
+                    icon = when {
+                        isSavedStatusLoading -> "…"
+                        isSaved -> "★"
+                        else -> "☆"
+                    },
+                    onClick = onToggleSavedChannel
+                )
                 MiniIconButton(icon = "\uD83D\uDD0D", onClick = onSearchClick)
             }
         }
