@@ -25,7 +25,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -41,6 +40,17 @@ internal object NotificationDecision {
             NotificationPreference.MUTE -> false
         }
     }
+}
+
+internal suspend fun rejoinCachedChannelsForServer(
+    serverId: String?,
+    loadChannelIds: suspend (String) -> List<String>,
+    joinChannel: (String) -> Unit
+): List<String> {
+    if (serverId.isNullOrBlank()) return emptyList()
+    val channelIds = loadChannelIds(serverId)
+    channelIds.forEach(joinChannel)
+    return channelIds
 }
 
 @AndroidEntryPoint
@@ -77,6 +87,7 @@ class SocketNotificationService : Service() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var eventsJob: Job? = null
+    private var connectionJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -88,6 +99,7 @@ class SocketNotificationService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d(TAG, "Service started")
+        observeConnectionState()
         ensureSocketConnected()
         observeSocketEvents()
         return START_STICKY
@@ -97,8 +109,17 @@ class SocketNotificationService : Service() {
         if (!socketManager.isConnected()) {
             val serverId = activeServerHolder.serverId
             socketManager.connect(serverId)
-            // After connection established, join all cached channels
-            joinCachedChannels(serverId)
+        }
+    }
+
+    private fun observeConnectionState() {
+        connectionJob?.cancel()
+        connectionJob = serviceScope.launch {
+            socketManager.connectionState.collect { state ->
+                if (state == SocketIOManager.ConnectionState.CONNECTED) {
+                    joinCachedChannels(activeServerHolder.serverId)
+                }
+            }
         }
     }
 
@@ -106,13 +127,12 @@ class SocketNotificationService : Service() {
         if (serverId.isNullOrBlank()) return
         serviceScope.launch(Dispatchers.IO) {
             try {
-                // Wait for socket to connect before joining channels
-                socketManager.connectionState.first { it == SocketIOManager.ConnectionState.CONNECTED }
-                val channelIds = channelDao.getChannelIdsByServer(serverId)
+                val channelIds = rejoinCachedChannelsForServer(
+                    serverId = serverId,
+                    loadChannelIds = channelDao::getChannelIdsByServer,
+                    joinChannel = socketManager::joinChannel
+                )
                 Log.d(TAG, "Joining ${channelIds.size} cached channels after connect")
-                channelIds.forEach { channelId ->
-                    socketManager.joinChannel(channelId)
-                }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to join cached channels", e)
             }
@@ -289,6 +309,7 @@ class SocketNotificationService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         eventsJob?.cancel()
+        connectionJob?.cancel()
         serviceScope.cancel()
         Log.d(TAG, "Service destroyed")
     }
