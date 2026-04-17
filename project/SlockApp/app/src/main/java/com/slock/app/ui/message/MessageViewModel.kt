@@ -44,7 +44,8 @@ data class MessageUiState(
     val searchQuery: String = "",
     val searchMatchIndices: List<Int> = emptyList(),
     val currentSearchMatchPosition: Int = -1,
-    val currentSearchMatchMessageId: String? = null
+    val currentSearchMatchMessageId: String? = null,
+    val reactionOverridesByMessageId: Map<String, List<MessageReactionUiModel>> = emptyMap()
 )
 
 fun computeSearchMatches(state: MessageUiState): MessageUiState {
@@ -109,6 +110,21 @@ class MessageViewModel @Inject constructor(
                                     if (!exists) {
                                         recomputeSearchMatches(current.copy(messages = listOf(newMessage) + current.messages))
                                     } else current
+                                }
+                            }
+                        }
+                        is SocketIOManager.SocketEvent.MessageUpdated -> {
+                            val data = event.data
+                            if (data.channelId == _state.value.channelId) {
+                                _state.update { current ->
+                                    val updatedMessages = current.messages.map { message ->
+                                        if (message.id == data.id) {
+                                            message.copy(content = data.content.ifBlank { message.content })
+                                        } else {
+                                            message
+                                        }
+                                    }
+                                    recomputeSearchMatches(current.copy(messages = updatedMessages))
                                 }
                             }
                         }
@@ -320,6 +336,19 @@ class MessageViewModel @Inject constructor(
                        else current.currentSearchMatchPosition - 1
             val messageId = current.messages.getOrNull(current.searchMatchIndices[prev])?.id
             current.copy(currentSearchMatchPosition = prev, currentSearchMatchMessageId = messageId)
+        }
+    }
+
+    fun toggleReaction(message: Message, emoji: String) {
+        if (message.id.isNullOrBlank()) return
+        _state.update { current ->
+            current.copy(
+                reactionOverridesByMessageId = updateReactionOverrides(
+                    currentOverrides = current.reactionOverridesByMessageId,
+                    message = message,
+                    emoji = emoji
+                )
+            )
         }
     }
 

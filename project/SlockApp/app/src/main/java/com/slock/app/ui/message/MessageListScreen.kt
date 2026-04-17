@@ -61,7 +61,8 @@ fun MessageListScreen(
     onToggleSearch: () -> Unit = {},
     onSearchQueryChange: (String) -> Unit = {},
     onNextSearchResult: () -> Unit = {},
-    onPreviousSearchResult: () -> Unit = {}
+    onPreviousSearchResult: () -> Unit = {},
+    onToggleReaction: (Message, String) -> Unit = { _, _ -> }
 ) {
     var text by remember { mutableStateOf("") }
 
@@ -178,12 +179,17 @@ fun MessageListScreen(
                                 NeoMessage(
                                     message = message,
                                     quotedMessage = quotedMessage,
+                                    reactions = resolveDisplayedReactions(
+                                        message = message,
+                                        reactionOverride = state.reactionOverridesByMessageId[message.id]
+                                    ),
                                     highlightQuery = if (state.isSearchActive) state.searchQuery else "",
                                     isCurrentSearchMatch = isCurrentMatch,
                                     onThreadClick = if (message.threadChannelId != null) {
                                         { onNavigateToThread(message.threadChannelId!!, message) }
                                     } else null,
                                     onReply = { onReplyTo(message) },
+                                    onToggleReaction = { emoji -> onToggleReaction(message, emoji) },
                                     onImageClick = onImageClick
                                 )
                             }
@@ -365,10 +371,12 @@ private fun SearchBar(
 private fun NeoMessage(
     message: Message,
     quotedMessage: Message? = null,
+    reactions: List<MessageReactionUiModel> = emptyList(),
     highlightQuery: String = "",
     isCurrentSearchMatch: Boolean = false,
     onThreadClick: (() -> Unit)? = null,
     onReply: () -> Unit = {},
+    onToggleReaction: (String) -> Unit = {},
     onImageClick: (String) -> Unit = {}
 ) {
     val isAgent = message.isAgent
@@ -533,6 +541,14 @@ private fun NeoMessage(
                 }
             }
 
+            if (reactions.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                MessageReactionRow(
+                    reactions = reactions,
+                    onToggleReaction = onToggleReaction
+                )
+            }
+
             // Sending indicator
             if (isPending) {
                 Text(
@@ -617,7 +633,9 @@ private fun NeoMessage(
         val clipboardManager = LocalClipboardManager.current
         MessageActionSheet(
             hasThread = onThreadClick != null,
+            reactions = reactions,
             onDismiss = { showMenu = false },
+            onToggleReaction = { emoji -> showMenu = false; onToggleReaction(emoji) },
             onReplyThread = { showMenu = false; onThreadClick?.invoke() },
             onQuoteReply = { showMenu = false; onReply() },
             onConvertToTask = { showMenu = false /* TODO: Convert to task */ },
@@ -636,7 +654,9 @@ private fun NeoMessage(
 @Composable
 private fun MessageActionSheet(
     hasThread: Boolean,
+    reactions: List<MessageReactionUiModel>,
     onDismiss: () -> Unit,
+    onToggleReaction: (String) -> Unit,
     onReplyThread: () -> Unit,
     onQuoteReply: () -> Unit,
     onConvertToTask: () -> Unit,
@@ -664,6 +684,11 @@ private fun MessageActionSheet(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .navigationBarsPadding()
         ) {
+            QuickReactionPicker(
+                reactions = reactions,
+                onToggleReaction = onToggleReaction
+            )
+            Spacer(modifier = Modifier.height(4.dp))
             ActionSheetItem(
                 icon = "\u21A9\uFE0F",
                 label = "Quote Reply",
@@ -697,6 +722,84 @@ private fun MessageActionSheet(
                 onClick = onCopy
             )
             Spacer(modifier = Modifier.height(8.dp))
+        }
+    }
+}
+
+@Composable
+private fun QuickReactionPicker(
+    reactions: List<MessageReactionUiModel>,
+    onToggleReaction: (String) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = "Quick reactions",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+            color = Black,
+            modifier = Modifier.padding(horizontal = 8.dp)
+        )
+
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(quickReactionOptions(reactions)) { emoji ->
+                val selected = reactions.any { it.emoji == emoji && it.isSelected }
+                ReactionChip(
+                    emoji = emoji,
+                    count = null,
+                    isSelected = selected,
+                    onClick = { onToggleReaction(emoji) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MessageReactionRow(
+    reactions: List<MessageReactionUiModel>,
+    onToggleReaction: (String) -> Unit
+) {
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(reactions) { reaction ->
+            ReactionChip(
+                emoji = reaction.emoji,
+                count = reaction.count,
+                isSelected = reaction.isSelected,
+                onClick = { onToggleReaction(reaction.emoji) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReactionChip(
+    emoji: String,
+    count: Int?,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val backgroundColor = if (isSelected) Lime else White
+    val textColor = Black
+    Row(
+        modifier = Modifier
+            .background(backgroundColor)
+            .border(1.5.dp, Black, RectangleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(text = emoji, fontSize = 15.sp)
+        if (count != null) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = textColor
+            )
         }
     }
 }
