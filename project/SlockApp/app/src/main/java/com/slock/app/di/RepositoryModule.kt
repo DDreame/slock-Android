@@ -6,6 +6,8 @@ import com.slock.app.data.repository.AuthRepository
 import com.slock.app.data.repository.AuthRepositoryImpl
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.ChannelRepositoryImpl
+import com.slock.app.data.repository.MachineRepository
+import com.slock.app.data.repository.MachineRepositoryImpl
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.repository.MessageRepositoryImpl
 import com.slock.app.data.repository.ServerRepository
@@ -51,4 +53,8 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindThreadRepository(impl: ThreadRepositoryImpl): ThreadRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindMachineRepository(impl: MachineRepositoryImpl): MachineRepository
 }

@@ -41,5 +41,17 @@ data class Machine(
     @SerializedName("serverId")
     val serverId: String? = null,
     val status: String? = null,
-    val key: String? = null
+    val key: String? = null,
+    val uptime: String? = null,
+    @SerializedName("lastSeen")
+    val lastSeen: String? = null,
+    val meta: List<String>? = null,
+    @SerializedName("runningAgents")
+    val runningAgents: List<MachineAgent>? = null
+)
+
+data class MachineAgent(
+    val id: String? = null,
+    val name: String? = null,
+    val status: String? = null
 )

@@ -35,6 +35,8 @@ import com.slock.app.ui.agent.AgentDetailScreen
 import com.slock.app.ui.agent.AgentDetailViewModel
 import com.slock.app.ui.member.MembersListScreen
 import com.slock.app.ui.member.MembersViewModel
+import com.slock.app.ui.machine.MachineListScreen
+import com.slock.app.ui.machine.MachineViewModel
 import com.slock.app.ui.task.TaskListScreen
 import com.slock.app.ui.task.TaskViewModel
 import com.slock.app.ui.task.ServerTasksScreen
@@ -56,7 +58,9 @@ object Routes {
     const val THREAD_REPLY = "thread/{threadChannelId}/reply/{parentMessageJson}?channelName={threadChannelName}"
     const val TASK_LIST = "server/{serverId}/tasks"
     const val AGENT_DETAIL = "agent/{agentId}"
+    const val MACHINE_LIST = "server/{serverId}/machines"
     fun agentDetailRoute(agentId: String) = "agent/$agentId"
+    fun machineListRoute(serverId: String) = "server/$serverId/machines"
 }
 
 @Composable
@@ -362,6 +366,7 @@ fun SlockNavHost(
                 },
                 onAgentClick = { },
                 onNavigateBack = { navController.popBackStack() },
+                onNavigateToMachines = { navController.navigate(Routes.machineListRoute(serverId)) },
                 onRetry = { viewModel.loadAgents(serverId) }
             )
         }
@@ -454,6 +459,32 @@ fun SlockNavHost(
                 onStopAgent = viewModel::stopAgent,
                 onDmClick = { /* TODO: DM navigation */ },
                 onRetry = viewModel::retry
+            )
+        }
+
+        // Machine List Screen
+        composable(
+            Routes.MACHINE_LIST,
+            arguments = listOf(
+                navArgument("serverId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val serverId = backStackEntry.arguments?.getString("serverId") ?: return@composable
+            val viewModel: MachineViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+
+            LaunchedEffect(serverId) {
+                viewModel.loadMachines(serverId)
+            }
+
+            MachineListScreen(
+                state = state,
+                onDeleteMachine = viewModel::deleteMachine,
+                onAgentClick = { agentId ->
+                    navController.navigate(Routes.agentDetailRoute(agentId))
+                },
+                onNavigateBack = { navController.popBackStack() },
+                onRetry = { viewModel.loadMachines(serverId) }
             )
         }
     }

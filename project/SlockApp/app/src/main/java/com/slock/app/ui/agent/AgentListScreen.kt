@@ -49,6 +49,7 @@ fun AgentListScreen(
     onDmAgent: (agentId: String) -> Unit,
     onAgentClick: (agentId: String) -> Unit,
     onNavigateBack: () -> Unit,
+    onNavigateToMachines: () -> Unit = {},
     onRetry: () -> Unit = {},
     showHeader: Boolean = true
 ) {
@@ -80,7 +81,8 @@ fun AgentListScreen(
                 if (count > 0) Toast.makeText(context, "正在启动 $count 个 Agent", Toast.LENGTH_SHORT).show()
             },
             onStopAll = { confirmStopAll = true },
-            onRefresh = { /* TODO: Refresh status */ }
+            onRefresh = { /* TODO: Refresh status */ },
+            onMachines = onNavigateToMachines
         )
 
         // Content
@@ -293,7 +295,8 @@ private fun AgentHeader(onBack: () -> Unit, onCreateClick: () -> Unit) {
 private fun QuickActionsBar(
     onResumeAll: () -> Unit,
     onStopAll: () -> Unit,
-    onRefresh: () -> Unit
+    onRefresh: () -> Unit,
+    onMachines: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -304,6 +307,7 @@ private fun QuickActionsBar(
     ) {
         QuickActionButton(icon = "\u25B6", label = "Resume All", color = Lime, onClick = onResumeAll)
         QuickActionButton(icon = "\u25A0", label = "Stop All", color = Pink, onClick = onStopAll)
+        QuickActionButton(icon = "\uD83D\uDCBB", label = "Machines", color = Yellow, onClick = onMachines)
         QuickActionButton(icon = "\uD83D\uDD04", label = "Refresh Status", color = White, onClick = onRefresh)
     }
 }

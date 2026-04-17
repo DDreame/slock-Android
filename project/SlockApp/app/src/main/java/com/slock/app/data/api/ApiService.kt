@@ -175,4 +175,11 @@ interface ApiService {
 
     @DELETE("tasks/{taskId}")
     suspend fun deleteTask(@Path("taskId") taskId: String): Response<Unit>
+
+    // Machines (X-Server-Id header added automatically by ServerIdInterceptor)
+    @GET("machines")
+    suspend fun getMachines(): Response<List<Machine>>
+
+    @DELETE("machines/{machineId}")
+    suspend fun deleteMachine(@Path("machineId") machineId: String): Response<Unit>
 }
