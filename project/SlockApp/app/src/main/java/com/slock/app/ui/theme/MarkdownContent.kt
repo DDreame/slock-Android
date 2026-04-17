@@ -1,5 +1,6 @@
 package com.slock.app.ui.theme
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,13 +14,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -99,6 +101,12 @@ fun buildMentionAnnotatedString(content: String, highlightQuery: String = ""): A
     }
 }
 
+fun extractMarkdownCodeBlocks(content: String): List<String> {
+    return parseMarkdownBlocks(content)
+        .filterIsInstance<MarkdownBlock.CodeBlock>()
+        .map { it.code }
+}
+
 fun parseMarkdownBlocks(content: String, highlightQuery: String = ""): List<MarkdownBlock> {
     if (content.isBlank()) return emptyList()
 
@@ -148,19 +156,39 @@ private fun MarkdownBlockView(
 ) {
     when (block) {
         is MarkdownBlock.CodeBlock -> {
-            androidx.compose.material3.Text(
-                text = block.code,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = FontFamily.Monospace,
-                    lineHeight = 18.sp
-                ),
-                color = White,
+            val clipboardManager = LocalClipboardManager.current
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Black)
                     .border(2.dp, Black, RectangleShape)
-                    .padding(12.dp)
-            )
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    androidx.compose.material3.Text(
+                        text = "CODE",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = White.copy(alpha = 0.7f)
+                    )
+                    androidx.compose.material3.Text(
+                        text = "COPY",
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = White,
+                        modifier = Modifier.clickable {
+                            clipboardManager.setText(AnnotatedString(block.code))
+                        }
+                    )
+                }
+                androidx.compose.material3.Text(
+                    text = block.code,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = FontFamily.Monospace,
+                        lineHeight = 18.sp
+                    ),
+                    color = White
+                )
+            }
         }
 
         is MarkdownBlock.Heading -> {
@@ -195,7 +223,7 @@ private fun MarkdownBlockView(
         }
 
         MarkdownBlock.HorizontalRule -> {
-            Divider(
+            HorizontalDivider(
                 color = Black,
                 thickness = 2.dp,
                 modifier = Modifier.fillMaxWidth()

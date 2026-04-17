@@ -26,7 +26,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -37,9 +36,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
-import com.slock.app.data.model.Attachment
 import com.slock.app.data.model.Message
 import com.slock.app.ui.theme.*
 import com.slock.app.util.LogCollector
@@ -412,6 +408,7 @@ private fun NeoMessage(
     val accentColor = if (isAgent) Orange else Cyan
     val alpha = if (isPending) 0.5f else 1f
     var showMenu by remember { mutableStateOf(false) }
+    val copyTargets = remember(message) { buildMessageCopyTargets(message) }
 
     val messageBgColor = when {
         isCurrentSearchMatch -> Yellow.copy(alpha = 0.3f)
@@ -527,36 +524,12 @@ private fun NeoMessage(
             // Message content with markdown rendering
             NeoMessageContent(content = message.content.orEmpty(), highlightQuery = highlightQuery)
 
-            // Image attachments
-            val imageAttachments = message.attachments.filter {
-                it.type.orEmpty().startsWith("image/") || it.url.orEmpty().let { u ->
-                    u.endsWith(".png", true) || u.endsWith(".jpg", true) ||
-                    u.endsWith(".jpeg", true) || u.endsWith(".gif", true) ||
-                    u.endsWith(".webp", true)
-                }
-            }
-            if (imageAttachments.isNotEmpty()) {
+            if (message.attachments.isNotEmpty()) {
                 Spacer(Modifier.height(6.dp))
-                imageAttachments.forEach { attachment ->
-                    val url = attachment.url.orEmpty()
-                    if (url.isNotEmpty()) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(url)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = attachment.name,
-                            contentScale = ContentScale.FillWidth,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 250.dp)
-                                .clip(RectangleShape)
-                                .border(1.5.dp, Color.Black, RectangleShape)
-                                .clickable { onImageClick(url) }
-                        )
-                        Spacer(Modifier.height(4.dp))
-                    }
-                }
+                MessageAttachmentContent(
+                    attachments = message.attachments,
+                    onImageClick = onImageClick
+                )
             }
 
             if (reactions.isNotEmpty()) {
@@ -651,13 +624,18 @@ private fun NeoMessage(
         val clipboardManager = LocalClipboardManager.current
         MessageActionSheet(
             hasThread = onThreadClick != null,
+            canCopyLink = copyTargets.link != null,
             reactions = reactions,
             onDismiss = { showMenu = false },
             onToggleReaction = { emoji -> showMenu = false; onToggleReaction(emoji) },
             onReplyThread = { showMenu = false; onThreadClick?.invoke() },
             onQuoteReply = { showMenu = false; onReply() },
-            onCopy = {
-                clipboardManager.setText(AnnotatedString(message.content.orEmpty()))
+            onCopyMarkdown = {
+                clipboardManager.setText(AnnotatedString(copyTargets.markdown))
+                showMenu = false
+            },
+            onCopyLink = {
+                copyTargets.link?.let { clipboardManager.setText(AnnotatedString(it)) }
                 showMenu = false
             }
         )
@@ -702,12 +680,14 @@ private fun MessageAvatar(
 @Composable
 private fun MessageActionSheet(
     hasThread: Boolean,
+    canCopyLink: Boolean,
     reactions: List<MessageReactionUiModel>,
     onDismiss: () -> Unit,
     onToggleReaction: (String) -> Unit,
     onReplyThread: () -> Unit,
     onQuoteReply: () -> Unit,
-    onCopy: () -> Unit
+    onCopyMarkdown: () -> Unit,
+    onCopyLink: () -> Unit
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -748,9 +728,16 @@ private fun MessageActionSheet(
             }
             ActionSheetItem(
                 icon = "\uD83D\uDCCB",
-                label = "Copy Text",
-                onClick = onCopy
+                label = "Copy Markdown",
+                onClick = onCopyMarkdown
             )
+            if (canCopyLink) {
+                ActionSheetItem(
+                    icon = "\uD83D\uDD17",
+                    label = "Copy Link",
+                    onClick = onCopyLink
+                )
+            }
             Spacer(modifier = Modifier.height(8.dp))
         }
     }

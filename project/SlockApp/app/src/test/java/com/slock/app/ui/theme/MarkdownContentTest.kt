@@ -97,6 +97,15 @@ class MarkdownContentTest {
     }
 
     @Test
+    fun `extract markdown code blocks returns copyable code payloads`() {
+        val blocks = extractMarkdownCodeBlocks(
+            "Before\n```kotlin\nval answer = 42\n```\nAfter\n```bash\necho ok\n```"
+        )
+
+        assertEquals(listOf("val answer = 42", "echo ok"), blocks)
+    }
+
+    @Test
     fun `highlight still works inside markdown inline content`() {
         val result = buildMentionAnnotatedString(
             "**Search** [search docs](https://openai.com) and @search-bot",
