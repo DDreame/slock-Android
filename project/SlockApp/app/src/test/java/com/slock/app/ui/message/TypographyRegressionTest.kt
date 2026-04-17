@@ -80,28 +80,28 @@ class TypographyRegressionTest {
     }
 
     @Test
-    fun `SystemMessageDivider uses bodySmall not hardcoded 11sp`() {
+    fun `SystemMessageDivider uses NeoMessageContent not plain Text`() {
         val sysBlock = messageListSource
             .substringAfter("fun SystemMessageDivider(")
             .substringBefore("@Composable")
-        assertFalse(
-            "SystemMessageDivider must not use hardcoded 11.sp",
-            sysBlock.contains("11.sp")
-        )
         assertTrue(
-            "SystemMessageDivider must use bodySmall",
-            sysBlock.contains("bodySmall")
+            "SystemMessageDivider must route through NeoMessageContent for rich text rendering",
+            sysBlock.contains("NeoMessageContent(")
+        )
+        assertFalse(
+            "SystemMessageDivider must not use plain Text for content",
+            sysBlock.contains("Text(\n") || sysBlock.matches(Regex(""".*\bText\(\s*\n\s*text\s*=\s*content.*""", RegexOption.DOT_MATCHES_ALL))
         )
     }
 
     @Test
-    fun `SystemMessageDivider uses TextSecondary not TextMuted`() {
+    fun `SystemMessageDivider passes TextSecondary as textColor to NeoMessageContent`() {
         val sysBlock = messageListSource
             .substringAfter("fun SystemMessageDivider(")
             .substringBefore("@Composable")
         assertTrue(
-            "SystemMessageDivider must use TextSecondary for upgraded info hierarchy",
-            sysBlock.contains("TextSecondary")
+            "SystemMessageDivider must pass TextSecondary as textColor",
+            sysBlock.contains("textColor = TextSecondary")
         )
     }
 

@@ -1028,13 +1028,10 @@ private fun SystemMessageDivider(content: String) {
             thickness = 1.dp,
             color = Color(0xFFCCCCCC)
         )
-        Text(
-            text = content,
-            style = MaterialTheme.typography.bodySmall.copy(
-                letterSpacing = 0.3.sp
-            ),
-            color = TextSecondary,
-            modifier = Modifier.padding(horizontal = 12.dp)
+        NeoMessageContent(
+            content = content,
+            modifier = Modifier.padding(horizontal = 12.dp),
+            textColor = TextSecondary
         )
         Divider(
             modifier = Modifier.weight(1f),
