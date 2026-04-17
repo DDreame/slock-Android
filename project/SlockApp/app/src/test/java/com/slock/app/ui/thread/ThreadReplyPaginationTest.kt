@@ -35,18 +35,22 @@ class ThreadReplyPaginationStateTest {
     }
 
     @Test
-    fun `pagination state preserved through copy with new replies`() {
+    fun `pagination state preserved through copy with new replies prepended`() {
         val initial = ThreadReplyUiState(
             replies = listOf(Message(id = "r1", seq = 10)),
             hasMoreReplies = true,
             isLoadingMore = true
         )
+        val olderReply = Message(id = "r2", seq = 5)
         val updated = initial.copy(
-            replies = initial.replies + Message(id = "r2", seq = 5),
+            replies = listOf(olderReply) + initial.replies,
             isLoadingMore = false,
             hasMoreReplies = false
         )
         assertEquals(2, updated.replies.size)
+        assertEquals("r2", updated.replies.first().id)
+        assertEquals("r1", updated.replies.last().id)
+        assertTrue(updated.replies.first().seq < updated.replies.last().seq)
         assertFalse(updated.isLoadingMore)
         assertFalse(updated.hasMoreReplies)
     }
@@ -89,6 +93,10 @@ class ThreadReplyPaginationStructuralTest {
             .substringAfter("fun loadMoreReplies()")
             .substringBefore("override fun onCleared")
         assertTrue(
+            "loadMoreReplies must use firstOrNull to get oldest reply for before cursor",
+            loadMoreBlock.contains(".firstOrNull()")
+        )
+        assertTrue(
             "loadMoreReplies must use seq as before cursor",
             loadMoreBlock.contains(".seq.toString()")
         )
@@ -117,6 +125,17 @@ class ThreadReplyPaginationStructuralTest {
     }
 
     @Test
+    fun `loadMoreReplies prepends older replies before existing`() {
+        val loadMoreBlock = vmSource
+            .substringAfter("fun loadMoreReplies()")
+            .substringBefore("override fun onCleared")
+        assertTrue(
+            "loadMoreReplies must prepend older replies (newReplies + state.replies) to maintain chronological order",
+            loadMoreBlock.contains("newReplies + state.replies") || loadMoreBlock.contains("newReplies + current.replies")
+        )
+    }
+
+    @Test
     fun `screen uses rememberLazyListState`() {
         assertTrue(
             "ThreadReplyScreen must use rememberLazyListState for scroll tracking",
@@ -125,10 +144,14 @@ class ThreadReplyPaginationStructuralTest {
     }
 
     @Test
-    fun `screen has scroll detection with derivedStateOf`() {
+    fun `screen has scroll detection with derivedStateOf using firstVisibleItemIndex`() {
         assertTrue(
             "ThreadReplyScreen must use derivedStateOf for scroll detection",
             screenSource.contains("derivedStateOf")
+        )
+        assertTrue(
+            "ThreadReplyScreen must check firstVisibleItemIndex for top-of-list detection",
+            screenSource.contains("firstVisibleItemIndex")
         )
     }
 

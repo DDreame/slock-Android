@@ -171,7 +171,7 @@ class ThreadReplyViewModel @Inject constructor(
         val current = _state.value
         if (current.isLoadingMore || !current.hasMoreReplies) return
         val serverId = activeServerHolder.serverId ?: return
-        val oldestReply = current.replies.lastOrNull() ?: return
+        val oldestReply = current.replies.firstOrNull() ?: return
         val beforeCursor = oldestReply.seq.toString()
 
         viewModelScope.launch {
@@ -182,7 +182,7 @@ class ThreadReplyViewModel @Inject constructor(
                         val existingIds = state.replies.map { it.id }.toSet()
                         val newReplies = olderReplies.filter { it.id !in existingIds }
                         state.copy(
-                            replies = state.replies + newReplies,
+                            replies = newReplies + state.replies,
                             isLoadingMore = false,
                             hasMoreReplies = olderReplies.size >= 50
                         )

@@ -65,9 +65,8 @@ fun ThreadReplyScreen(
 
                     val shouldLoadMore = remember {
                         derivedStateOf {
-                            val totalItems = listState.layoutInfo.totalItemsCount
-                            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                            lastVisibleItem >= totalItems - 5 && totalItems > 0
+                            val firstVisibleItem = listState.firstVisibleItemIndex
+                            firstVisibleItem <= 5 && listState.layoutInfo.totalItemsCount > 0
                         }
                     }
                     LaunchedEffect(shouldLoadMore.value) {
