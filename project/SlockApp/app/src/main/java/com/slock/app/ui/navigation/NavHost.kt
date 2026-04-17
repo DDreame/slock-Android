@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import com.google.gson.Gson
 import com.slock.app.data.model.Message
 import com.slock.app.data.model.Server
@@ -140,8 +141,10 @@ fun SlockNavHost(
     // Handle deep link from notification (warm start only — cold start is handled by splash)
     LaunchedEffect(deepLinkChannelId, isSplashDone) {
         if (shouldHandleWarmStartDeepLink(isSplashDone, deepLinkChannelId)) {
-            navController.navigate(Routes.messagesRoute(deepLinkChannelId.orEmpty(), deepLinkChannelName ?: "")) {
-                launchSingleTop = true
+            val action = resolveWarmStartDeepLinkNav(deepLinkChannelId.orEmpty(), deepLinkChannelName)
+            navController.navigate(action.route) {
+                popUpTo(action.popUpToRoute) { inclusive = action.inclusive }
+                launchSingleTop = action.singleTop
             }
             onDeepLinkConsumed()
         }
@@ -252,6 +255,10 @@ fun SlockNavHost(
                 initial = com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTING
             )
             val context = androidx.compose.ui.platform.LocalContext.current
+
+            BackHandler {
+                (context as? android.app.Activity)?.finish()
+            }
 
             var selectedServer by remember { mutableStateOf<Server?>(null) }
 
@@ -697,8 +704,10 @@ fun SlockNavHost(
                 },
                 onMachineClick = { machineId ->
                     val serverId = viewModel.serverId.orEmpty()
-                    if (serverId.isNotEmpty()) {
-                        navController.navigate(Routes.machineListRoute(serverId))
+                    resolveAgentToMachineNav(serverId)?.let { action ->
+                        navController.navigate(action.route) {
+                            popUpTo(action.popUpToRoute) { inclusive = action.inclusive }
+                        }
                     }
                 },
                 onSelectTab = viewModel::selectTab,
@@ -725,7 +734,11 @@ fun SlockNavHost(
                 state = state,
                 onDeleteMachine = viewModel::deleteMachine,
                 onAgentClick = { agentId ->
-                    navController.navigate(Routes.agentDetailRoute(agentId))
+                    resolveMachineToAgentNav(agentId)?.let { action ->
+                        navController.navigate(action.route) {
+                            popUpTo(action.popUpToRoute) { inclusive = action.inclusive }
+                        }
+                    }
                 },
                 onNavigateBack = { navController.popBackStack() },
                 onRetry = { viewModel.loadMachines(serverId) }

@@ -26,3 +26,43 @@ fun shouldHandleWarmStartDeepLink(
 ): Boolean {
     return isSplashDone && !deepLinkChannelId.isNullOrBlank()
 }
+
+data class CrossNavAction(
+    val route: String,
+    val popUpToRoute: String,
+    val inclusive: Boolean
+)
+
+fun resolveAgentToMachineNav(serverId: String): CrossNavAction? {
+    if (serverId.isBlank()) return null
+    return CrossNavAction(
+        route = Routes.machineListRoute(serverId),
+        popUpToRoute = Routes.AGENT_DETAIL,
+        inclusive = true
+    )
+}
+
+fun resolveMachineToAgentNav(agentId: String): CrossNavAction? {
+    if (agentId.isBlank()) return null
+    return CrossNavAction(
+        route = Routes.agentDetailRoute(agentId),
+        popUpToRoute = Routes.MACHINE_LIST,
+        inclusive = true
+    )
+}
+
+data class WarmDeepLinkNavAction(
+    val route: String,
+    val popUpToRoute: String,
+    val inclusive: Boolean,
+    val singleTop: Boolean
+)
+
+fun resolveWarmStartDeepLinkNav(channelId: String, channelName: String?): WarmDeepLinkNavAction {
+    return WarmDeepLinkNavAction(
+        route = Routes.messagesRoute(channelId, channelName ?: ""),
+        popUpToRoute = Routes.HOME,
+        inclusive = false,
+        singleTop = true
+    )
+}
