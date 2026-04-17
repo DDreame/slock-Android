@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1471,7 +1472,8 @@ private fun NewDmDialog(
                 NeoTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
-                    placeholder = "Search members..."
+                    placeholder = "Search members...",
+                    modifier = Modifier.testTag("newDmSearch")
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))

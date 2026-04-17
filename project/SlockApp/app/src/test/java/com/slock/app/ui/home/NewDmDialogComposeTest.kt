@@ -2,12 +2,12 @@ package com.slock.app.ui.home
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.slock.app.ui.channel.ChannelUiState
 import com.slock.app.ui.member.MemberItem
 import com.slock.app.ui.server.ServerUiState
@@ -67,6 +67,11 @@ class NewDmDialogComposeTest {
         composeTestRule.waitForIdle()
     }
 
+    private fun typeInSearch(text: String) {
+        composeTestRule.onNodeWithTag("newDmSearch").performTextReplacement(text)
+        composeTestRule.waitForIdle()
+    }
+
     @Test
     fun `clicking DM section plus button opens NewDmDialog`() {
         renderHomeScreen()
@@ -94,8 +99,7 @@ class NewDmDialogComposeTest {
     fun `search filters member list by name`() {
         renderHomeScreen()
         clickDmPlusButton()
-        composeTestRule.onNodeWithText("Search members...").performTextInput("Ali")
-        composeTestRule.waitForIdle()
+        typeInSearch("Ali")
         composeTestRule.onNodeWithText("Alice").assertIsDisplayed()
         composeTestRule.onNodeWithText("Bob").assertDoesNotExist()
         composeTestRule.onNodeWithText("Agent Bot").assertDoesNotExist()
@@ -105,8 +109,7 @@ class NewDmDialogComposeTest {
     fun `search is case insensitive`() {
         renderHomeScreen()
         clickDmPlusButton()
-        composeTestRule.onNodeWithText("Search members...").performTextInput("bob")
-        composeTestRule.waitForIdle()
+        typeInSearch("bob")
         composeTestRule.onNodeWithText("Bob").assertIsDisplayed()
         composeTestRule.onNodeWithText("Alice").assertDoesNotExist()
     }
@@ -124,8 +127,7 @@ class NewDmDialogComposeTest {
     fun `no match shows empty state`() {
         renderHomeScreen()
         clickDmPlusButton()
-        composeTestRule.onNodeWithText("Search members...").performTextInput("zzzzz")
-        composeTestRule.waitForIdle()
+        typeInSearch("zzzzz")
         composeTestRule.onNodeWithText("No members found").assertIsDisplayed()
     }
 
