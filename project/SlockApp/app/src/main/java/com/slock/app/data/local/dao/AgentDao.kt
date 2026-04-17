@@ -22,4 +22,7 @@ interface AgentDao {
 
     @Query("DELETE FROM agents WHERE serverId = :serverId")
     suspend fun deleteAgentsByServer(serverId: String)
+
+    @Query("SELECT * FROM agents WHERE serverId = :serverId AND name LIKE '%' || :query || '%' ORDER BY createdAt DESC LIMIT :limit")
+    suspend fun searchAgents(serverId: String, query: String, limit: Int = 20): List<AgentEntity>
 }

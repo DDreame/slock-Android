@@ -32,4 +32,7 @@ interface ChannelDao {
 
     @Query("DELETE FROM channels WHERE serverId = :serverId")
     suspend fun deleteChannelsByServer(serverId: String)
+
+    @Query("SELECT * FROM channels WHERE serverId = :serverId AND name LIKE '%' || :query || '%' ORDER BY createdAt ASC LIMIT :limit")
+    suspend fun searchChannels(serverId: String, query: String, limit: Int = 20): List<ChannelEntity>
 }

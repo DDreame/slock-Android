@@ -49,4 +49,7 @@ interface MessageDao {
         )
     """)
     suspend fun getLatestMessagePerChannel(channelIds: List<String>): List<MessageEntity>
+
+    @Query("SELECT * FROM messages WHERE content LIKE '%' || :query || '%' ORDER BY seq DESC LIMIT :limit")
+    suspend fun searchMessages(query: String, limit: Int = 30): List<MessageEntity>
 }

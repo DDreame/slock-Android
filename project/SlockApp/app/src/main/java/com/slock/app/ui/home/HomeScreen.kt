@@ -21,6 +21,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.data.model.Channel
+import com.slock.app.data.model.Message
+import com.slock.app.data.model.Agent
 import com.slock.app.data.model.Server
 import com.slock.app.ui.channel.ChannelUiState
 import com.slock.app.ui.server.ServerUiState
@@ -35,11 +37,16 @@ fun HomeScreen(
     serverState: ServerUiState,
     channelState: ChannelUiState,
     selectedServer: Server?,
+    searchState: SearchUiState = SearchUiState(),
+    onSearchQueryChange: (String) -> Unit = {},
+    onClearSearch: () -> Unit = {},
     onServerSelect: (Server) -> Unit,
     onChannelClick: (channelId: String, channelName: String) -> Unit,
     onDmClick: (channelId: String, channelName: String) -> Unit,
     onCreateChannel: (name: String, type: String) -> Unit,
     onCreateServer: (name: String, slug: String) -> Unit,
+    onSearchMessageClick: (Message) -> Unit = {},
+    onSearchAgentClick: (Agent) -> Unit = {},
     onLogout: () -> Unit,
     isConnected: Boolean = true,
     isReconnecting: Boolean = false,
@@ -49,7 +56,6 @@ fun HomeScreen(
     tasksContent: @Composable () -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
-    var searchQuery by remember { mutableStateOf("") }
     var showCreateChannelDialog by remember { mutableStateOf(false) }
     var showSettingsMenu by remember { mutableStateOf(false) }
     val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -106,11 +112,13 @@ fun HomeScreen(
                         {
                             ChannelsTabContent(
                                 channelState = channelState,
-                                searchQuery = searchQuery,
-                                onSearchQueryChange = { searchQuery = it },
+                                searchState = searchState,
+                                onSearchQueryChange = onSearchQueryChange,
                                 onChannelClick = onChannelClick,
                                 onDmClick = onDmClick,
-                                onShowCreateChannel = { showCreateChannelDialog = true }
+                                onShowCreateChannel = { showCreateChannelDialog = true },
+                                onSearchMessageClick = onSearchMessageClick,
+                                onSearchAgentClick = onSearchAgentClick
                             )
                         },
                         { threadsContent() },
@@ -160,105 +168,452 @@ fun HomeScreen(
 @Composable
 private fun ChannelsTabContent(
     channelState: ChannelUiState,
-    searchQuery: String,
+    searchState: SearchUiState,
     onSearchQueryChange: (String) -> Unit,
     onChannelClick: (channelId: String, channelName: String) -> Unit,
     onDmClick: (channelId: String, channelName: String) -> Unit,
-    onShowCreateChannel: () -> Unit
+    onShowCreateChannel: () -> Unit,
+    onSearchMessageClick: (Message) -> Unit = {},
+    onSearchAgentClick: (Agent) -> Unit = {}
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
         // Search bar
         Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
             NeoTextField(
-                value = searchQuery,
+                value = searchState.query,
                 onValueChange = onSearchQueryChange,
-                placeholder = "Search channels, DMs, messages...",
+                placeholder = "Search channels, messages, agents...",
                 leadingIcon = { Text(text = "\uD83D\uDD0D", fontSize = 16.sp) },
                 modifier = Modifier.fillMaxWidth()
             )
         }
 
+        val isSearchActive = searchState.query.isNotBlank()
+
         when {
-            channelState.isLoading -> {
+            channelState.isLoading && !isSearchActive -> {
                 NeoSkeletonChannelList()
             }
+            isSearchActive -> {
+                // Search Results
+                SearchResultsContent(
+                    searchState = searchState,
+                    onChannelClick = onChannelClick,
+                    onMessageClick = onSearchMessageClick,
+                    onAgentClick = onSearchAgentClick
+                )
+            }
             else -> {
-                val filteredChannels = channelState.channels.filter {
-                    searchQuery.isBlank() || it.name.orEmpty().contains(searchQuery, ignoreCase = true)
-                }
+                // Normal channel list
+                ChannelListContent(
+                    channelState = channelState,
+                    onChannelClick = onChannelClick,
+                    onDmClick = onDmClick,
+                    onShowCreateChannel = onShowCreateChannel
+                )
+            }
+        }
+    }
+}
 
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
-                    item {
-                        SectionHeader(title = "CHANNELS", onAdd = onShowCreateChannel)
-                    }
+@Composable
+private fun SearchResultsContent(
+    searchState: SearchUiState,
+    onChannelClick: (channelId: String, channelName: String) -> Unit,
+    onMessageClick: (Message) -> Unit,
+    onAgentClick: (Agent) -> Unit
+) {
+    val hasChannels = searchState.channels.isNotEmpty()
+    val hasMessages = searchState.messages.isNotEmpty()
+    val hasAgents = searchState.agents.isNotEmpty()
+    val hasNoResults = !hasChannels && !hasMessages && !hasAgents && searchState.hasSearched && !searchState.isSearching
 
-                    items(filteredChannels) { channel ->
-                        val preview = channelState.channelPreviews[channel.id.orEmpty()]
-                        ChannelItem(
-                            channel = channel,
-                            onClick = { onChannelClick(channel.id.orEmpty(), channel.name.orEmpty()) },
-                            lastMessageSender = preview?.senderName.orEmpty(),
-                            lastMessageContent = preview?.content.orEmpty(),
-                            lastMessageTime = preview?.createdAt.orEmpty()
+    if (searchState.isSearching) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator(color = Black, strokeWidth = 2.dp)
+        }
+        return
+    }
+
+    if (hasNoResults) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(48.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(text = "\uD83D\uDD0D", fontSize = 32.sp)
+                Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = "No results found",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Black
+                )
+                Text(
+                    text = "Try different keywords",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+        }
+        return
+    }
+
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        // Channels section
+        if (hasChannels) {
+            item {
+                SearchSectionHeader(title = "CHANNELS", count = searchState.channels.size)
+            }
+            items(searchState.channels) { channel ->
+                SearchChannelItem(
+                    channel = channel,
+                    onClick = { onChannelClick(channel.id.orEmpty(), channel.name.orEmpty()) }
+                )
+            }
+        }
+
+        // Agents section
+        if (hasAgents) {
+            item {
+                SearchSectionHeader(title = "AGENTS", count = searchState.agents.size)
+            }
+            items(searchState.agents) { agent ->
+                SearchAgentItem(
+                    agent = agent,
+                    onClick = { onAgentClick(agent) }
+                )
+            }
+        }
+
+        // Messages section
+        if (hasMessages) {
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "MESSAGES",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            letterSpacing = 1.5.sp,
+                            fontWeight = FontWeight.Bold
+                        ),
+                        color = Black.copy(alpha = 0.6f)
+                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "${searchState.messages.size}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = TextSecondary
                         )
-                    }
-
-                    if (filteredChannels.isEmpty() && searchQuery.isBlank()) {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No channels yet",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = TextSecondary
-                                )
-                            }
-                        }
-                    }
-
-                    item {
-                        SectionHeader(title = "DIRECT MESSAGES", onAdd = { })
-                    }
-
-                    if (channelState.dms.isNotEmpty()) {
-                        items(channelState.dms) { dm ->
-                            // Check if DM contact is online via members or ID
-                            val contactId = dm.members?.firstOrNull { it.agentId != null }?.agentId
-                                ?: dm.members?.firstOrNull { it.userId != null }?.userId
-                            val isOnline = contactId != null && contactId in channelState.onlineIds
-                            val isAgent = dm.members?.any { it.agentId != null } ?: true
-                            DMItem(
-                                name = dm.name.orEmpty(),
-                                isAgent = isAgent,
-                                isOnline = isOnline,
-                                onClick = { onDmClick(dm.id.orEmpty(), dm.name.orEmpty()) }
+                        if (searchState.isRemoteSearching) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(12.dp),
+                                color = Black,
+                                strokeWidth = 1.5.dp
                             )
                         }
-                    } else {
-                        item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "No direct messages",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = TextSecondary
-                                )
-                            }
-                        }
                     }
+                }
+            }
+            items(searchState.messages) { message ->
+                SearchMessageItem(
+                    message = message,
+                    onClick = { onMessageClick(message) }
+                )
+            }
+        }
 
-                    item { Spacer(modifier = Modifier.height(8.dp)) }
+        item { Spacer(modifier = Modifier.height(16.dp)) }
+    }
+}
+
+@Composable
+private fun SearchSectionHeader(title: String, count: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelSmall.copy(
+                letterSpacing = 1.5.sp,
+                fontWeight = FontWeight.Bold
+            ),
+            color = Black.copy(alpha = 0.6f)
+        )
+        Text(
+            text = "$count",
+            style = MaterialTheme.typography.labelSmall,
+            color = TextSecondary
+        )
+    }
+}
+
+@Composable
+private fun SearchChannelItem(channel: Channel, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 6.dp)
+            .neoShadowSmall()
+            .background(White)
+            .border(2.dp, Black, RectangleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(Lavender)
+                .border(2.dp, Black, RectangleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(text = "#", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Black)
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Text(
+            text = "# ${channel.name.orEmpty()}",
+            style = MaterialTheme.typography.titleSmall,
+            color = Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+@Composable
+private fun SearchAgentItem(agent: Agent, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 6.dp)
+            .neoShadowSmall()
+            .background(White)
+            .border(2.dp, Black, RectangleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(Orange)
+                .border(2.dp, Black, RectangleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = agent.name.orEmpty().take(1).uppercase(),
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Black
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = agent.name.orEmpty(),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .background(Orange)
+                        .border(1.dp, Black, RectangleShape)
+                        .padding(horizontal = 4.dp)
+                ) {
+                    Text(
+                        text = "AGENT",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Black
+                    )
+                }
+            }
+            if (agent.description?.isNotBlank() == true) {
+                Text(
+                    text = agent.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
+        }
+        // Status dot
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .background(if (agent.status == "active") Lime else Color(0xFFCCCCCC))
+                .border(1.5.dp, Black, RectangleShape)
+        )
+    }
+}
+
+@Composable
+private fun SearchMessageItem(message: Message, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 6.dp)
+            .neoShadowSmall()
+            .background(White)
+            .border(2.dp, Black, RectangleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(Cyan)
+                .border(2.dp, Black, RectangleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = message.senderName.orEmpty().take(1).uppercase().ifEmpty { "?" },
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Black
+            )
+        }
+        Spacer(modifier = Modifier.width(12.dp))
+        Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = message.senderName.orEmpty().ifEmpty { "Unknown" },
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                val displayTime = formatPreviewTime(message.createdAt.orEmpty())
+                if (displayTime.isNotEmpty()) {
+                    Text(
+                        text = displayTime,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = TextMuted,
+                        fontSize = 10.sp
+                    )
+                }
+            }
+            Text(
+                text = message.content.orEmpty(),
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(top = 2.dp)
+            )
+        }
+    }
+}
+
+// Normal channel list (when not searching)
+@Composable
+private fun ChannelListContent(
+    channelState: ChannelUiState,
+    onChannelClick: (channelId: String, channelName: String) -> Unit,
+    onDmClick: (channelId: String, channelName: String) -> Unit,
+    onShowCreateChannel: () -> Unit
+) {
+    LazyColumn(modifier = Modifier.fillMaxSize()) {
+        item {
+            SectionHeader(title = "CHANNELS", onAdd = onShowCreateChannel)
+        }
+
+        items(channelState.channels) { channel ->
+            val preview = channelState.channelPreviews[channel.id.orEmpty()]
+            ChannelItem(
+                channel = channel,
+                onClick = { onChannelClick(channel.id.orEmpty(), channel.name.orEmpty()) },
+                lastMessageSender = preview?.senderName.orEmpty(),
+                lastMessageContent = preview?.content.orEmpty(),
+                lastMessageTime = preview?.createdAt.orEmpty()
+            )
+        }
+
+        if (channelState.channels.isEmpty()) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No channels yet",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
                 }
             }
         }
+
+        item {
+            SectionHeader(title = "DIRECT MESSAGES", onAdd = { })
+        }
+
+        if (channelState.dms.isNotEmpty()) {
+            items(channelState.dms) { dm ->
+                val contactId = dm.members?.firstOrNull { it.agentId != null }?.agentId
+                    ?: dm.members?.firstOrNull { it.userId != null }?.userId
+                val isOnline = contactId != null && contactId in channelState.onlineIds
+                val isAgent = dm.members?.any { it.agentId != null } ?: true
+                DMItem(
+                    name = dm.name.orEmpty(),
+                    isAgent = isAgent,
+                    isOnline = isOnline,
+                    onClick = { onDmClick(dm.id.orEmpty(), dm.name.orEmpty()) }
+                )
+            }
+        } else {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No direct messages",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary
+                    )
+                }
+            }
+        }
+
+        item { Spacer(modifier = Modifier.height(8.dp)) }
     }
 }
 

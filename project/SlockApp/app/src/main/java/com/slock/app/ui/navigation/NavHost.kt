@@ -45,6 +45,7 @@ import com.slock.app.ui.thread.ThreadReplyScreen
 import com.slock.app.ui.thread.ThreadReplyViewModel
 import com.slock.app.ui.thread.ThreadListScreen
 import com.slock.app.ui.thread.ThreadListViewModel
+import com.slock.app.ui.home.SearchViewModel
 
 object Routes {
     const val SPLASH = "splash"
@@ -183,6 +184,7 @@ fun SlockNavHost(
             val threadListViewModel: ThreadListViewModel = hiltViewModel()
             val serverTasksViewModel: ServerTasksViewModel = hiltViewModel()
             val authViewModel: AuthViewModel = hiltViewModel()
+            val searchViewModel: SearchViewModel = hiltViewModel()
 
             val serverState by serverViewModel.state.collectAsState()
             val channelState by channelViewModel.state.collectAsState()
@@ -190,6 +192,7 @@ fun SlockNavHost(
             val membersState by membersViewModel.state.collectAsState()
             val threadListState by threadListViewModel.state.collectAsState()
             val tasksState by serverTasksViewModel.state.collectAsState()
+            val searchState by searchViewModel.state.collectAsState()
             val connectionState by serverViewModel.connectionState.collectAsState(
                 initial = com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTING
             )
@@ -222,6 +225,9 @@ fun SlockNavHost(
                 serverState = serverState,
                 channelState = channelState,
                 selectedServer = selectedServer,
+                searchState = searchState,
+                onSearchQueryChange = searchViewModel::onQueryChange,
+                onClearSearch = searchViewModel::clearSearch,
                 isConnected = connectionState == com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTED,
                 isReconnecting = connectionState == com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTING,
                 onServerSelect = { server ->
@@ -244,6 +250,19 @@ fun SlockNavHost(
                 },
                 onCreateChannel = channelViewModel::createChannel,
                 onCreateServer = serverViewModel::createServer,
+                onSearchMessageClick = { message ->
+                    val channelId = message.channelId.orEmpty()
+                    if (channelId.isNotEmpty()) {
+                        val encodedName = Uri.encode(channelId)
+                        navController.navigate("channel/$channelId/messages?name=$encodedName")
+                    }
+                },
+                onSearchAgentClick = { agent ->
+                    val agentId = agent.id.orEmpty()
+                    if (agentId.isNotEmpty()) {
+                        navController.navigate(Routes.agentDetailRoute(agentId))
+                    }
+                },
                 onLogout = {
                     authViewModel.logout {
                         SocketNotificationService.stop(context)
