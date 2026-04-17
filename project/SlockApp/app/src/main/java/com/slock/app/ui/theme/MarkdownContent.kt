@@ -185,7 +185,7 @@ private fun MarkdownBlockView(
                         )
                         MarkdownAnnotatedText(
                             text = item,
-                            style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 21.sp),
+                            style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp),
                             color = textColor,
                             modifier = Modifier.weight(1f)
                         )
@@ -205,7 +205,7 @@ private fun MarkdownBlockView(
         is MarkdownBlock.Paragraph -> {
             MarkdownAnnotatedText(
                 text = block.text,
-                style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 21.sp),
+                style = MaterialTheme.typography.bodyLarge.copy(lineHeight = 24.sp),
                 color = textColor
             )
         }
@@ -222,8 +222,7 @@ private fun MarkdownBlockView(
                     text = block.text,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontStyle = FontStyle.Italic,
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp
+                        lineHeight = 20.sp
                     ),
                     color = textColor.copy(alpha = 0.7f),
                     modifier = Modifier.padding(start = 12.dp)
