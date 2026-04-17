@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -60,7 +61,23 @@ fun ThreadReplyScreen(
                     NeoSkeletonMessageList()
                 }
                 else -> {
+                    val listState = rememberLazyListState()
+
+                    val shouldLoadMore = remember {
+                        derivedStateOf {
+                            val totalItems = listState.layoutInfo.totalItemsCount
+                            val lastVisibleItem = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                            lastVisibleItem >= totalItems - 5 && totalItems > 0
+                        }
+                    }
+                    LaunchedEffect(shouldLoadMore.value) {
+                        if (shouldLoadMore.value && state.hasMoreReplies && !state.isLoadingMore) {
+                            onLoadMore()
+                        }
+                    }
+
                     LazyColumn(
+                        state = listState,
                         contentPadding = PaddingValues(bottom = 12.dp),
                         reverseLayout = false
                     ) {
@@ -79,6 +96,23 @@ fun ThreadReplyScreen(
                         // Reply items
                         items(state.replies) { reply ->
                             ThreadReply(message = reply)
+                        }
+
+                        if (state.isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(24.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Black
+                                    )
+                                }
+                            }
                         }
 
                         if (state.replies.isEmpty() && !state.isLoading) {
