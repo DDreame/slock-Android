@@ -91,13 +91,6 @@ fun MessageListScreen(
             )
         }
 
-        // Pinned message banner (stub — shown when pinned messages exist)
-        // TODO: Wire to actual pinned message data
-        PinnedBanner(
-            pinnedText = null,
-            onTap = { /* TODO: Navigate to pinned message */ }
-        )
-
         // Messages
         Box(modifier = Modifier.weight(1f)) {
             when {
@@ -282,7 +275,6 @@ private fun ChannelHeader(channelName: String, onBack: () -> Unit, onSearchClick
             // Action buttons
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 MiniIconButton(icon = "\uD83D\uDD0D", onClick = onSearchClick)
-                MiniIconButton(icon = "\u22EE")
             }
         }
     }
@@ -630,9 +622,6 @@ private fun NeoMessage(
             onToggleReaction = { emoji -> showMenu = false; onToggleReaction(emoji) },
             onReplyThread = { showMenu = false; onThreadClick?.invoke() },
             onQuoteReply = { showMenu = false; onReply() },
-            onConvertToTask = { showMenu = false /* TODO: Convert to task */ },
-            onPinMessage = { showMenu = false /* TODO: Pin message */ },
-            onSaveMessage = { showMenu = false /* TODO: Save message */ },
             onCopy = {
                 clipboardManager.setText(AnnotatedString(message.content.orEmpty()))
                 showMenu = false
@@ -684,9 +673,6 @@ private fun MessageActionSheet(
     onToggleReaction: (String) -> Unit,
     onReplyThread: () -> Unit,
     onQuoteReply: () -> Unit,
-    onConvertToTask: () -> Unit,
-    onPinMessage: () -> Unit,
-    onSaveMessage: () -> Unit,
     onCopy: () -> Unit
 ) {
     ModalBottomSheet(
@@ -726,21 +712,6 @@ private fun MessageActionSheet(
                     onClick = onReplyThread
                 )
             }
-            ActionSheetItem(
-                icon = "\uD83D\uDCDD",
-                label = "Convert to Task",
-                onClick = onConvertToTask
-            )
-            ActionSheetItem(
-                icon = "\uD83D\uDCCC",
-                label = "Pin Message",
-                onClick = onPinMessage
-            )
-            ActionSheetItem(
-                icon = "\uD83D\uDCBE",
-                label = "Save Message",
-                onClick = onSaveMessage
-            )
             ActionSheetItem(
                 icon = "\uD83D\uDCCB",
                 label = "Copy Text",

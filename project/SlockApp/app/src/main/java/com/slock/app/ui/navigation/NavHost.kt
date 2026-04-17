@@ -142,9 +142,6 @@ fun SlockNavHost(
                     navController.navigate(Routes.HOME) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
-                },
-                onJoinWithInvite = { link ->
-                    // TODO: Implement invite link joining via API
                 }
             )
         }
@@ -463,7 +460,7 @@ fun SlockNavHost(
                         }
                     )
                 },
-                onAgentClick = { },
+                onAgentClick = { agentId -> navController.navigate(Routes.agentDetailRoute(agentId)) },
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToMachines = { navController.navigate(Routes.machineListRoute(serverId)) },
                 onRetry = { viewModel.loadAgents(serverId) }
@@ -549,14 +546,29 @@ fun SlockNavHost(
             )
         ) {
             val viewModel: AgentDetailViewModel = hiltViewModel()
+            val channelVM: ChannelViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
+            val context = androidx.compose.ui.platform.LocalContext.current
 
             AgentDetailScreen(
                 state = state,
                 onNavigateBack = { navController.popBackStack() },
                 onStartAgent = viewModel::startAgent,
                 onStopAgent = viewModel::stopAgent,
-                onDmClick = { /* TODO: DM navigation */ },
+                onDmClick = {
+                    val agentId = state.agent?.id ?: return@AgentDetailScreen
+                    channelVM.createDM(
+                        agentId = agentId,
+                        onSuccess = { dmChannel ->
+                            val agentName = state.agent?.name ?: "DM"
+                            val encodedName = Uri.encode(agentName)
+                            navController.navigate("channel/${dmChannel.id}/messages?name=$encodedName")
+                        },
+                        onError = { error ->
+                            android.widget.Toast.makeText(context, "Failed to create DM: $error", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    )
+                },
                 onMachineClick = { machineId ->
                     val serverId = viewModel.serverId.orEmpty()
                     if (serverId.isNotEmpty()) {

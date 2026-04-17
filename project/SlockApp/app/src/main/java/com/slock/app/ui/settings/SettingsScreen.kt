@@ -129,15 +129,7 @@ fun SettingsScreen(
                     accentColor = Lavender,
                     title = "Neo Brutalism",
                     subtitle = "Current app theme"
-                ) {
-                    Text(
-                        text = "Theme switching is not exposed yet, but this page now has a dedicated home for future theme controls.",
-                        fontFamily = SpaceGrotesk,
-                        fontSize = 13.sp,
-                        color = Black.copy(alpha = 0.7f),
-                        lineHeight = 18.sp
-                    )
-                }
+                )
             }
 
             SettingsSection(title = "About") {
@@ -289,7 +281,7 @@ private fun SettingsInfoCard(
     accentColor: Color,
     title: String,
     subtitle: String,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit = {}
 ) {
     NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {

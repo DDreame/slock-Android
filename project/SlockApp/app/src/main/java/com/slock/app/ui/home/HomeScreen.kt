@@ -78,7 +78,6 @@ fun HomeScreen(
                     serverName = selectedServer?.name ?: "Select Server",
                     serverInitial = selectedServer?.name?.take(1)?.uppercase() ?: "?",
                     onServerSelectorClick = { scope.launch { drawerState.open() } },
-                    onNotificationClick = { },
                     onSettingsClick = onOpenSettings
                 )
             },
@@ -565,7 +564,7 @@ private fun ChannelListContent(
         }
 
         item {
-            SectionHeader(title = "DIRECT MESSAGES", onAdd = { })
+            SectionHeader(title = "DIRECT MESSAGES")
         }
 
         if (channelState.dms.isNotEmpty()) {
@@ -608,7 +607,6 @@ private fun NeoTopBar(
     serverName: String,
     serverInitial: String,
     onServerSelectorClick: () -> Unit,
-    onNotificationClick: () -> Unit,
     onSettingsClick: () -> Unit
 ) {
     Surface(
@@ -664,7 +662,6 @@ private fun NeoTopBar(
 
             // Action buttons
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                NeoIconButton(icon = "\uD83D\uDD14", onClick = onNotificationClick)
                 NeoIconButton(icon = "\u2699", onClick = onSettingsClick)
             }
         }
@@ -682,7 +679,7 @@ private fun NeoIconButton(icon: String, onClick: () -> Unit) {
 
 // Section Header
 @Composable
-private fun SectionHeader(title: String, onAdd: () -> Unit) {
+private fun SectionHeader(title: String, onAdd: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -698,15 +695,17 @@ private fun SectionHeader(title: String, onAdd: () -> Unit) {
             ),
             color = Black.copy(alpha = 0.6f)
         )
-        Box(
-            modifier = Modifier
-                .size(28.dp)
-                .background(Yellow)
-                .border(2.dp, Black, RectangleShape)
-                .clickable(onClick = onAdd),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = "+", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Black)
+        if (onAdd != null) {
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(Yellow)
+                    .border(2.dp, Black, RectangleShape)
+                    .clickable(onClick = onAdd),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "+", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Black)
+            }
         }
     }
 }

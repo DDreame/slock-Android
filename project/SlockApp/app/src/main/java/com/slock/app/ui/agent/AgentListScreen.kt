@@ -81,7 +81,6 @@ fun AgentListScreen(
                 if (count > 0) Toast.makeText(context, "正在启动 $count 个 Agent", Toast.LENGTH_SHORT).show()
             },
             onStopAll = { confirmStopAll = true },
-            onRefresh = { /* TODO: Refresh status */ },
             onMachines = onNavigateToMachines
         )
 
@@ -165,13 +164,6 @@ fun AgentListScreen(
                                 )
                             }
                         }
-
-                        // Machines section — hidden until backend API is available
-                        // item {
-                        //     SectionLabel("Machines")
-                        //     MachineCard()
-                        //     AddMachineCard()
-                        // }
                     }
                 }
             }
@@ -194,11 +186,6 @@ fun AgentListScreen(
         AgentSettingsSheet(
             agent = agent,
             onDismiss = { showSettingsAgent = null },
-            onSave = { _, _, _, _ ->
-                // TODO: effort, wakeOnMessage, hibernateIdle not yet supported by API
-                onUpdateAgent(agent.id.orEmpty(), null, null, null)
-                showSettingsAgent = null
-            },
             onDelete = {
                 showSettingsAgent = null
                 confirmDeleteAgent = agent
@@ -295,7 +282,6 @@ private fun AgentHeader(onBack: () -> Unit, onCreateClick: () -> Unit) {
 private fun QuickActionsBar(
     onResumeAll: () -> Unit,
     onStopAll: () -> Unit,
-    onRefresh: () -> Unit,
     onMachines: () -> Unit = {}
 ) {
     Row(
@@ -308,7 +294,6 @@ private fun QuickActionsBar(
         QuickActionButton(icon = "\u25B6", label = "Resume All", color = Lime, onClick = onResumeAll)
         QuickActionButton(icon = "\u25A0", label = "Stop All", color = Pink, onClick = onStopAll)
         QuickActionButton(icon = "\uD83D\uDCBB", label = "Machines", color = Yellow, onClick = onMachines)
-        QuickActionButton(icon = "\uD83D\uDD04", label = "Refresh Status", color = White, onClick = onRefresh)
     }
 }
 
@@ -576,129 +561,14 @@ private fun AgentActionButton(
     }
 }
 
-// Machine card
-@Composable
-private fun MachineCard() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 10.dp)
-            .neoShadowSmall()
-            .background(White)
-            .border(2.dp, Black, RectangleShape)
-            .padding(14.dp)
-    ) {
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(32.dp)
-                    .background(Cyan)
-                    .border(2.dp, Black, RectangleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "\uD83D\uDCBB", fontSize = 16.sp)
-            }
-            Column {
-                Text(
-                    text = "Local Machine",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 14.sp,
-                    color = Black
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Lime)
-                            .border(1.dp, Black, CircleShape)
-                    )
-                    Text(
-                        text = "Connected",
-                        fontSize = 12.sp,
-                        color = TextMuted
-                    )
-                }
-            }
-        }
-        // Command line
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 8.dp)
-                .background(Color(0xFF1A1A1A))
-                .border(2.dp, Black, RectangleShape)
-                .padding(horizontal = 12.dp, vertical = 8.dp)
-        ) {
-            Text(
-                text = "$ slock connect --token=sk-***",
-                fontFamily = SpaceMono,
-                fontSize = 11.sp,
-                color = Color(0xFFEEEEEE)
-            )
-        }
-    }
-}
-
-// Add machine card (dashed border)
-@Composable
-private fun AddMachineCard() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 16.dp)
-            .drawBehind {
-                drawRect(
-                    color = Color.Black,
-                    style = Stroke(
-                        width = 2.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-                    )
-                )
-            }
-            .clickable { /* TODO: Add machine */ }
-            .padding(20.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = "+", fontSize = 24.sp, fontWeight = FontWeight.Bold, color = Black)
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(
-            text = "Add Machine",
-            fontWeight = FontWeight.SemiBold,
-            fontSize = 14.sp,
-            color = Black
-        )
-        Text(
-            text = "Run agents on your own computer",
-            fontSize = 12.sp,
-            color = TextMuted,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-    }
-}
-
 // Agent Settings Bottom Sheet
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AgentSettingsSheet(
     agent: Agent,
     onDismiss: () -> Unit,
-    onSave: (model: String, effort: String, wakeOnMessage: Boolean, hibernateIdle: Boolean) -> Unit = { _, _, _, _ -> },
     onDelete: () -> Unit
 ) {
-    val modelOptions = listOf("Opus", "Sonnet", "Haiku")
-    val modelApiNames = listOf("claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-haiku-4-5-20251001")
-    var selectedModel by remember { mutableStateOf(getModelShortName(agent.model.orEmpty())) }
-    var selectedEffort by remember { mutableStateOf("High") }
-    var wakeOnMessage by remember { mutableStateOf(true) }
-    var hibernateIdle by remember { mutableStateOf(true) }
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = White,
@@ -733,51 +603,15 @@ private fun AgentSettingsSheet(
                     modifier = Modifier
                         .background(White)
                         .border(2.dp, Black, RectangleShape)
-                        .clickable {
-                            val currentIndex = modelOptions.indexOf(selectedModel)
-                            selectedModel = modelOptions[(currentIndex + 1) % modelOptions.size]
-                        }
                         .padding(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = selectedModel,
+                        text = getModelShortName(agent.model.orEmpty()),
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Black
                     )
                 }
-            }
-
-            // Reasoning effort
-            SettingsRow(label = "REASONING") {
-                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                    listOf("Med", "High", "Extra").forEach { effort ->
-                        Box(
-                            modifier = Modifier
-                                .background(if (effort == selectedEffort) Yellow else White)
-                                .border(1.5.dp, Black, RectangleShape)
-                                .clickable { selectedEffort = effort }
-                                .padding(horizontal = 10.dp, vertical = 4.dp)
-                        ) {
-                            Text(
-                                text = effort.uppercase(),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Black
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Wake on Message toggle
-            SettingsRow(label = "WAKE ON MESSAGE") {
-                NeoToggle(checked = wakeOnMessage, onToggle = { wakeOnMessage = !wakeOnMessage })
-            }
-
-            // Hibernate Idle toggle
-            SettingsRow(label = "HIBERNATE IDLE") {
-                NeoToggle(checked = hibernateIdle, onToggle = { hibernateIdle = !hibernateIdle })
             }
 
             // Role
@@ -786,15 +620,6 @@ private fun AgentSettingsSheet(
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Save button
-            NeoButton(text = "SAVE CHANGES", onClick = {
-                val modelApiName = modelApiNames.getOrElse(modelOptions.indexOf(selectedModel)) { agent.model.orEmpty() }
-                onSave(modelApiName, selectedEffort, wakeOnMessage, hibernateIdle)
-                onDismiss()
-            })
-
-            Spacer(modifier = Modifier.height(8.dp))
 
             // Delete button
             NeoButton(
