@@ -50,8 +50,18 @@ data class MessageUiState(
     val reactionOverridesByMessageId: Map<String, List<MessageReactionUiModel>> = emptyMap(),
     val onlineIds: Set<String> = emptySet(),
     val isCurrentChannelSaved: Boolean = false,
-    val isSavedStatusLoading: Boolean = false
+    val isSavedStatusLoading: Boolean = false,
+    val savedChannelFeedbackMessage: String? = null
 )
+
+private fun saveChannelFailureMessage(isRemoving: Boolean, error: Throwable): String {
+    val fallback = if (isRemoving) {
+        "Failed to remove saved channel"
+    } else {
+        "Failed to save channel"
+    }
+    return error.message?.takeIf { it.isNotBlank() } ?: fallback
+}
 
 fun computeSearchMatches(state: MessageUiState): MessageUiState {
     if (!state.isSearchActive || state.searchQuery.isBlank()) return state
@@ -178,6 +188,7 @@ class MessageViewModel @Inject constructor(
                     channelId = channelId,
                     isLoading = false,
                     error = "Server not selected",
+                    savedChannelFeedbackMessage = null,
                     isSavedStatusLoading = false,
                     isCurrentChannelSaved = false
                 )
@@ -190,6 +201,7 @@ class MessageViewModel @Inject constructor(
                     channelId = channelId,
                     isLoading = it.messages.isEmpty(),
                     error = null,
+                    savedChannelFeedbackMessage = null,
                     isSavedStatusLoading = true,
                     isCurrentChannelSaved = false
                 )
@@ -224,7 +236,7 @@ class MessageViewModel @Inject constructor(
 
         viewModelScope.launch {
             val currentlySaved = _state.value.isCurrentChannelSaved
-            _state.update { it.copy(isSavedStatusLoading = true) }
+            _state.update { it.copy(isSavedStatusLoading = true, savedChannelFeedbackMessage = null) }
 
             val result = if (currentlySaved) {
                 channelRepository.removeSavedChannel(serverId, channelId)
@@ -237,15 +249,25 @@ class MessageViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             isCurrentChannelSaved = !currentlySaved,
-                            isSavedStatusLoading = false
+                            isSavedStatusLoading = false,
+                            savedChannelFeedbackMessage = null
                         )
                     }
                 },
-                onFailure = {
-                    _state.update { it.copy(isSavedStatusLoading = false) }
+                onFailure = { error ->
+                    _state.update {
+                        it.copy(
+                            isSavedStatusLoading = false,
+                            savedChannelFeedbackMessage = saveChannelFailureMessage(currentlySaved, error)
+                        )
+                    }
                 }
             )
         }
+    }
+
+    fun consumeSavedChannelFeedback() {
+        _state.update { it.copy(savedChannelFeedbackMessage = null) }
     }
 
     private suspend fun refreshSavedChannelState(serverId: String, channelId: String) {

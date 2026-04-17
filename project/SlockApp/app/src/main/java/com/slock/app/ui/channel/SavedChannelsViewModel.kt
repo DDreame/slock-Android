@@ -17,8 +17,12 @@ data class SavedChannelsUiState(
     val channels: List<Channel> = emptyList(),
     val isLoading: Boolean = false,
     val removingIds: Set<String> = emptySet(),
-    val error: String? = null
+    val error: String? = null,
+    val feedbackMessage: String? = null
 )
+
+private fun removeSavedChannelFailureMessage(error: Throwable): String =
+    error.message?.takeIf { it.isNotBlank() } ?: "Failed to remove saved channel"
 
 @HiltViewModel
 class SavedChannelsViewModel @Inject constructor(
@@ -32,19 +36,20 @@ class SavedChannelsViewModel @Inject constructor(
     fun loadSavedChannels() {
         val serverId = activeServerHolder.serverId
         if (serverId.isNullOrBlank()) {
-            _state.update { it.copy(isLoading = false, error = "Server not selected") }
+            _state.update { it.copy(isLoading = false, error = "Server not selected", feedbackMessage = null) }
             return
         }
 
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = true, error = null) }
+            _state.update { it.copy(isLoading = true, error = null, feedbackMessage = null) }
             channelRepository.getSavedChannels(serverId).fold(
                 onSuccess = { channels ->
                     _state.update {
                         it.copy(
                             channels = channels,
                             isLoading = false,
-                            error = null
+                            error = null,
+                            feedbackMessage = null
                         )
                     }
                 },
@@ -65,13 +70,14 @@ class SavedChannelsViewModel @Inject constructor(
         if (serverId.isNullOrBlank() || channelId.isBlank()) return
 
         viewModelScope.launch {
-            _state.update { it.copy(removingIds = it.removingIds + channelId, error = null) }
+            _state.update { it.copy(removingIds = it.removingIds + channelId, error = null, feedbackMessage = null) }
             channelRepository.removeSavedChannel(serverId, channelId).fold(
                 onSuccess = {
                     _state.update {
                         it.copy(
                             channels = it.channels.filterNot { channel -> channel.id == channelId },
-                            removingIds = it.removingIds - channelId
+                            removingIds = it.removingIds - channelId,
+                            feedbackMessage = null
                         )
                     }
                 },
@@ -79,11 +85,15 @@ class SavedChannelsViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             removingIds = it.removingIds - channelId,
-                            error = error.message ?: "Failed to remove saved channel"
+                            feedbackMessage = removeSavedChannelFailureMessage(error)
                         )
                     }
                 }
             )
         }
+    }
+
+    fun consumeFeedback() {
+        _state.update { it.copy(feedbackMessage = null) }
     }
 }

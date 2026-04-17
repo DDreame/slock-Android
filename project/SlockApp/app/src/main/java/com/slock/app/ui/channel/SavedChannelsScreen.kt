@@ -16,8 +16,10 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -43,8 +45,17 @@ fun SavedChannelsScreen(
     onNavigateBack: () -> Unit,
     onOpenChannel: (Channel) -> Unit,
     onRemoveSavedChannel: (String) -> Unit,
-    onRetry: () -> Unit
+    onRetry: () -> Unit,
+    onFeedbackShown: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    LaunchedEffect(state.feedbackMessage) {
+        val message = state.feedbackMessage ?: return@LaunchedEffect
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        onFeedbackShown()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

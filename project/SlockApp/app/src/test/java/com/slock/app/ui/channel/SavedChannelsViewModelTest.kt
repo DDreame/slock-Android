@@ -63,4 +63,33 @@ class SavedChannelsViewModelTest {
         assertTrue(viewModel.state.value.removingIds.isEmpty())
         verify(channelRepository).removeSavedChannel("server-1", "ch-1")
     }
+
+    @Test
+    fun removeSavedChannel_exposesFeedbackAndKeepsListWhenRemovalFails() = runTest {
+        val channels = listOf(
+            Channel(id = "ch-1", name = "general", type = "text"),
+            Channel(id = "ch-2", name = "announcements", type = "text")
+        )
+        whenever(activeServerHolder.serverId).thenReturn("server-1")
+        whenever(channelRepository.getSavedChannels("server-1")).thenReturn(Result.success(channels))
+        whenever(channelRepository.removeSavedChannel("server-1", "ch-1"))
+            .thenReturn(Result.failure(IllegalStateException("remove failed")))
+
+        val viewModel = SavedChannelsViewModel(channelRepository, activeServerHolder)
+        viewModel.loadSavedChannels()
+        advanceUntilIdle()
+
+        viewModel.removeSavedChannel("ch-1")
+        advanceUntilIdle()
+
+        assertEquals(channels, viewModel.state.value.channels)
+        assertTrue(viewModel.state.value.removingIds.isEmpty())
+        assertEquals("remove failed", viewModel.state.value.feedbackMessage)
+        assertEquals(null, viewModel.state.value.error)
+
+        viewModel.consumeFeedback()
+
+        assertEquals(null, viewModel.state.value.feedbackMessage)
+        verify(channelRepository).removeSavedChannel("server-1", "ch-1")
+    }
 }

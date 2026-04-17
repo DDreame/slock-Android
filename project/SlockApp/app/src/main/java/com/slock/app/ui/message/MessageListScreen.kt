@@ -63,9 +63,17 @@ fun MessageListScreen(
     onNextSearchResult: () -> Unit = {},
     onPreviousSearchResult: () -> Unit = {},
     onToggleReaction: (Message, String) -> Unit = { _, _ -> },
-    onToggleSavedChannel: () -> Unit = {}
+    onToggleSavedChannel: () -> Unit = {},
+    onSavedChannelFeedbackShown: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
+    val context = LocalContext.current
+
+    LaunchedEffect(state.savedChannelFeedbackMessage) {
+        val message = state.savedChannelFeedbackMessage ?: return@LaunchedEffect
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        onSavedChannelFeedbackShown()
+    }
 
     Column(
         modifier = Modifier
