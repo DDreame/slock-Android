@@ -23,6 +23,8 @@ data class ThreadReplyUiState(
     val replies: List<Message> = emptyList(),
     val threadChannelId: String = "",
     val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasMoreReplies: Boolean = true,
     val isSending: Boolean = false,
     val error: String? = null
 )
@@ -166,7 +168,31 @@ class ThreadReplyViewModel @Inject constructor(
     }
 
     fun loadMoreReplies() {
-        // Pagination
+        val current = _state.value
+        if (current.isLoadingMore || !current.hasMoreReplies) return
+        val serverId = activeServerHolder.serverId ?: return
+        val oldestReply = current.replies.firstOrNull() ?: return
+        val beforeCursor = oldestReply.seq.toString()
+
+        viewModelScope.launch {
+            _state.update { it.copy(isLoadingMore = true) }
+            threadRepository.getThreadReplies(serverId, current.threadChannelId, limit = 50, before = beforeCursor).fold(
+                onSuccess = { olderReplies ->
+                    _state.update { state ->
+                        val existingIds = state.replies.map { it.id }.toSet()
+                        val newReplies = olderReplies.filter { it.id !in existingIds }
+                        state.copy(
+                            replies = newReplies + state.replies,
+                            isLoadingMore = false,
+                            hasMoreReplies = olderReplies.size >= 50
+                        )
+                    }
+                },
+                onFailure = {
+                    _state.update { it.copy(isLoadingMore = false) }
+                }
+            )
+        }
     }
 
     override fun onCleared() {
