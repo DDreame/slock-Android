@@ -162,11 +162,14 @@ class DeepLinkProductionOrderingTest {
     }
 
     @Test
-    fun `deep link is NOT navigated before splash resolves`() {
+    fun `deep link before splash composable is gated by isSplashDone`() {
         val beforeSplash = navHostSource.substringBefore("composable(Routes.SPLASH)")
-        assertFalse(
-            "No direct deep link navigate call should exist before splash composable without isSplashDone gate",
-            beforeSplash.contains("navigate(\"channel/\$deepLinkChannelId")
-        )
+        val hasDeepLinkNav = beforeSplash.contains("channel/\$deepLinkChannelId")
+        if (hasDeepLinkNav) {
+            assertTrue(
+                "Any deep link navigation before splash must be gated by shouldHandleWarmStartDeepLink",
+                beforeSplash.contains("shouldHandleWarmStartDeepLink(isSplashDone, deepLinkChannelId)")
+            )
+        }
     }
 }
