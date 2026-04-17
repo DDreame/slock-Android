@@ -167,7 +167,7 @@ class MessageViewModel @Inject constructor(
         if (serverId.isNullOrBlank()) return
 
         val oldestMessage = current.messages.lastOrNull() ?: return
-        val beforeCursor = oldestMessage.id ?: return
+        val beforeCursor = oldestMessage.seq.toString()
 
         viewModelScope.launch {
             _state.update { it.copy(isLoadingMore = true) }
