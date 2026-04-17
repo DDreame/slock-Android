@@ -312,25 +312,6 @@ private fun OriginalMessageCard(message: Message) {
                 NeoMessageContent(content = message.content.orEmpty())
 
                 Spacer(modifier = Modifier.height(10.dp))
-
-                // Mark as resolved button
-                Row(
-                    modifier = Modifier
-                        .background(Lime)
-                        .border(1.5.dp, Black, RectangleShape)
-                        .clickable { /* TODO: Mark as resolved */ }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(text = "\u2610", fontSize = 14.sp, color = Black)
-                    Text(
-                        text = "Mark as resolved",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Black
-                    )
-                }
             }
         }
     }

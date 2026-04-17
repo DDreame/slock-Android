@@ -1,0 +1,159 @@
+package com.slock.app.ui.channel
+
+import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.PresenceTracker
+import com.slock.app.data.local.SecureTokenStorage
+import com.slock.app.data.model.Channel
+import com.slock.app.data.model.ChannelMember
+import com.slock.app.data.model.Message
+import com.slock.app.data.model.UploadResponse
+import com.slock.app.data.repository.AgentRepository
+import com.slock.app.data.repository.ChannelRepository
+import com.slock.app.data.repository.MessageRepository
+import com.slock.app.data.socket.SocketIOManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.test.setMain
+import org.junit.After
+import org.junit.Assert.*
+import org.junit.Before
+import org.junit.Test
+import org.mockito.kotlin.mock
+import org.mockito.kotlin.whenever
+
+@OptIn(ExperimentalCoroutinesApi::class)
+class ChannelViewModelCreateDMTest {
+
+    private val testDispatcher = StandardTestDispatcher()
+    private lateinit var socketIOManager: SocketIOManager
+    private lateinit var activeServerHolder: ActiveServerHolder
+    private lateinit var secureTokenStorage: SecureTokenStorage
+    private lateinit var presenceTracker: PresenceTracker
+    private val eventFlow = MutableSharedFlow<SocketIOManager.SocketEvent>()
+    private val connectionFlow = MutableSharedFlow<SocketIOManager.ConnectionState>()
+
+    @Before
+    fun setup() {
+        Dispatchers.setMain(testDispatcher)
+        secureTokenStorage = mock()
+        whenever(secureTokenStorage.serverId).thenReturn("server1")
+        activeServerHolder = ActiveServerHolder(secureTokenStorage)
+        presenceTracker = PresenceTracker()
+        socketIOManager = mock()
+        whenever(socketIOManager.events).thenReturn(eventFlow)
+        whenever(socketIOManager.connectionState).thenReturn(connectionFlow)
+    }
+
+    @After
+    fun tearDown() {
+        Dispatchers.resetMain()
+    }
+
+    private fun createViewModel(
+        channelRepository: ChannelRepository = FakeChannelRepository(),
+        agentRepository: AgentRepository = mock()
+    ): ChannelViewModel {
+        return ChannelViewModel(
+            channelRepository = channelRepository,
+            messageRepository = FakeMessageRepository(),
+            agentRepository = agentRepository,
+            activeServerHolder = activeServerHolder,
+            socketIOManager = socketIOManager,
+            presenceTracker = presenceTracker
+        )
+    }
+
+    @Test
+    fun `createDM success invokes onSuccess with channel and adds to dms`() = runTest {
+        val dmChannel = Channel(id = "dm-1", name = "DM with Agent", type = "dm")
+        val repo = FakeChannelRepository(createDMResult = Result.success(dmChannel))
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        var successChannel: Channel? = null
+        vm.createDM(agentId = "agent1", onSuccess = { successChannel = it })
+        advanceUntilIdle()
+
+        assertNotNull(successChannel)
+        assertEquals("dm-1", successChannel!!.id)
+        assertTrue(vm.state.value.dms.any { it.id == "dm-1" })
+    }
+
+    @Test
+    fun `createDM failure invokes onError and sets error state`() = runTest {
+        val repo = FakeChannelRepository(
+            createDMResult = Result.failure(RuntimeException("DM creation failed"))
+        )
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        var errorMsg: String? = null
+        vm.createDM(agentId = "agent1", onSuccess = {}, onError = { errorMsg = it })
+        advanceUntilIdle()
+
+        assertEquals("DM creation failed", errorMsg)
+        assertEquals("DM creation failed", vm.state.value.error)
+    }
+
+    @Test
+    fun `createDM does not duplicate existing DM in state`() = runTest {
+        val dmChannel = Channel(id = "dm-1", name = "DM with Agent", type = "dm")
+        val repo = FakeChannelRepository(createDMResult = Result.success(dmChannel))
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        vm.createDM(agentId = "agent1", onSuccess = {})
+        advanceUntilIdle()
+        assertEquals(1, vm.state.value.dms.count { it.id == "dm-1" })
+
+        vm.createDM(agentId = "agent1", onSuccess = {})
+        advanceUntilIdle()
+        assertEquals(1, vm.state.value.dms.count { it.id == "dm-1" })
+    }
+
+    @Test
+    fun `createDM with no serverId does nothing`() = runTest {
+        whenever(secureTokenStorage.serverId).thenReturn(null)
+        activeServerHolder = ActiveServerHolder(secureTokenStorage)
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        var called = false
+        vm.createDM(agentId = "agent1", onSuccess = { called = true })
+        advanceUntilIdle()
+
+        assertFalse(called)
+    }
+}
+
+private class FakeChannelRepository(
+    private val createDMResult: Result<Channel> = Result.success(Channel(id = "dm-default"))
+) : ChannelRepository {
+    override suspend fun getChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun refreshChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun createChannel(serverId: String, name: String, type: String) = Result.failure<Channel>(NotImplementedError())
+    override suspend fun updateChannel(serverId: String, channelId: String, name: String) = Result.failure<Channel>(NotImplementedError())
+    override suspend fun deleteChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun joinChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun getDMs(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
+    override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
+    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())
+}
+
+private class FakeMessageRepository : MessageRepository {
+    override suspend fun sendMessage(serverId: String, channelId: String, content: String, attachmentIds: List<String>?, asTask: Boolean, parentMessageId: String?) = Result.failure<Message>(NotImplementedError())
+    override suspend fun getMessages(serverId: String, channelId: String, limit: Int, before: String?, after: String?) = Result.success(emptyList<Message>())
+    override suspend fun refreshMessages(serverId: String, channelId: String, limit: Int) = Result.success(emptyList<Message>())
+    override suspend fun searchMessages(serverId: String, query: String, searchServerId: String?, channelId: String?) = Result.success(emptyList<Message>())
+    override suspend fun getLatestMessagePerChannel(channelIds: List<String>) = emptyMap<String, Message>()
+    override suspend fun uploadFile(serverId: String, fileName: String, mimeType: String, bytes: ByteArray) = Result.failure<UploadResponse>(NotImplementedError())
+}
