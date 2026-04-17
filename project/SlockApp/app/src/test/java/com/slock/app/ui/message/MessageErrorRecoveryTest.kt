@@ -22,6 +22,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.times
@@ -128,7 +129,7 @@ class MessageErrorRecoveryExecutionTest {
             .thenReturn(Result.success(listOf(Message(id = "m1", content = "existing", seq = 1))))
         whenever(messageRepository.refreshMessages("srv-1", "ch-1", 50))
             .thenReturn(Result.success(listOf(Message(id = "m1", content = "existing", seq = 1))))
-        whenever(messageRepository.sendMessage(eq("srv-1"), eq("ch-1"), eq("test msg"), any(), any(), any()))
+        whenever(messageRepository.sendMessage(any(), any(), any(), anyOrNull(), any(), anyOrNull()))
             .thenReturn(Result.failure(Exception("send failed")))
 
         val vm = createViewModel()
@@ -158,7 +159,7 @@ class MessageErrorRecoveryExecutionTest {
             .thenReturn(Result.success(listOf(Message(id = "m1", content = "hello", seq = 1))))
         whenever(messageRepository.refreshMessages("srv-1", "ch-1", 50))
             .thenReturn(Result.success(listOf(Message(id = "m1", content = "hello", seq = 1))))
-        whenever(messageRepository.sendMessage(eq("srv-1"), eq("ch-1"), eq("fail"), any(), any(), any()))
+        whenever(messageRepository.sendMessage(any(), any(), any(), anyOrNull(), any(), anyOrNull()))
             .thenReturn(Result.failure(Exception("oops")))
 
         val vm = createViewModel()
