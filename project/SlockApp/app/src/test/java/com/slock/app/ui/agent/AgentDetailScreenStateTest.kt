@@ -33,4 +33,14 @@ class AgentDetailScreenStateTest {
 
         assertEquals(AgentDetailContentState.Content(agent), result)
     }
+
+    @Test
+    fun `resolveAgentDetailHeaderContext returns null for blank context`() {
+        assertEquals(null, resolveAgentDetailHeaderContext("   "))
+    }
+
+    @Test
+    fun `resolveAgentDetailHeaderContext returns trimmed context`() {
+        assertEquals("Acme Server · Members", resolveAgentDetailHeaderContext("  Acme Server · Members  "))
+    }
 }

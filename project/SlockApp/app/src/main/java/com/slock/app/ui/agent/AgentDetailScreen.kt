@@ -47,6 +47,7 @@ internal fun resolveAgentDetailContentState(state: AgentDetailUiState): AgentDet
 @Composable
 fun AgentDetailScreen(
     state: AgentDetailUiState,
+    contextLabel: String = "",
     onNavigateBack: () -> Unit = {},
     onStartAgent: () -> Unit = {},
     onStopAgent: () -> Unit = {},
@@ -56,6 +57,7 @@ fun AgentDetailScreen(
     onRetry: () -> Unit = {}
 ) {
     val contentState = resolveAgentDetailContentState(state)
+    val headerContextLabel = resolveAgentDetailHeaderContext(contextLabel)
 
     Column(
         modifier = Modifier
@@ -81,12 +83,31 @@ fun AgentDetailScreen(
                 ) {
                     Text("\u2190", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
-                Text(
-                    "Agent Detail",
-                    fontFamily = SpaceGrotesk,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp
-                )
+                if (headerContextLabel != null) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Agent Detail",
+                            fontFamily = SpaceGrotesk,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 18.sp
+                        )
+                        Text(
+                            headerContextLabel,
+                            fontFamily = SpaceMono,
+                            fontSize = 11.sp,
+                            color = Color.Black.copy(alpha = 0.65f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                } else {
+                    Text(
+                        "Agent Detail",
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    )
+                }
             }
         }
         Box(Modifier.fillMaxWidth().height(3.dp).background(Color.Black))
@@ -255,6 +276,9 @@ fun AgentDetailScreen(
         }
     }
 }
+
+internal fun resolveAgentDetailHeaderContext(contextLabel: String): String? =
+    contextLabel.trim().takeIf { it.isNotEmpty() }
 
 @Composable
 private fun OverviewContent(

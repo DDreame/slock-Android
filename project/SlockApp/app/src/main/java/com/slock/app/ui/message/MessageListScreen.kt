@@ -47,6 +47,7 @@ import com.slock.app.util.LogCollector
 @Composable
 fun MessageListScreen(
     channelName: String,
+    contextLabel: String = "",
     state: MessageUiState,
     onSendMessage: (String) -> Unit,
     onLoadMore: () -> Unit,
@@ -74,6 +75,7 @@ fun MessageListScreen(
         // Channel Header
         ChannelHeader(
             channelName = "# $channelName",
+            contextLabel = resolveChannelHeaderContext(contextLabel),
             onBack = onNavigateBack,
             onSearchClick = onToggleSearch
         )
@@ -243,9 +245,17 @@ fun MessageListScreen(
     }
 }
 
+internal fun resolveChannelHeaderContext(contextLabel: String): String? =
+    contextLabel.trim().takeIf { it.isNotEmpty() }
+
 // Channel Header
 @Composable
-private fun ChannelHeader(channelName: String, onBack: () -> Unit, onSearchClick: () -> Unit = {}) {
+private fun ChannelHeader(
+    channelName: String,
+    contextLabel: String?,
+    onBack: () -> Unit,
+    onSearchClick: () -> Unit = {}
+) {
     Surface(color = White) {
         Row(
             modifier = Modifier
@@ -270,6 +280,15 @@ private fun ChannelHeader(channelName: String, onBack: () -> Unit, onSearchClick
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+                if (contextLabel != null) {
+                    Text(
+                        text = contextLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             // Action buttons

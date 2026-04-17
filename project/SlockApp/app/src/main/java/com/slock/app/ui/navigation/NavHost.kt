@@ -53,28 +53,63 @@ import com.slock.app.ui.profile.ProfileViewModel
 import com.slock.app.util.LogCollector
 
 object Routes {
+    private const val CONTEXT_ARG = "contextLabel"
+
     const val SPLASH = "splash"
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val FORGOT_PASSWORD = "forgot_password"
     const val HOME = "home"
-    const val MESSAGES = "channel/{channelId}/messages?name={channelName}"
+    const val MESSAGES = "channel/{channelId}/messages?name={channelName}&context={$CONTEXT_ARG}"
     const val AGENT_LIST = "server/{serverId}/agents"
     const val THREAD_LIST = "server/{serverId}/threads"
-    const val THREAD_REPLY = "thread/{threadChannelId}/reply/{parentMessageJson}?channelName={threadChannelName}"
+    const val THREAD_REPLY = "thread/{threadChannelId}/reply/{parentMessageJson}?channelName={threadChannelName}&context={$CONTEXT_ARG}"
     const val TASK_LIST = "server/{serverId}/tasks"
-    const val AGENT_DETAIL = "agent/{agentId}"
+    const val AGENT_DETAIL = "agent/{agentId}?context={$CONTEXT_ARG}"
     const val MACHINE_LIST = "server/{serverId}/machines"
     const val SETTINGS = "settings"
     const val PROFILE = "profile"
-    const val USER_PROFILE = "profile/{userId}"
-    fun agentDetailRoute(agentId: String) = "agent/$agentId"
-    fun machineListRoute(serverId: String) = "server/$serverId/machines"
-    fun userProfileRoute(userId: String) = "profile/$userId"
-    fun dmMessagesRoute(channelId: String, channelName: String): String {
-        val encodedName = java.net.URLEncoder.encode(channelName, "UTF-8").replace("+", "%20")
-        return "channel/$channelId/messages?name=$encodedName"
+    const val USER_PROFILE = "profile/{userId}?context={$CONTEXT_ARG}"
+
+    private fun encodeQueryValue(value: String): String = java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
+    fun buildContextLabel(vararg parts: String?): String? {
+        val cleanedParts = parts.mapNotNull { part ->
+            part?.trim()?.takeIf { it.isNotEmpty() }
+        }
+        return cleanedParts.joinToString(" · ").ifBlank { null }
     }
+
+    fun messagesRoute(channelId: String, channelName: String, contextLabel: String? = null): String {
+        val encodedName = encodeQueryValue(channelName)
+        val encodedContext = encodeQueryValue(contextLabel.orEmpty())
+        return "channel/$channelId/messages?name=$encodedName&context=$encodedContext"
+    }
+
+    fun agentDetailRoute(agentId: String, contextLabel: String? = null): String {
+        val encodedContext = encodeQueryValue(contextLabel.orEmpty())
+        return "agent/$agentId?context=$encodedContext"
+    }
+
+    fun userProfileRoute(userId: String, contextLabel: String? = null): String {
+        val encodedContext = encodeQueryValue(contextLabel.orEmpty())
+        return "profile/$userId?context=$encodedContext"
+    }
+
+    fun threadReplyRoute(
+        threadChannelId: String,
+        parentMessageJson: String,
+        channelName: String,
+        contextLabel: String? = null
+    ): String {
+        val encodedChannelName = encodeQueryValue(channelName)
+        val encodedContext = encodeQueryValue(contextLabel.orEmpty())
+        return "thread/$threadChannelId/reply/$parentMessageJson?channelName=$encodedChannelName&context=$encodedContext"
+    }
+
+    fun machineListRoute(serverId: String) = "server/$serverId/machines"
+    fun dmMessagesRoute(channelId: String, channelName: String, contextLabel: String? = null): String =
+        messagesRoute(channelId = channelId, channelName = channelName, contextLabel = contextLabel)
 }
 
 @Composable
@@ -102,8 +137,7 @@ fun SlockNavHost(
     // Handle deep link from notification (warm start only — cold start is handled by splash)
     LaunchedEffect(deepLinkChannelId, isSplashDone) {
         if (shouldHandleWarmStartDeepLink(isSplashDone, deepLinkChannelId)) {
-            val encodedName = Uri.encode(deepLinkChannelName ?: "")
-            navController.navigate("channel/$deepLinkChannelId/messages?name=$encodedName") {
+            navController.navigate(Routes.messagesRoute(deepLinkChannelId.orEmpty(), deepLinkChannelName ?: "")) {
                 launchSingleTop = true
             }
             onDeepLinkConsumed()
@@ -259,26 +293,39 @@ fun SlockNavHost(
                     serverTasksViewModel.loadAllTasks(server.id.orEmpty())
                 },
                 onChannelClick = { channelId, channelName ->
-                    val encodedName = Uri.encode(channelName)
-                    navController.navigate("channel/$channelId/messages?name=$encodedName")
+                    navController.navigate(Routes.messagesRoute(channelId, channelName))
                 },
                 onDmClick = { channelId, channelName ->
-                    val encodedName = Uri.encode(channelName)
-                    navController.navigate("channel/$channelId/messages?name=$encodedName")
+                    navController.navigate(Routes.messagesRoute(channelId, channelName))
                 },
                 onCreateChannel = channelViewModel::createChannel,
                 onCreateServer = serverViewModel::createServer,
                 onSearchMessageClick = { message ->
                     val channelId = message.channelId.orEmpty()
                     if (channelId.isNotEmpty()) {
-                        val encodedName = Uri.encode(channelId)
-                        navController.navigate("channel/$channelId/messages?name=$encodedName")
+                        val channelName = (channelState.channels + channelState.dms)
+                            .firstOrNull { it.id == channelId }
+                            ?.name
+                            .orEmpty()
+                            .ifBlank { channelId }
+                        navController.navigate(
+                            Routes.messagesRoute(
+                                channelId = channelId,
+                                channelName = channelName,
+                                contextLabel = Routes.buildContextLabel(selectedServer?.name, "Search Results")
+                            )
+                        )
                     }
                 },
                 onSearchAgentClick = { agent ->
                     val agentId = agent.id.orEmpty()
                     if (agentId.isNotEmpty()) {
-                        navController.navigate(Routes.agentDetailRoute(agentId))
+                        navController.navigate(
+                            Routes.agentDetailRoute(
+                                agentId = agentId,
+                                contextLabel = Routes.buildContextLabel(selectedServer?.name, "Search Results")
+                            )
+                        )
                     }
                 },
                 onOpenSettings = { navController.navigate(Routes.SETTINGS) },
@@ -293,8 +340,14 @@ fun SlockNavHost(
                         state = threadListState,
                         onThreadClick = { threadChannelId, parentMessage, channelName ->
                             val parentJson = Uri.encode(Gson().toJson(parentMessage))
-                            val encodedChName = Uri.encode(channelName)
-                            navController.navigate("thread/$threadChannelId/reply/$parentJson?channelName=$encodedChName")
+                            navController.navigate(
+                                Routes.threadReplyRoute(
+                                    threadChannelId = threadChannelId,
+                                    parentMessageJson = parentJson,
+                                    channelName = channelName,
+                                    contextLabel = Routes.buildContextLabel(selectedServer?.name, "Threads")
+                                )
+                            )
                         },
                         onNavigateBack = { },
                         onRetry = { selectedServer?.id?.let { threadListViewModel.loadThreads(it) } },
@@ -305,10 +358,11 @@ fun SlockNavHost(
                     MembersListScreen(
                         state = membersState,
                         onMemberClick = { member ->
+                            val contextLabel = Routes.buildContextLabel(selectedServer?.name, "Members")
                             if (member.isAgent && member.id.isNotBlank()) {
-                                navController.navigate(Routes.agentDetailRoute(member.id))
+                                navController.navigate(Routes.agentDetailRoute(member.id, contextLabel))
                             } else if (!member.isAgent && !member.userId.isNullOrBlank()) {
-                                navController.navigate(Routes.userProfileRoute(member.userId))
+                                navController.navigate(Routes.userProfileRoute(member.userId, contextLabel))
                             }
                         },
                         onNavigateBack = { },
@@ -384,14 +438,17 @@ fun SlockNavHost(
         composable(
             Routes.USER_PROFILE,
             arguments = listOf(
-                navArgument("userId") { type = NavType.StringType }
+                navArgument("userId") { type = NavType.StringType },
+                navArgument("contextLabel") { type = NavType.StringType; defaultValue = "" }
             )
-        ) {
+        ) { backStackEntry ->
             val viewModel: ProfileViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
+            val contextLabel = backStackEntry.arguments?.getString("contextLabel").orEmpty()
 
             ProfileScreen(
                 state = state,
+                contextLabel = contextLabel,
                 onNavigateBack = { navController.popBackStack() },
                 onRetry = viewModel::retry
             )
@@ -402,11 +459,13 @@ fun SlockNavHost(
             Routes.MESSAGES,
             arguments = listOf(
                 navArgument("channelId") { type = NavType.StringType },
-                navArgument("channelName") { type = NavType.StringType; defaultValue = "" }
+                navArgument("channelName") { type = NavType.StringType; defaultValue = "" },
+                navArgument("contextLabel") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val channelId = backStackEntry.arguments?.getString("channelId") ?: return@composable
             val channelName = backStackEntry.arguments?.getString("channelName") ?: ""
+            val contextLabel = backStackEntry.arguments?.getString("contextLabel").orEmpty()
             val viewModel: MessageViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
 
@@ -416,14 +475,21 @@ fun SlockNavHost(
 
             MessageListScreen(
                 channelName = channelName.ifBlank { channelId },
+                contextLabel = contextLabel,
                 state = state,
                 onSendMessage = viewModel::sendMessage,
                 onLoadMore = viewModel::loadMoreMessages,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToThread = { threadChannelId, parentMessage ->
                     val parentJson = Uri.encode(Gson().toJson(parentMessage))
-                    val encodedChName = Uri.encode(channelName.ifBlank { channelId })
-                    navController.navigate("thread/$threadChannelId/reply/$parentJson?channelName=$encodedChName")
+                    navController.navigate(
+                        Routes.threadReplyRoute(
+                            threadChannelId = threadChannelId,
+                            parentMessageJson = parentJson,
+                            channelName = channelName.ifBlank { channelId },
+                            contextLabel = Routes.buildContextLabel("# ${channelName.ifBlank { channelId }}", "Messages")
+                        )
+                    )
                 },
                 onReplyTo = viewModel::setReplyTo,
                 onClearReply = viewModel::clearReplyTo,
@@ -492,8 +558,14 @@ fun SlockNavHost(
                 state = state,
                 onThreadClick = { threadChannelId, parentMessage, channelName ->
                     val parentJson = Uri.encode(Gson().toJson(parentMessage))
-                    val encodedChName = Uri.encode(channelName)
-                    navController.navigate("thread/$threadChannelId/reply/$parentJson?channelName=$encodedChName")
+                    navController.navigate(
+                        Routes.threadReplyRoute(
+                            threadChannelId = threadChannelId,
+                            parentMessageJson = parentJson,
+                            channelName = channelName,
+                            contextLabel = Routes.buildContextLabel(serverId, "Threads")
+                        )
+                    )
                 },
                 onNavigateBack = { navController.popBackStack() },
                 onRetry = { viewModel.loadThreads(serverId) }
@@ -526,12 +598,14 @@ fun SlockNavHost(
             arguments = listOf(
                 navArgument("threadChannelId") { type = NavType.StringType },
                 navArgument("parentMessageJson") { type = NavType.StringType },
-                navArgument("threadChannelName") { type = NavType.StringType; defaultValue = "" }
+                navArgument("threadChannelName") { type = NavType.StringType; defaultValue = "" },
+                navArgument("contextLabel") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val threadChannelId = backStackEntry.arguments?.getString("threadChannelId") ?: return@composable
             val parentMessageJson = backStackEntry.arguments?.getString("parentMessageJson") ?: return@composable
             val threadChannelName = backStackEntry.arguments?.getString("threadChannelName") ?: ""
+            val contextLabel = backStackEntry.arguments?.getString("contextLabel").orEmpty()
             val parentMessage = Gson().fromJson(Uri.decode(parentMessageJson), Message::class.java)
             val viewModel: ThreadReplyViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
@@ -542,6 +616,7 @@ fun SlockNavHost(
 
             ThreadReplyScreen(
                 channelName = threadChannelName.ifBlank { threadChannelId },
+                contextLabel = contextLabel,
                 state = state,
                 onSendReply = viewModel::sendReply,
                 onLoadMore = viewModel::loadMoreReplies,
@@ -553,16 +628,19 @@ fun SlockNavHost(
         composable(
             Routes.AGENT_DETAIL,
             arguments = listOf(
-                navArgument("agentId") { type = NavType.StringType }
+                navArgument("agentId") { type = NavType.StringType },
+                navArgument("contextLabel") { type = NavType.StringType; defaultValue = "" }
             )
-        ) {
+        ) { backStackEntry ->
             val viewModel: AgentDetailViewModel = hiltViewModel()
             val channelVM: ChannelViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
             val context = androidx.compose.ui.platform.LocalContext.current
+            val contextLabel = backStackEntry.arguments?.getString("contextLabel").orEmpty()
 
             AgentDetailScreen(
                 state = state,
+                contextLabel = contextLabel,
                 onNavigateBack = { navController.popBackStack() },
                 onStartAgent = viewModel::startAgent,
                 onStopAgent = viewModel::stopAgent,
@@ -572,7 +650,7 @@ fun SlockNavHost(
                         agentId = agentId,
                         onSuccess = { dmChannel ->
                             val agentName = state.agent?.name ?: "DM"
-                            navController.navigate(Routes.dmMessagesRoute(dmChannel.id.orEmpty(), agentName))
+                            navController.navigate(Routes.dmMessagesRoute(dmChannel.id.orEmpty(), agentName, contextLabel))
                         },
                         onError = { error ->
                             android.widget.Toast.makeText(context, "Failed to create DM: $error", android.widget.Toast.LENGTH_SHORT).show()

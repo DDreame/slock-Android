@@ -45,4 +45,17 @@ class ProfileScreenStateTest {
 
         assertEquals(ProfileContentState.Content, resolveProfileContentState(state))
     }
+
+    @Test
+    fun `profile header context hides context for own profile`() {
+        assertEquals(null, resolveProfileHeaderContext(isOwnProfile = true, contextLabel = "Acme Server · Members"))
+    }
+
+    @Test
+    fun `profile header context uses provided context for other profile`() {
+        assertEquals(
+            "Acme Server · Members",
+            resolveProfileHeaderContext(isOwnProfile = false, contextLabel = "Acme Server · Members")
+        )
+    }
 }
