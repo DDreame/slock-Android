@@ -1,8 +1,9 @@
 package com.slock.app.integration
 
+import androidx.activity.ComponentActivity
 import androidx.compose.material3.Text
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import com.slock.app.di.DatabaseModule
 import com.slock.app.di.NetworkModule
@@ -32,7 +33,7 @@ class HiltComposeIntegrationSampleTest {
     val hiltRule = HiltAndroidRule(this)
 
     @get:Rule(order = 1)
-    val composeTestRule = createComposeRule()
+    val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @Before
     fun setup() {
@@ -40,18 +41,18 @@ class HiltComposeIntegrationSampleTest {
     }
 
     @Test
-    fun `hilt bootstraps with robolectric and compose test rule`() {
+    fun `hilt bootstraps and launches real ComponentActivity`() {
         composeTestRule.setContent {
-            Text("Hilt + Robolectric + Compose")
+            Text("Hilt + Real Activity")
         }
-        composeTestRule.onNodeWithText("Hilt + Robolectric + Compose").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Hilt + Real Activity").assertIsDisplayed()
     }
 
     @Test
-    fun `renders production NeoButton composable under hilt test`() {
+    fun `renders production NeoButton inside hilt-managed activity`() {
         composeTestRule.setContent {
-            NeoButton(text = "Integration Test", onClick = {})
+            NeoButton(text = "Hilt Integration", onClick = {})
         }
-        composeTestRule.onNodeWithText("Integration Test").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Hilt Integration").assertIsDisplayed()
     }
 }
