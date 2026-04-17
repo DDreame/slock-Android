@@ -20,6 +20,8 @@ import com.slock.app.data.local.SecureTokenStorage
 import com.slock.app.service.SocketNotificationService
 import com.slock.app.ui.navigation.SlockNavHost
 import com.slock.app.ui.theme.SlockAppTheme
+import com.slock.app.util.CrashHandler
+import com.slock.app.util.LogCollector
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -30,6 +32,7 @@ class MainActivity : ComponentActivity() {
 
     private var deepLinkChannelId by mutableStateOf<String?>(null)
     private var deepLinkChannelName by mutableStateOf<String?>(null)
+    private var showCrashDialog by mutableStateOf(false)
 
     private val notificationPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -46,6 +49,11 @@ class MainActivity : ComponentActivity() {
 
         handleDeepLink(intent)
 
+        // Check for crash log from previous session
+        if (CrashHandler.hasCrashLog(this)) {
+            showCrashDialog = true
+        }
+
         setContent {
             SlockAppTheme {
                 Surface(
@@ -60,9 +68,44 @@ class MainActivity : ComponentActivity() {
                             deepLinkChannelName = null
                         }
                     )
+
+                    if (showCrashDialog) {
+                        CrashReportDialog(
+                            onSend = {
+                                showCrashDialog = false
+                                sendCrashReport()
+                            },
+                            onDismiss = {
+                                showCrashDialog = false
+                                CrashHandler.clearCrashLog(this@MainActivity)
+                            }
+                        )
+                    }
                 }
             }
         }
+    }
+
+    private fun sendCrashReport() {
+        val crashLog = CrashHandler.readCrashLog(this)
+        val report = buildString {
+            if (crashLog != null) {
+                appendLine(crashLog)
+                appendLine()
+            }
+            appendLine("=== Recent Logs ===")
+            append(LogCollector.collectLogs())
+        }
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "text/plain"
+            putExtra(Intent.EXTRA_SUBJECT, "Slock App Crash Report")
+            putExtra(Intent.EXTRA_TEXT, report)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(Intent.createChooser(intent, "Send Crash Report").apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        })
+        CrashHandler.clearCrashLog(this)
     }
 
     override fun onNewIntent(intent: Intent) {
