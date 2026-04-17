@@ -468,19 +468,15 @@ private fun NeoMessage(
                     ) {
                         Text(
                             text = "AGENT",
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
+                            style = MessageTextStyles.agentBadgeStyle(MaterialTheme.typography),
                             color = Black
                         )
                     }
                 }
                 Text(
                     text = message.createdAt.orEmpty().split("T").getOrNull(1)?.take(5) ?: "",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                        fontSize = 10.sp
-                    ),
-                    color = Black.copy(alpha = 0.4f)
+                    style = MessageTextStyles.timestampStyle(MaterialTheme.typography),
+                    color = MessageTextStyles.timestampColor
                 )
             }
 
@@ -1054,14 +1050,10 @@ private fun SystemMessageDivider(content: String) {
             thickness = 1.dp,
             color = Color(0xFFCCCCCC)
         )
-        Text(
-            text = content,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 11.sp,
-                letterSpacing = 0.3.sp
-            ),
-            color = TextMuted,
-            modifier = Modifier.padding(horizontal = 12.dp)
+        NeoMessageContent(
+            content = content,
+            modifier = Modifier.padding(horizontal = 12.dp),
+            textColor = TextSecondary
         )
         Divider(
             modifier = Modifier.weight(1f),
