@@ -294,7 +294,7 @@ fun SlockNavHost(
                     MembersListScreen(
                         state = membersState,
                         onMemberClick = { member ->
-                            if (member.isAgent) {
+                            if (member.isAgent && member.id.isNotBlank()) {
                                 navController.navigate(Routes.agentDetailRoute(member.id))
                             }
                         },
@@ -473,7 +473,6 @@ fun SlockNavHost(
             )
         ) {
             val viewModel: AgentDetailViewModel = hiltViewModel()
-            val serverViewModel: ServerViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
 
             AgentDetailScreen(
@@ -483,7 +482,7 @@ fun SlockNavHost(
                 onStopAgent = viewModel::stopAgent,
                 onDmClick = { /* TODO: DM navigation */ },
                 onMachineClick = { machineId ->
-                    val serverId = serverViewModel.selectedServerId.orEmpty()
+                    val serverId = viewModel.serverId.orEmpty()
                     if (serverId.isNotEmpty()) {
                         navController.navigate(Routes.machineListRoute(serverId))
                     }

@@ -37,6 +37,9 @@ class AgentDetailViewModel @Inject constructor(
     private val _state = MutableStateFlow(AgentDetailUiState())
     val state: StateFlow<AgentDetailUiState> = _state.asStateFlow()
 
+    /** Expose current serverId for navigation purposes */
+    val serverId: String? get() = activeServerHolder.serverId
+
     private var socketJob: Job? = null
 
     init {
@@ -45,7 +48,15 @@ class AgentDetailViewModel @Inject constructor(
     }
 
     private fun loadAgent() {
-        val serverId = activeServerHolder.serverId ?: return
+        val serverId = activeServerHolder.serverId
+        if (serverId.isNullOrBlank()) {
+            _state.update { it.copy(isLoading = false, error = "Server not selected") }
+            return
+        }
+        if (agentId.isBlank()) {
+            _state.update { it.copy(isLoading = false, error = "Agent not found") }
+            return
+        }
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
             agentRepository.getAgents(serverId).fold(
