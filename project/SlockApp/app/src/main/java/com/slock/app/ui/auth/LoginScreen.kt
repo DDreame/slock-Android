@@ -31,12 +31,9 @@ fun LoginScreen(
     onLogin: () -> Unit,
     onNavigateToRegister: () -> Unit,
     onNavigateToForgotPassword: () -> Unit,
-    onLoginSuccess: () -> Unit,
-    onJoinWithInvite: (String) -> Unit = {}
+    onLoginSuccess: () -> Unit
 ) {
     var passwordVisible by remember { mutableStateOf(false) }
-    var showInviteDialog by remember { mutableStateOf(false) }
-    var inviteLink by remember { mutableStateOf("") }
 
     LaunchedEffect(state.isLoggedIn) {
         if (state.isLoggedIn) onLoginSuccess()
@@ -126,12 +123,6 @@ fun LoginScreen(
                 NeoDivider("or")
 
                 Spacer(modifier = Modifier.height(24.dp))
-
-                // Invite link button
-                NeoButtonSecondary(
-                    text = "Join via Invite Link",
-                    onClick = { showInviteDialog = true }
-                )
             }
         }
 
@@ -157,19 +148,6 @@ fun LoginScreen(
                 )
             }
         }
-    }
-
-    // Invite Link Dialog
-    if (showInviteDialog) {
-        InviteLinkDialog(
-            inviteLink = inviteLink,
-            onLinkChange = { inviteLink = it },
-            onJoin = {
-                if (inviteLink.isNotBlank()) onJoinWithInvite(inviteLink)
-                showInviteDialog = false
-            },
-            onDismiss = { showInviteDialog = false }
-        )
     }
 }
 
@@ -219,48 +197,5 @@ private fun LogoArea() {
             style = MaterialTheme.typography.bodyMedium,
             color = TextSecondary
         )
-    }
-}
-
-@Composable
-private fun InviteLinkDialog(
-    inviteLink: String,
-    onLinkChange: (String) -> Unit,
-    onJoin: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
-                Text(
-                    text = "Paste Invite Link",
-                    style = MaterialTheme.typography.titleLarge,
-                    color = Black
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                NeoTextField(
-                    value = inviteLink,
-                    onValueChange = onLinkChange,
-                    placeholder = "https://slock.ai/invite/..."
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                NeoButton(
-                    text = "JOIN SERVER",
-                    onClick = onJoin
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                NeoButtonSecondary(
-                    text = "Cancel",
-                    onClick = onDismiss,
-                    containerColor = Cream
-                )
-            }
-        }
     }
 }

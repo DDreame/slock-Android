@@ -116,9 +116,6 @@ fun MachineListScreen(
                                 )
                             }
                         }
-                        item {
-                            AddMachineCard()
-                        }
                     }
                 }
             }
@@ -418,43 +415,6 @@ private fun AgentChip(
             fontWeight = FontWeight.Bold,
             fontSize = 11.sp,
             maxLines = 1
-        )
-    }
-}
-
-// ── Add Machine card ──
-@Composable
-private fun AddMachineCard() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .drawBehind {
-                drawRect(
-                    color = Color.Black,
-                    style = Stroke(
-                        width = 2.dp.toPx(),
-                        pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f))
-                    )
-                )
-            }
-            .clickable { /* TODO: Add machine flow */ }
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "+",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black.copy(alpha = 0.4f)
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Text(
-            text = "Add Machine",
-            fontFamily = SpaceGrotesk,
-            fontWeight = FontWeight.Bold,
-            fontSize = 13.sp,
-            color = Color.Black.copy(alpha = 0.4f)
         )
     }
 }
