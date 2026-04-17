@@ -1,7 +1,11 @@
 package com.slock.app.data.local
 
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.slock.app.data.local.entity.*
 import com.slock.app.data.model.*
+
+private val gson = Gson()
 
 // Server
 fun Server.toEntity() = ServerEntity(
@@ -29,7 +33,8 @@ fun Message.toEntity() = MessageEntity(
     senderId = senderId, senderType = senderType, senderName = senderName,
     seq = seq, createdAt = createdAt, updatedAt = updatedAt,
     threadId = threadChannelId, taskNumber = taskNumber, taskStatus = taskStatus,
-    replyCount = replyCount, attachments = "[]"
+    replyCount = replyCount,
+    attachments = try { gson.toJson(attachments) } catch (_: Exception) { "[]" }
 )
 
 fun MessageEntity.toModel() = Message(
@@ -38,7 +43,11 @@ fun MessageEntity.toModel() = Message(
     senderType = senderType.orEmpty(),
     seq = seq, createdAt = createdAt.orEmpty(), updatedAt = updatedAt,
     threadChannelId = threadId, taskNumber = taskNumber, taskStatus = taskStatus,
-    replyCount = replyCount
+    replyCount = replyCount,
+    attachments = try {
+        val type = object : TypeToken<List<Attachment>>() {}.type
+        gson.fromJson<List<Attachment>>(attachments ?: "[]", type) ?: emptyList()
+    } catch (_: Exception) { emptyList() }
 )
 
 // Agent

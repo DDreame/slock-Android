@@ -7,6 +7,9 @@ import com.slock.app.data.local.toEntity
 import com.slock.app.data.local.toModel
 import com.slock.app.data.model.*
 import android.util.Log
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 
@@ -16,6 +19,7 @@ interface MessageRepository {
     suspend fun refreshMessages(serverId: String, channelId: String, limit: Int = 50): Result<List<Message>>
     suspend fun searchMessages(serverId: String, query: String, searchServerId: String? = null, channelId: String? = null): Result<List<Message>>
     suspend fun getLatestMessagePerChannel(channelIds: List<String>): Map<String, Message>
+    suspend fun uploadFile(serverId: String, fileName: String, mimeType: String, bytes: ByteArray): Result<UploadResponse>
 }
 
 class MessageRepositoryImpl @Inject constructor(
@@ -152,6 +156,28 @@ class MessageRepositoryImpl @Inject constructor(
                 .associate { it.channelId!! to it.toModel() }
         } catch (e: Exception) {
             emptyMap()
+        }
+    }
+
+    override suspend fun uploadFile(
+        serverId: String,
+        fileName: String,
+        mimeType: String,
+        bytes: ByteArray
+    ): Result<UploadResponse> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val requestBody = bytes.toRequestBody(mimeType.toMediaType())
+            val part = MultipartBody.Part.createFormData("file", fileName, requestBody)
+            val response = apiService.uploadFile(part)
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                Result.failure(Exception("Upload failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e("MessageRepo", "Upload exception", e)
+            Result.failure(e)
         }
     }
 }

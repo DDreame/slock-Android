@@ -1,8 +1,10 @@
 package com.slock.app.ui.message
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.model.Attachment
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
@@ -15,6 +17,16 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class PendingAttachment(
+    val uri: Uri,
+    val name: String,
+    val mimeType: String,
+    val bytes: ByteArray
+) {
+    override fun equals(other: Any?): Boolean = other is PendingAttachment && uri == other.uri
+    override fun hashCode(): Int = uri.hashCode()
+}
+
 data class MessageUiState(
     val messages: List<Message> = emptyList(),
     val channelId: String = "",
@@ -23,8 +35,11 @@ data class MessageUiState(
     val isLoadingMore: Boolean = false,
     val hasMoreMessages: Boolean = true,
     val isSending: Boolean = false,
+    val isUploading: Boolean = false,
     val error: String? = null,
-    val replyingTo: Message? = null
+    val replyingTo: Message? = null,
+    val pendingAttachments: List<PendingAttachment> = emptyList(),
+    val previewImageUrl: String? = null
 )
 
 @HiltViewModel
@@ -119,6 +134,8 @@ class MessageViewModel @Inject constructor(
             return
         }
         val replyTo = _state.value.replyingTo
+        val attachments = _state.value.pendingAttachments.toList()
+
         // Optimistic UI: add pending message immediately
         val pendingId = "pending-${System.currentTimeMillis()}"
         val pendingMessage = Message(
@@ -131,8 +148,22 @@ class MessageViewModel @Inject constructor(
             parentMessageId = replyTo?.id
         )
         viewModelScope.launch {
-            _state.update { it.copy(isSending = true, error = null, replyingTo = null, messages = listOf(pendingMessage) + it.messages) }
-            messageRepository.sendMessage(serverId, _state.value.channelId, content, parentMessageId = replyTo?.id).fold(
+            _state.update { it.copy(isSending = true, isUploading = attachments.isNotEmpty(), error = null, replyingTo = null, pendingAttachments = emptyList(), messages = listOf(pendingMessage) + it.messages) }
+
+            // Upload attachments first
+            val attachmentIds = mutableListOf<String>()
+            for (attachment in attachments) {
+                messageRepository.uploadFile(serverId, attachment.name, attachment.mimeType, attachment.bytes).fold(
+                    onSuccess = { uploadResponse ->
+                        uploadResponse.id?.let { attachmentIds.add(it) }
+                    },
+                    onFailure = { /* continue with other attachments */ }
+                )
+            }
+            _state.update { it.copy(isUploading = false) }
+
+            val finalAttachmentIds = attachmentIds.ifEmpty { null }
+            messageRepository.sendMessage(serverId, _state.value.channelId, content, attachmentIds = finalAttachmentIds, parentMessageId = replyTo?.id).fold(
                 onSuccess = { message ->
                     _state.update { current ->
                         val updated = current.messages.map { if (it.id == pendingId) message else it }
@@ -150,6 +181,22 @@ class MessageViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun addAttachment(attachment: PendingAttachment) {
+        _state.update { it.copy(pendingAttachments = it.pendingAttachments + attachment) }
+    }
+
+    fun removeAttachment(uri: Uri) {
+        _state.update { it.copy(pendingAttachments = it.pendingAttachments.filter { a -> a.uri != uri }) }
+    }
+
+    fun showImagePreview(url: String) {
+        _state.update { it.copy(previewImageUrl = url) }
+    }
+
+    fun dismissImagePreview() {
+        _state.update { it.copy(previewImageUrl = null) }
     }
 
     fun setReplyTo(message: Message) {

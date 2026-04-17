@@ -327,7 +327,11 @@ fun SlockNavHost(
                     navController.navigate("thread/$threadChannelId/reply/$parentJson?channelName=$encodedChName")
                 },
                 onReplyTo = viewModel::setReplyTo,
-                onClearReply = viewModel::clearReplyTo
+                onClearReply = viewModel::clearReplyTo,
+                onAddAttachment = viewModel::addAttachment,
+                onRemoveAttachment = viewModel::removeAttachment,
+                onImageClick = viewModel::showImagePreview,
+                onDismissPreview = viewModel::dismissImagePreview
             )
         }
 

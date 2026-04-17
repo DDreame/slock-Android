@@ -1,12 +1,17 @@
 package com.slock.app.ui.message
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
@@ -14,9 +19,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
@@ -27,6 +36,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.slock.app.data.model.Attachment
 import com.slock.app.data.model.Message
 import com.slock.app.ui.theme.*
 import com.slock.app.util.LogCollector
@@ -40,7 +52,11 @@ fun MessageListScreen(
     onNavigateBack: () -> Unit,
     onNavigateToThread: (threadChannelId: String, parentMessage: Message) -> Unit,
     onReplyTo: (Message) -> Unit = {},
-    onClearReply: () -> Unit = {}
+    onClearReply: () -> Unit = {},
+    onAddAttachment: (PendingAttachment) -> Unit = {},
+    onRemoveAttachment: (Uri) -> Unit = {},
+    onImageClick: (String) -> Unit = {},
+    onDismissPreview: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
 
@@ -132,7 +148,8 @@ fun MessageListScreen(
                                     onThreadClick = if (message.threadChannelId != null) {
                                         { onNavigateToThread(message.threadChannelId!!, message) }
                                     } else null,
-                                    onReply = { onReplyTo(message) }
+                                    onReply = { onReplyTo(message) },
+                                    onImageClick = onImageClick
                                 )
                             }
                         }
@@ -168,13 +185,25 @@ fun MessageListScreen(
             text = text,
             onTextChange = { text = it },
             onSend = {
-                if (text.isNotBlank() && !state.isSending) {
+                if ((text.isNotBlank() || state.pendingAttachments.isNotEmpty()) && !state.isSending) {
                     onSendMessage(text)
                     text = ""
                 }
             },
             enabled = !state.isSending,
-            placeholder = "Message #$channelName..."
+            placeholder = "Message #$channelName...",
+            pendingAttachments = state.pendingAttachments,
+            onAddAttachment = onAddAttachment,
+            onRemoveAttachment = onRemoveAttachment,
+            isUploading = state.isUploading
+        )
+    }
+
+    // Fullscreen image preview overlay
+    state.previewImageUrl?.let { imageUrl ->
+        ImagePreviewOverlay(
+            imageUrl = imageUrl,
+            onDismiss = onDismissPreview
         )
     }
 }
@@ -232,7 +261,8 @@ private fun NeoMessage(
     message: Message,
     quotedMessage: Message? = null,
     onThreadClick: (() -> Unit)? = null,
-    onReply: () -> Unit = {}
+    onReply: () -> Unit = {},
+    onImageClick: (String) -> Unit = {}
 ) {
     val isAgent = message.isAgent
     val isPending = message.id.orEmpty().startsWith("pending-")
@@ -359,6 +389,38 @@ private fun NeoMessage(
 
             // Message content with markdown rendering
             NeoMessageContent(content = message.content.orEmpty())
+
+            // Image attachments
+            val imageAttachments = message.attachments.filter {
+                it.type.orEmpty().startsWith("image/") || it.url.orEmpty().let { u ->
+                    u.endsWith(".png", true) || u.endsWith(".jpg", true) ||
+                    u.endsWith(".jpeg", true) || u.endsWith(".gif", true) ||
+                    u.endsWith(".webp", true)
+                }
+            }
+            if (imageAttachments.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                imageAttachments.forEach { attachment ->
+                    val url = attachment.url.orEmpty()
+                    if (url.isNotEmpty()) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(url)
+                                .crossfade(true)
+                                .build(),
+                            contentDescription = attachment.name,
+                            contentScale = ContentScale.FillWidth,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 250.dp)
+                                .clip(RectangleShape)
+                                .border(1.5.dp, Color.Black, RectangleShape)
+                                .clickable { onImageClick(url) }
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+                }
+            }
 
             // Sending indicator
             if (isPending) {
@@ -587,73 +649,154 @@ private fun NeoComposeBar(
     onTextChange: (String) -> Unit,
     onSend: () -> Unit,
     placeholder: String,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    pendingAttachments: List<PendingAttachment> = emptyList(),
+    onAddAttachment: (PendingAttachment) -> Unit = {},
+    onRemoveAttachment: (Uri) -> Unit = {},
+    isUploading: Boolean = false
 ) {
     var isFocused by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            val contentResolver = context.contentResolver
+            val mimeType = contentResolver.getType(it) ?: "image/*"
+            val name = "image_${System.currentTimeMillis()}.${mimeType.substringAfter("/")}"
+            val bytes = contentResolver.openInputStream(it)?.readBytes()
+            if (bytes != null) {
+                onAddAttachment(PendingAttachment(uri = it, name = name, mimeType = mimeType, bytes = bytes))
+            }
+        }
+    }
 
     Divider(thickness = 3.dp, color = Black)
     Surface(color = White) {
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp)
-                .navigationBarsPadding(),
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                .navigationBarsPadding()
         ) {
-            // Attach button
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .background(Cream)
-                    .border(2.dp, Black, RectangleShape)
-                    .clickable { },
-                contentAlignment = Alignment.Center
-            ) {
-                Text(text = "+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Black)
+            // Pending attachments preview
+            if (pendingAttachments.isNotEmpty()) {
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(pendingAttachments) { attachment ->
+                        Box(modifier = Modifier.size(72.dp)) {
+                            // Shadow
+                            Box(
+                                modifier = Modifier
+                                    .size(68.dp)
+                                    .offset(3.dp, 3.dp)
+                                    .background(Color.Black, RectangleShape)
+                            )
+                            // Thumbnail
+                            AsyncImage(
+                                model = ImageRequest.Builder(context)
+                                    .data(attachment.uri)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = attachment.name,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(68.dp)
+                                    .border(2.dp, Color.Black, RectangleShape)
+                                    .clip(RectangleShape)
+                            )
+                            // Remove button
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = 2.dp, y = (-2).dp)
+                                    .size(20.dp)
+                                    .background(Pink, RectangleShape)
+                                    .border(1.5.dp, Color.Black, RectangleShape)
+                                    .clickable { onRemoveAttachment(attachment.uri) },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("\u2715", fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
+                }
+                if (isUploading) {
+                    Text(
+                        text = "上传中...",
+                        fontFamily = SpaceGrotesk,
+                        fontSize = 11.sp,
+                        color = TextMuted,
+                        modifier = Modifier.padding(start = 12.dp, bottom = 4.dp)
+                    )
+                }
             }
 
-            // Text input
-            TextField(
-                value = text,
-                onValueChange = onTextChange,
-                placeholder = {
-                    Text(
-                        text = placeholder,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = TextMuted
-                    )
-                },
-                singleLine = false,
-                maxLines = 5,
-                shape = RectangleShape,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = White,
-                    unfocusedContainerColor = White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    cursorColor = Black
-                ),
+            // Input row
+            Row(
                 modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 40.dp, max = 120.dp)
-                    .onFocusChanged { isFocused = it.isFocused }
-                    .then(
-                        if (isFocused) Modifier.neoShadow(4.dp, 4.dp, Cyan)
-                        else Modifier.neoShadowSmall()
-                    )
-                    .border(2.dp, Black, RectangleShape)
-            )
-
-            // Send button
-            val sendColor = if (enabled) Yellow else Color(0xFFD0D0D0)
-            NeoPressableBox(
-                onClick = onSend,
-                enabled = enabled,
-                size = 40.dp,
-                backgroundColor = sendColor
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.Bottom,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = "\u27A4", fontSize = 18.sp, color = if (enabled) Black else TextMuted)
+                // Attach button
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(Cream)
+                        .border(2.dp, Black, RectangleShape)
+                        .clickable { imagePicker.launch("image/*") },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(text = "+", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Black)
+                }
+
+                // Text input
+                TextField(
+                    value = text,
+                    onValueChange = onTextChange,
+                    placeholder = {
+                        Text(
+                            text = placeholder,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = TextMuted
+                        )
+                    },
+                    singleLine = false,
+                    maxLines = 5,
+                    shape = RectangleShape,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = White,
+                        unfocusedContainerColor = White,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        cursorColor = Black
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 40.dp, max = 120.dp)
+                        .onFocusChanged { isFocused = it.isFocused }
+                        .then(
+                            if (isFocused) Modifier.neoShadow(4.dp, 4.dp, Cyan)
+                            else Modifier.neoShadowSmall()
+                        )
+                        .border(2.dp, Black, RectangleShape)
+                )
+
+                // Send button
+                val canSend = enabled && (text.isNotBlank() || pendingAttachments.isNotEmpty())
+                val sendColor = if (canSend) Yellow else Color(0xFFD0D0D0)
+                NeoPressableBox(
+                    onClick = onSend,
+                    enabled = canSend,
+                    size = 40.dp,
+                    backgroundColor = sendColor
+                ) {
+                    Text(text = "\u27A4", fontSize = 18.sp, color = if (canSend) Black else TextMuted)
+                }
             }
         }
     }
@@ -735,4 +878,63 @@ private fun ReplyPreviewBanner(message: Message, onDismiss: () -> Unit) {
         }
     }
     Divider(thickness = 1.dp, color = Black.copy(alpha = 0.2f))
+}
+
+// Fullscreen Image Preview with pinch-to-zoom
+@Composable
+private fun ImagePreviewOverlay(
+    imageUrl: String,
+    onDismiss: () -> Unit
+) {
+    var scale by remember { mutableFloatStateOf(1f) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
+    var offsetY by remember { mutableFloatStateOf(0f) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.9f))
+            .clickable(onClick = onDismiss)
+    ) {
+        // Close button
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(top = 48.dp, end = 16.dp)
+                .size(40.dp)
+                .background(Color.White, RectangleShape)
+                .border(2.dp, Color.Black, RectangleShape)
+                .clickable(onClick = onDismiss),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("\u2715", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        }
+
+        // Zoomable image
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(imageUrl)
+                .crossfade(true)
+                .build(),
+            contentDescription = "Preview",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .graphicsLayer(
+                    scaleX = scale,
+                    scaleY = scale,
+                    translationX = offsetX,
+                    translationY = offsetY
+                )
+                .pointerInput(Unit) {
+                    detectTransformGestures { _, pan, zoom, _ ->
+                        scale = (scale * zoom).coerceIn(0.5f, 5f)
+                        offsetX += pan.x
+                        offsetY += pan.y
+                    }
+                }
+                .clickable { /* consume click to prevent dismiss */ }
+        )
+    }
 }

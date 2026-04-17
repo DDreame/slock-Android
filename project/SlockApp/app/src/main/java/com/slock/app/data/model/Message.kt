@@ -47,6 +47,13 @@ data class Attachment(
     val type: String? = null
 )
 
+data class UploadResponse(
+    val id: String? = null,
+    val url: String? = null,
+    val name: String? = null,
+    val type: String? = null
+)
+
 data class SendMessageRequest(
     @SerializedName("channelId")
     val channelId: String,

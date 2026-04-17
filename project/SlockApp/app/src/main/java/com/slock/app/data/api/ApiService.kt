@@ -1,6 +1,7 @@
 package com.slock.app.data.api
 
 import com.slock.app.data.model.*
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -182,4 +183,11 @@ interface ApiService {
 
     @DELETE("machines/{machineId}")
     suspend fun deleteMachine(@Path("machineId") machineId: String): Response<Unit>
+
+    // File Upload
+    @Multipart
+    @POST("upload")
+    suspend fun uploadFile(
+        @Part file: MultipartBody.Part
+    ): Response<UploadResponse>
 }
