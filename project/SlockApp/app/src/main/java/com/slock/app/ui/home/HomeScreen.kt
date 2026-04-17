@@ -26,6 +26,8 @@ import com.slock.app.data.model.Server
 import com.slock.app.ui.channel.ChannelUiState
 import com.slock.app.ui.server.ServerUiState
 import com.slock.app.ui.theme.*
+import com.slock.app.util.LogCollector
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -143,12 +145,14 @@ fun HomeScreen(
     }
 
     if (showSettingsMenu) {
+        val context = LocalContext.current
         SettingsNeoDialog(
             onDismiss = { showSettingsMenu = false },
             onLogout = {
                 showSettingsMenu = false
                 onLogout()
-            }
+            },
+            onSendFeedback = { LogCollector.shareReport(context) }
         )
     }
 }
@@ -880,7 +884,8 @@ private fun CreateServerNeoDialog(
 @Composable
 private fun SettingsNeoDialog(
     onDismiss: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSendFeedback: () -> Unit = {}
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
@@ -892,6 +897,15 @@ private fun SettingsNeoDialog(
                 )
 
                 Spacer(modifier = Modifier.height(24.dp))
+
+                NeoButton(
+                    text = "SEND FEEDBACK",
+                    onClick = { onDismiss(); onSendFeedback() },
+                    containerColor = Cyan,
+                    contentColor = Black
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
 
                 NeoButton(
                     text = "LOG OUT",

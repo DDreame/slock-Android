@@ -372,6 +372,7 @@ fun NeoErrorState(
     message: String,
     subtitle: String? = "请检查网络后重试",
     onRetry: (() -> Unit)? = null,
+    onSendLog: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -395,13 +396,23 @@ fun NeoErrorState(
                 textAlign = TextAlign.Center
             )
         }
-        if (onRetry != null) {
+        if (onRetry != null || onSendLog != null) {
             Spacer(modifier = Modifier.height(12.dp))
-            NeoButton(
-                text = "重试",
-                onClick = onRetry,
-                modifier = Modifier.padding(horizontal = 48.dp)
-            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (onRetry != null) {
+                    NeoButton(
+                        text = "重试",
+                        onClick = onRetry
+                    )
+                }
+                if (onSendLog != null) {
+                    NeoButton(
+                        text = "发送日志",
+                        onClick = onSendLog,
+                        containerColor = Cream
+                    )
+                }
+            }
         }
     }
 }

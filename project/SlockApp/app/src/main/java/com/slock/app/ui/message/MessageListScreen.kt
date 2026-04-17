@@ -18,6 +18,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -28,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.data.model.Message
 import com.slock.app.ui.theme.*
+import com.slock.app.util.LogCollector
 
 @Composable
 fun MessageListScreen(
@@ -67,10 +69,12 @@ fun MessageListScreen(
                     NeoSkeletonMessageList()
                 }
                 state.error != null -> {
+                    val context = LocalContext.current
                     NeoErrorState(
                         message = "消息加载失败",
                         modifier = Modifier.align(Alignment.Center),
-                        onRetry = { onLoadMore() }
+                        onRetry = { onLoadMore() },
+                        onSendLog = { LogCollector.shareReport(context, state.error) }
                     )
                 }
                 state.messages.isEmpty() -> {

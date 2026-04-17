@@ -26,12 +26,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.data.model.Agent
 import com.slock.app.ui.theme.*
+import com.slock.app.util.LogCollector
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,10 +81,12 @@ fun AgentListScreen(
                     NeoSkeletonCardList()
                 }
                 state.error != null && state.agents.isEmpty() -> {
+                    val context = LocalContext.current
                     NeoErrorState(
                         message = "Agent 加载失败",
                         modifier = Modifier.align(Alignment.Center),
-                        onRetry = onRetry
+                        onRetry = onRetry,
+                        onSendLog = { LogCollector.shareReport(context, state.error) }
                     )
                 }
                 state.agents.isEmpty() -> {
