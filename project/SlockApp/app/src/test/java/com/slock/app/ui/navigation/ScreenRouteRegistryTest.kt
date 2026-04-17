@@ -7,7 +7,10 @@ import org.junit.Test
 
 class ScreenRouteRegistryTest {
 
-    private val allScreens = Screen::class.sealedSubclasses.map { it.objectInstance!! }
+    private val allScreens: List<Screen> = listOf(
+        Screen.Splash, Screen.Login, Screen.Register, Screen.ForgotPassword,
+        Screen.Home, Screen.AgentDetail, Screen.Profile, Screen.UserProfile, Screen.Settings
+    )
     private val allRoutes = allScreens.map { it.route }.toSet()
 
     @Test
@@ -15,6 +18,13 @@ class ScreenRouteRegistryTest {
         val ghostRoutes = listOf("servers", "server/{serverId}", "channel/{channelId}", "messages/{channelId}", "agents")
         for (route in ghostRoutes) {
             assertFalse("Ghost route '$route' should not exist in Screen", allRoutes.contains(route))
+        }
+        val srcFile = listOf(
+            java.io.File("src/main/java/com/slock/app/ui/navigation/Screen.kt"),
+            java.io.File("app/src/main/java/com/slock/app/ui/navigation/Screen.kt")
+        ).first { it.exists() }.readText()
+        for (name in listOf("Servers", "ServerDetail", "Channel", "Messages", "Agents")) {
+            assertFalse("Screen.$name should not exist in source", srcFile.contains("data object $name"))
         }
     }
 
@@ -25,6 +35,15 @@ class ScreenRouteRegistryTest {
             "agent/{agentId}", "profile", "profile/{userId}", "settings"
         )
         assertEquals(expectedRoutes, allRoutes)
+        val srcFile = listOf(
+            java.io.File("src/main/java/com/slock/app/ui/navigation/Screen.kt"),
+            java.io.File("app/src/main/java/com/slock/app/ui/navigation/Screen.kt")
+        ).first { it.exists() }.readText()
+        val dataObjects = Regex("""data object (\w+)""").findAll(srcFile).map { it.groupValues[1] }.toSet()
+        assertEquals(
+            setOf("Splash", "Login", "Register", "ForgotPassword", "Home", "AgentDetail", "Profile", "UserProfile", "Settings"),
+            dataObjects
+        )
     }
 
     @Test
