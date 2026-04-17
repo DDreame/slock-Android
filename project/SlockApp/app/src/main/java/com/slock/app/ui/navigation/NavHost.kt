@@ -141,9 +141,10 @@ fun SlockNavHost(
     // Handle deep link from notification (warm start only — cold start is handled by splash)
     LaunchedEffect(deepLinkChannelId, isSplashDone) {
         if (shouldHandleWarmStartDeepLink(isSplashDone, deepLinkChannelId)) {
-            navController.navigate(Routes.messagesRoute(deepLinkChannelId.orEmpty(), deepLinkChannelName ?: "")) {
-                popUpTo(Routes.HOME) { inclusive = false }
-                launchSingleTop = true
+            val action = resolveWarmStartDeepLinkNav(deepLinkChannelId.orEmpty(), deepLinkChannelName)
+            navController.navigate(action.route) {
+                popUpTo(action.popUpToRoute) { inclusive = action.inclusive }
+                launchSingleTop = action.singleTop
             }
             onDeepLinkConsumed()
         }
@@ -703,9 +704,9 @@ fun SlockNavHost(
                 },
                 onMachineClick = { machineId ->
                     val serverId = viewModel.serverId.orEmpty()
-                    if (serverId.isNotEmpty()) {
-                        navController.navigate(Routes.machineListRoute(serverId)) {
-                            launchSingleTop = true
+                    resolveAgentToMachineNav(serverId)?.let { action ->
+                        navController.navigate(action.route) {
+                            popUpTo(action.popUpToRoute) { inclusive = action.inclusive }
                         }
                     }
                 },
@@ -733,8 +734,10 @@ fun SlockNavHost(
                 state = state,
                 onDeleteMachine = viewModel::deleteMachine,
                 onAgentClick = { agentId ->
-                    navController.navigate(Routes.agentDetailRoute(agentId)) {
-                        launchSingleTop = true
+                    resolveMachineToAgentNav(agentId)?.let { action ->
+                        navController.navigate(action.route) {
+                            popUpTo(action.popUpToRoute) { inclusive = action.inclusive }
+                        }
                     }
                 },
                 onNavigateBack = { navController.popBackStack() },

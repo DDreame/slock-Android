@@ -1,10 +1,98 @@
 package com.slock.app.ui.navigation
 
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
-class NavBackSemanticsTest {
+class CrossNavStrategyTest {
+
+    @Test
+    fun `resolveAgentToMachineNav returns null for blank serverId`() {
+        assertNull(resolveAgentToMachineNav(""))
+        assertNull(resolveAgentToMachineNav("   "))
+    }
+
+    @Test
+    fun `resolveAgentToMachineNav pops AgentDetail inclusively`() {
+        val action = resolveAgentToMachineNav("srv-1")!!
+        assertEquals(Routes.AGENT_DETAIL, action.popUpToRoute)
+        assertTrue("Must pop AgentDetail inclusively to replace it", action.inclusive)
+    }
+
+    @Test
+    fun `resolveAgentToMachineNav targets correct MachineList route`() {
+        val action = resolveAgentToMachineNav("srv-1")!!
+        assertEquals("server/srv-1/machines", action.route)
+    }
+
+    @Test
+    fun `resolveMachineToAgentNav returns null for blank agentId`() {
+        assertNull(resolveMachineToAgentNav(""))
+        assertNull(resolveMachineToAgentNav("   "))
+    }
+
+    @Test
+    fun `resolveMachineToAgentNav pops MachineList inclusively`() {
+        val action = resolveMachineToAgentNav("agent-1")!!
+        assertEquals(Routes.MACHINE_LIST, action.popUpToRoute)
+        assertTrue("Must pop MachineList inclusively to replace it", action.inclusive)
+    }
+
+    @Test
+    fun `resolveMachineToAgentNav targets correct AgentDetail route`() {
+        val action = resolveMachineToAgentNav("agent-1")!!
+        assertTrue(action.route.startsWith("agent/agent-1"))
+    }
+
+    @Test
+    fun `cross-nav cycle produces constant stack depth`() {
+        val a2m = resolveAgentToMachineNav("srv-1")!!
+        val m2a = resolveMachineToAgentNav("agent-2")!!
+        assertTrue(
+            "AgentDetail->MachineList must pop AgentDetail (inclusive) so stack doesn't grow",
+            a2m.inclusive && a2m.popUpToRoute == Routes.AGENT_DETAIL
+        )
+        assertTrue(
+            "MachineList->AgentDetail must pop MachineList (inclusive) so stack doesn't grow",
+            m2a.inclusive && m2a.popUpToRoute == Routes.MACHINE_LIST
+        )
+    }
+}
+
+class WarmDeepLinkNavStrategyTest {
+
+    @Test
+    fun `resolveWarmStartDeepLinkNav pops to HOME non-inclusively`() {
+        val action = resolveWarmStartDeepLinkNav("ch-1", "general")
+        assertEquals(Routes.HOME, action.popUpToRoute)
+        assertFalse("HOME must stay in stack (inclusive=false)", action.inclusive)
+    }
+
+    @Test
+    fun `resolveWarmStartDeepLinkNav uses singleTop`() {
+        val action = resolveWarmStartDeepLinkNav("ch-1", "general")
+        assertTrue(action.singleTop)
+    }
+
+    @Test
+    fun `resolveWarmStartDeepLinkNav produces correct message route`() {
+        val action = resolveWarmStartDeepLinkNav("ch-1", "general")
+        assertTrue(action.route.startsWith("channel/ch-1/messages"))
+        assertTrue(action.route.contains("name=general"))
+    }
+
+    @Test
+    fun `resolveWarmStartDeepLinkNav handles null channelName`() {
+        val action = resolveWarmStartDeepLinkNav("ch-1", null)
+        assertTrue(action.route.startsWith("channel/ch-1/messages"))
+    }
+}
+
+class NavBackSemanticsStructuralTest {
 
     private val navHostSource: String = listOf(
         File("src/main/java/com/slock/app/ui/navigation/NavHost.kt"),
@@ -12,7 +100,7 @@ class NavBackSemanticsTest {
     ).first { it.exists() }.readText()
 
     @Test
-    fun `Home composable contains BackHandler for root back press`() {
+    fun `Home composable contains BackHandler`() {
         val homeBlock = navHostSource
             .substringAfter("composable(Routes.HOME)")
             .substringBefore("composable(Routes.SETTINGS)")
@@ -42,57 +130,52 @@ class NavBackSemanticsTest {
     }
 
     @Test
-    fun `warm-start deep link pops up to HOME`() {
+    fun `warm-start deep link delegates to resolveWarmStartDeepLinkNav`() {
         val warmStartBlock = navHostSource
             .substringAfter("shouldHandleWarmStartDeepLink")
             .substringBefore("onDeepLinkConsumed()")
         assertTrue(
-            "Warm-start deep link must popUpTo HOME to keep it at stack bottom",
-            warmStartBlock.contains("popUpTo(Routes.HOME)")
+            "Warm-start deep link must use resolveWarmStartDeepLinkNav helper",
+            warmStartBlock.contains("resolveWarmStartDeepLinkNav(")
         )
     }
 
     @Test
-    fun `warm-start deep link HOME popUpTo is not inclusive`() {
-        val warmStartBlock = navHostSource
-            .substringAfter("shouldHandleWarmStartDeepLink")
-            .substringBefore("onDeepLinkConsumed()")
-        val popUpToIdx = warmStartBlock.indexOf("popUpTo(Routes.HOME)")
-        assertTrue("popUpTo(Routes.HOME) must exist", popUpToIdx >= 0)
-        val afterPopUpTo = warmStartBlock.substring(popUpToIdx, minOf(popUpToIdx + 60, warmStartBlock.length))
-        assertTrue(
-            "popUpTo(Routes.HOME) must use inclusive = false",
-            afterPopUpTo.contains("inclusive = false")
-        )
-    }
-
-    @Test
-    fun `AgentDetail to MachineList uses launchSingleTop`() {
-        val agentDetailBlock = navHostSource
-            .substringAfter("composable(\n            Routes.AGENT_DETAIL", "")
-            .ifEmpty { navHostSource.substringAfter("composable(") }
+    fun `AgentDetail to MachineList delegates to resolveAgentToMachineNav`() {
         val agentBlock = navHostSource
             .substringAfter("// Agent Detail Screen")
             .substringBefore("// Machine List Screen")
-        val machineNavIdx = agentBlock.indexOf("machineListRoute(serverId)")
-        assertTrue("AgentDetail must navigate to machineListRoute", machineNavIdx > 0)
-        val afterNav = agentBlock.substring(machineNavIdx, minOf(machineNavIdx + 120, agentBlock.length))
         assertTrue(
-            "AgentDetail -> MachineList navigation must use launchSingleTop",
-            afterNav.contains("launchSingleTop = true")
+            "AgentDetail -> MachineList must use resolveAgentToMachineNav helper",
+            agentBlock.contains("resolveAgentToMachineNav(")
         )
     }
 
     @Test
-    fun `MachineList to AgentDetail uses launchSingleTop`() {
+    fun `MachineList to AgentDetail delegates to resolveMachineToAgentNav`() {
         val machineBlock = navHostSource
             .substringAfter("// Machine List Screen")
-        val agentNavIdx = machineBlock.indexOf("agentDetailRoute(agentId)")
-        assertTrue("MachineList must navigate to agentDetailRoute", agentNavIdx > 0)
-        val afterNav = machineBlock.substring(agentNavIdx, minOf(agentNavIdx + 120, machineBlock.length))
         assertTrue(
-            "MachineList -> AgentDetail navigation must use launchSingleTop",
-            afterNav.contains("launchSingleTop = true")
+            "MachineList -> AgentDetail must use resolveMachineToAgentNav helper",
+            machineBlock.contains("resolveMachineToAgentNav(")
+        )
+    }
+
+    @Test
+    fun `cross-nav uses popUpTo from action not launchSingleTop alone`() {
+        val agentBlock = navHostSource
+            .substringAfter("// Agent Detail Screen")
+            .substringBefore("// Machine List Screen")
+        val machineBlock = navHostSource
+            .substringAfter("// Machine List Screen")
+
+        assertTrue(
+            "AgentDetail cross-nav must use action.popUpToRoute",
+            agentBlock.contains("popUpTo(action.popUpToRoute)")
+        )
+        assertTrue(
+            "MachineList cross-nav must use action.popUpToRoute",
+            machineBlock.contains("popUpTo(action.popUpToRoute)")
         )
     }
 }
