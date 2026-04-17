@@ -25,6 +25,7 @@ import com.slock.app.data.model.Message
 import com.slock.app.data.model.Agent
 import com.slock.app.data.model.Server
 import com.slock.app.ui.channel.ChannelUiState
+import com.slock.app.ui.member.MemberItem
 import com.slock.app.ui.server.ServerUiState
 import com.slock.app.ui.theme.*
 import kotlinx.coroutines.launch
@@ -52,12 +53,15 @@ fun HomeScreen(
     isConnected: Boolean = true,
     isReconnecting: Boolean = false,
     onTabSelected: (Int) -> Unit = {},
+    members: List<MemberItem> = emptyList(),
+    onNewDmMemberSelected: (MemberItem) -> Unit = {},
     threadsContent: @Composable () -> Unit = {},
     membersContent: @Composable () -> Unit = {},
     tasksContent: @Composable () -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
     var showCreateChannelDialog by remember { mutableStateOf(false) }
+    var showNewDmDialog by remember { mutableStateOf(false) }
     var editingChannel by remember { mutableStateOf<Pair<String, String>?>(null) }
     var deletingChannelId by remember { mutableStateOf<String?>(null) }
     var leavingChannelId by remember { mutableStateOf<String?>(null) }
@@ -119,6 +123,7 @@ fun HomeScreen(
                                 onChannelClick = onChannelClick,
                                 onDmClick = onDmClick,
                                 onShowCreateChannel = { showCreateChannelDialog = true },
+                                onShowNewDm = { showNewDmDialog = true },
                                 onSearchMessageClick = onSearchMessageClick,
                                 onSearchAgentClick = onSearchAgentClick,
                                 onEditChannel = { id, name -> editingChannel = id to name },
@@ -152,6 +157,17 @@ fun HomeScreen(
             onCreate = { name ->
                 onCreateChannel(name, "text")
                 showCreateChannelDialog = false
+            }
+        )
+    }
+
+    if (showNewDmDialog) {
+        NewDmDialog(
+            members = members,
+            onDismiss = { showNewDmDialog = false },
+            onMemberSelected = { member ->
+                showNewDmDialog = false
+                onNewDmMemberSelected(member)
             }
         )
     }
@@ -205,6 +221,7 @@ private fun ChannelsTabContent(
     onChannelClick: (channelId: String, channelName: String) -> Unit,
     onDmClick: (channelId: String, channelName: String) -> Unit,
     onShowCreateChannel: () -> Unit,
+    onShowNewDm: () -> Unit,
     onSearchMessageClick: (Message) -> Unit = {},
     onSearchAgentClick: (Agent) -> Unit = {},
     onEditChannel: (channelId: String, currentName: String) -> Unit = { _, _ -> },
@@ -245,6 +262,7 @@ private fun ChannelsTabContent(
                     onChannelClick = onChannelClick,
                     onDmClick = onDmClick,
                     onShowCreateChannel = onShowCreateChannel,
+                    onShowNewDm = onShowNewDm,
                     onEditChannel = onEditChannel,
                     onDeleteChannel = onDeleteChannel,
                     onLeaveChannel = onLeaveChannel
@@ -583,6 +601,7 @@ private fun ChannelListContent(
     onChannelClick: (channelId: String, channelName: String) -> Unit,
     onDmClick: (channelId: String, channelName: String) -> Unit,
     onShowCreateChannel: () -> Unit,
+    onShowNewDm: () -> Unit,
     onEditChannel: (channelId: String, currentName: String) -> Unit = { _, _ -> },
     onDeleteChannel: (channelId: String) -> Unit = {},
     onLeaveChannel: (channelId: String) -> Unit = {}
@@ -624,7 +643,7 @@ private fun ChannelListContent(
         }
 
         item {
-            SectionHeader(title = "DIRECT MESSAGES")
+            SectionHeader(title = "DIRECT MESSAGES", onAdd = onShowNewDm)
         }
 
         if (channelState.dms.isNotEmpty()) {
@@ -1420,6 +1439,153 @@ private fun ConfirmActionNeoDialog(
                     text = "Cancel",
                     onClick = onDismiss,
                     containerColor = Cream
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewDmDialog(
+    members: List<MemberItem>,
+    onDismiss: () -> Unit,
+    onMemberSelected: (MemberItem) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredMembers = remember(members, searchQuery) {
+        if (searchQuery.isBlank()) members
+        else members.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
+
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
+                Text(
+                    text = "New Message",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = Black
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                NeoTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    placeholder = "Search members..."
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                    items(filteredMembers) { member ->
+                        NewDmMemberRow(
+                            member = member,
+                            onClick = { onMemberSelected(member) }
+                        )
+                    }
+                    if (filteredMembers.isEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "No members found",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                NeoButtonSecondary(
+                    text = "Cancel",
+                    onClick = onDismiss,
+                    containerColor = Cream
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewDmMemberRow(member: MemberItem, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 6.dp)
+            .neoShadowSmall()
+            .background(White)
+            .border(2.dp, Black, RectangleShape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(if (member.isAgent) Orange else Cyan)
+                    .border(2.dp, Black, RectangleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = member.name.take(1).uppercase(),
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 14.sp,
+                    color = Black
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .size(10.dp)
+                    .align(Alignment.BottomEnd)
+                    .background(if (member.isOnline) Lime else Color(0xFFCCCCCC))
+                    .border(1.5.dp, Black, RectangleShape)
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = member.name,
+                    style = MaterialTheme.typography.titleSmall,
+                    color = Black,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (member.isAgent) {
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(Orange)
+                            .border(1.dp, Black, RectangleShape)
+                            .padding(horizontal = 4.dp)
+                    ) {
+                        Text(
+                            text = "AGENT",
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Black
+                        )
+                    }
+                }
+            }
+            if (member.subtitle.isNotBlank()) {
+                Text(
+                    text = member.subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp)
                 )
             }
         }
