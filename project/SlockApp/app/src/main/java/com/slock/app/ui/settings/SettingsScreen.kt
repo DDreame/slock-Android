@@ -42,6 +42,7 @@ import com.slock.app.ui.theme.Pink
 import com.slock.app.ui.theme.SpaceGrotesk
 import com.slock.app.ui.theme.SpaceMono
 import com.slock.app.ui.theme.White
+import com.slock.app.ui.theme.Yellow
 
 @Composable
 fun SettingsScreen(
@@ -49,6 +50,7 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onNotificationPreferenceChange: (NotificationPreference) -> Unit,
     onRefreshAccount: () -> Unit,
+    onOpenProfile: () -> Unit = {},
     onSendFeedback: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -110,6 +112,13 @@ fun SettingsScreen(
                         text = if (state.isRefreshingAccount) "REFRESHING..." else "REFRESH ACCOUNT",
                         onClick = onRefreshAccount,
                         containerColor = Cyan,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Spacer(modifier = Modifier.height(10.dp))
+                    NeoButtonSecondary(
+                        text = "VIEW PROFILE",
+                        onClick = onOpenProfile,
+                        containerColor = Yellow,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }

@@ -20,6 +20,7 @@ import javax.inject.Inject
 
 data class MemberItem(
     val id: String,
+    val userId: String? = null,
     val name: String,
     val role: String,
     val isAgent: Boolean,
@@ -119,6 +120,7 @@ class MembersViewModel @Inject constructor(
                         memberItems.add(
                             MemberItem(
                                 id = member.id.orEmpty(),
+                                userId = member.userId,
                                 name = displayName,
                                 role = member.role.orEmpty(),
                                 isAgent = false,

@@ -29,6 +29,9 @@ sealed class Screen(val route: String) {
         fun createRoute(agentId: String) = "agent/$agentId"
     }
     data object Profile : Screen("profile")
+    data object UserProfile : Screen("profile/{userId}") {
+        fun createRoute(userId: String) = "profile/$userId"
+    }
     data object Settings : Screen("settings")
 }
 
