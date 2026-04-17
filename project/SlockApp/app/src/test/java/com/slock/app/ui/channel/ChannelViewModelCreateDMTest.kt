@@ -11,6 +11,7 @@ import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -243,6 +244,50 @@ class ChannelViewModelCreateDMTest {
 
         assertFalse(called)
     }
+
+    @Test
+    fun `createDM waits for DMs to load before checking — race condition prevented`() = runTest {
+        val existingDm = Channel(
+            id = "dm-existing", name = "DM", type = "dm",
+            members = listOf(ChannelMember(agentId = "agent1"))
+        )
+        val dmGate = CompletableDeferred<Result<List<Channel>>>()
+        val repo = DelayedDMRepository(
+            getDMsGate = dmGate,
+            createDMResult = Result.failure(RuntimeException("Should not call createDM API"))
+        )
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        var successChannel: Channel? = null
+        vm.createDM(agentId = "agent1", onSuccess = { successChannel = it })
+        advanceUntilIdle()
+
+        assertNull("createDM should not have resolved yet — DMs still loading", successChannel)
+
+        dmGate.complete(Result.success(listOf(existingDm)))
+        advanceUntilIdle()
+
+        assertEquals("dm-existing", successChannel?.id)
+    }
+
+    @Test
+    fun `createDM after API success stores channel with members for future reuse`() = runTest {
+        val newDm = Channel(
+            id = "dm-new", name = "DM", type = "dm",
+            members = listOf(ChannelMember(agentId = "agent1"))
+        )
+        val repo = FakeChannelRepository(createDMResult = Result.success(newDm))
+        val vm = createViewModel(channelRepository = repo)
+        advanceUntilIdle()
+
+        vm.createDM(agentId = "agent1", onSuccess = {})
+        advanceUntilIdle()
+
+        val found = vm.findExistingDM("agent1", null)
+        assertNotNull("After createDM, findExistingDM should match the new DM", found)
+        assertEquals("dm-new", found?.id)
+    }
 }
 
 private class FakeChannelRepository(
@@ -258,6 +303,24 @@ private class FakeChannelRepository(
     override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
     override suspend fun getDMs(serverId: String) = getDMsResult
+    override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
+    override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
+    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())
+}
+
+private class DelayedDMRepository(
+    private val getDMsGate: CompletableDeferred<Result<List<Channel>>>,
+    private val createDMResult: Result<Channel> = Result.success(Channel(id = "dm-default"))
+) : ChannelRepository {
+    override suspend fun getChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun refreshChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun createChannel(serverId: String, name: String, type: String) = Result.failure<Channel>(NotImplementedError())
+    override suspend fun updateChannel(serverId: String, channelId: String, name: String) = Result.failure<Channel>(NotImplementedError())
+    override suspend fun deleteChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun joinChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun getDMs(serverId: String) = getDMsGate.await()
     override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
     override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
     override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())

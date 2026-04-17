@@ -42,6 +42,17 @@ class DMChainRegressionTest {
     }
 
     @Test
+    fun `createDM in ViewModel awaits dmsLoaded before checking`() {
+        val createDMBlock = viewModelSource
+            .substringAfter("fun createDM(")
+            .substringBefore("fun findExistingDM(")
+        val awaitIdx = createDMBlock.indexOf("dmsLoaded.await()")
+        val findExistingIdx = createDMBlock.indexOf("findExistingDM(")
+        assertTrue("createDM must await dmsLoaded", awaitIdx >= 0)
+        assertTrue("findExistingDM must be called after await", findExistingIdx > awaitIdx)
+    }
+
+    @Test
     fun `createDM in ViewModel checks findExistingDM before API call`() {
         val createDMBlock = viewModelSource
             .substringAfter("fun createDM(")
@@ -104,7 +115,7 @@ class DMChainRegressionTest {
     }
 
     @Test
-    fun `ChannelViewModel handles DMNew event`() {
+    fun `ChannelViewModel handles DMNew event with full DM refresh`() {
         assertTrue(
             "ChannelViewModel must handle DMNew socket events",
             viewModelSource.contains("SocketEvent.DMNew")
@@ -115,6 +126,21 @@ class DMChainRegressionTest {
         assertTrue(
             "DMNew handler must join socket channel for new DM",
             dmNewBlock.contains("joinChannel(")
+        )
+        assertTrue(
+            "DMNew handler must refresh full DM list to get members for reopen matching",
+            dmNewBlock.contains("refreshDMs()")
+        )
+    }
+
+    @Test
+    fun `loadDMs signals dmsLoaded completion`() {
+        val loadDMsBlock = viewModelSource
+            .substringAfter("fun loadDMs()")
+            .substringBefore("fun createDM(")
+        assertTrue(
+            "loadDMs must signal dmsLoaded.complete on success",
+            loadDMsBlock.contains("dmsLoaded.complete(")
         )
     }
 
