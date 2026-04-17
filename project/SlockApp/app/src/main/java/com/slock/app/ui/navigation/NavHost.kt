@@ -15,6 +15,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.NavType
 import androidx.navigation.navArgument
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import com.google.gson.Gson
 import com.slock.app.data.model.Message
 import com.slock.app.data.model.Server
@@ -141,6 +142,7 @@ fun SlockNavHost(
     LaunchedEffect(deepLinkChannelId, isSplashDone) {
         if (shouldHandleWarmStartDeepLink(isSplashDone, deepLinkChannelId)) {
             navController.navigate(Routes.messagesRoute(deepLinkChannelId.orEmpty(), deepLinkChannelName ?: "")) {
+                popUpTo(Routes.HOME) { inclusive = false }
                 launchSingleTop = true
             }
             onDeepLinkConsumed()
@@ -252,6 +254,10 @@ fun SlockNavHost(
                 initial = com.slock.app.data.socket.SocketIOManager.ConnectionState.CONNECTING
             )
             val context = androidx.compose.ui.platform.LocalContext.current
+
+            BackHandler {
+                (context as? android.app.Activity)?.finish()
+            }
 
             var selectedServer by remember { mutableStateOf<Server?>(null) }
 
@@ -698,7 +704,9 @@ fun SlockNavHost(
                 onMachineClick = { machineId ->
                     val serverId = viewModel.serverId.orEmpty()
                     if (serverId.isNotEmpty()) {
-                        navController.navigate(Routes.machineListRoute(serverId))
+                        navController.navigate(Routes.machineListRoute(serverId)) {
+                            launchSingleTop = true
+                        }
                     }
                 },
                 onSelectTab = viewModel::selectTab,
@@ -725,7 +733,9 @@ fun SlockNavHost(
                 state = state,
                 onDeleteMachine = viewModel::deleteMachine,
                 onAgentClick = { agentId ->
-                    navController.navigate(Routes.agentDetailRoute(agentId))
+                    navController.navigate(Routes.agentDetailRoute(agentId)) {
+                        launchSingleTop = true
+                    }
                 },
                 onNavigateBack = { navController.popBackStack() },
                 onRetry = { viewModel.loadMachines(serverId) }
