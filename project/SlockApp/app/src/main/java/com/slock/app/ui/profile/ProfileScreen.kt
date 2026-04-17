@@ -172,6 +172,7 @@ fun ProfileScreen(
                 }
                 InfoRow("Role", displayData.role.replaceFirstChar { it.uppercaseChar() }.ifEmpty { "\u2014" })
                 InfoRow("Status", if (displayData.isOnline) "Online" else "Offline")
+                InfoRow("Last Active", displayData.lastActiveText)
             }
 
             // Edit Name (own profile only)

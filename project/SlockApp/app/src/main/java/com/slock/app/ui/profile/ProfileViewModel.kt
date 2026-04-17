@@ -30,18 +30,29 @@ data class ProfileUiState(
     val isEditing: Boolean = false,
     val editName: String = "",
     val isSaving: Boolean = false,
-    val saveError: String? = null
+    val saveError: String? = null,
+    val lastActiveText: String = ""
 )
 
 fun resolveProfileDisplayData(state: ProfileUiState): ProfileDisplayData {
-    val name = state.member?.displayName
-        ?: state.member?.name
-        ?: state.user?.name
-        ?: ""
+    val name = if (state.isOwnProfile) {
+        state.user?.name
+            ?: state.member?.displayName
+            ?: state.member?.name
+            ?: ""
+    } else {
+        state.member?.displayName
+            ?: state.member?.name
+            ?: state.user?.name
+            ?: ""
+    }
     val email = state.user?.email ?: ""
     val role = state.member?.role ?: ""
     val avatar = state.user?.avatar
     val initial = name.firstOrNull()?.uppercase() ?: "?"
+    val lastActiveText = state.lastActiveText.ifEmpty {
+        if (state.isOnline) "Active now" else "Offline"
+    }
     return ProfileDisplayData(
         name = name,
         email = email,
@@ -49,7 +60,8 @@ fun resolveProfileDisplayData(state: ProfileUiState): ProfileDisplayData {
         avatar = avatar,
         initial = initial,
         isOnline = state.isOnline,
-        isOwnProfile = state.isOwnProfile
+        isOwnProfile = state.isOwnProfile,
+        lastActiveText = lastActiveText
     )
 }
 
@@ -60,7 +72,8 @@ data class ProfileDisplayData(
     val avatar: String?,
     val initial: String,
     val isOnline: Boolean,
-    val isOwnProfile: Boolean
+    val isOwnProfile: Boolean,
+    val lastActiveText: String
 )
 
 @HiltViewModel
@@ -107,7 +120,8 @@ class ProfileViewModel @Inject constructor(
                     it.copy(
                         user = user,
                         isOnline = true,
-                        isLoading = false
+                        isLoading = false,
+                        lastActiveText = "Active now"
                     )
                 }
                 loadMemberRole(user.id)
@@ -128,12 +142,14 @@ class ProfileViewModel @Inject constructor(
             onSuccess = { members ->
                 val member = members.find { it.userId == userId }
                 val isOnline = presenceTracker.isOnline(userId)
+                val lastActive = if (isOnline) "Active now" else "Offline"
                 _state.update {
                     it.copy(
                         user = member?.user,
                         member = member,
                         isOnline = isOnline,
                         isLoading = false,
+                        lastActiveText = lastActive,
                         error = if (member == null) "User not found" else null
                     )
                 }
@@ -160,7 +176,8 @@ class ProfileViewModel @Inject constructor(
         socketJob = viewModelScope.launch {
             val trackId = targetUserId ?: currentUserId ?: return@launch
             presenceTracker.onlineIds.collect { onlineIds ->
-                _state.update { it.copy(isOnline = trackId in onlineIds || it.isOwnProfile) }
+                val online = trackId in onlineIds || (_state.value.isOwnProfile)
+                _state.update { it.copy(isOnline = online, lastActiveText = if (online) "Active now" else "Offline") }
             }
         }
     }
@@ -191,6 +208,10 @@ class ProfileViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             user = updatedUser,
+                            member = it.member?.copy(
+                                name = updatedUser.name,
+                                displayName = updatedUser.name
+                            ),
                             isEditing = false,
                             editName = "",
                             isSaving = false

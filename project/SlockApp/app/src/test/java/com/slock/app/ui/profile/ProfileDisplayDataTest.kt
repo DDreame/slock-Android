@@ -40,9 +40,20 @@ class ProfileDisplayDataTest {
     }
 
     @Test
-    fun `display name priority - member displayName first`() {
-        val user = User(id = "u1", name = "UserName")
-        val member = Member(id = "m1", userId = "u1", role = "owner", user = user, displayName = "DisplayName", name = "MemberName")
+    fun `own profile prefers user name over member displayName`() {
+        val user = User(id = "u1", name = "FreshUserName")
+        val member = Member(id = "m1", userId = "u1", role = "owner", user = user, displayName = "StaleDisplayName", name = "StaleMemberName")
+        val state = ProfileUiState(user = user, member = member, isOwnProfile = true)
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("FreshUserName", display.name)
+    }
+
+    @Test
+    fun `own profile falls back to member displayName when user name null`() {
+        val user = User(id = "u1")
+        val member = Member(id = "m1", userId = "u1", role = "owner", displayName = "DisplayName", name = "MemberName")
         val state = ProfileUiState(user = user, member = member, isOwnProfile = true)
 
         val display = resolveProfileDisplayData(state)
@@ -51,10 +62,21 @@ class ProfileDisplayDataTest {
     }
 
     @Test
-    fun `display name falls back to member name`() {
+    fun `other profile prefers member displayName over user name`() {
         val user = User(id = "u1", name = "UserName")
-        val member = Member(id = "m1", userId = "u1", role = "owner", user = user, name = "MemberName")
-        val state = ProfileUiState(user = user, member = member, isOwnProfile = true)
+        val member = Member(id = "m1", userId = "u1", role = "member", displayName = "DisplayName", name = "MemberName")
+        val state = ProfileUiState(user = user, member = member, isOwnProfile = false)
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("DisplayName", display.name)
+    }
+
+    @Test
+    fun `other profile falls back to member name`() {
+        val user = User(id = "u1", name = "UserName")
+        val member = Member(id = "m1", userId = "u1", role = "member", name = "MemberName")
+        val state = ProfileUiState(user = user, member = member, isOwnProfile = false)
 
         val display = resolveProfileDisplayData(state)
 
@@ -123,6 +145,7 @@ class ProfileDisplayDataTest {
         assertEquals("?", display.initial)
         assertFalse(display.isOnline)
         assertTrue(display.isOwnProfile)
+        assertEquals("Offline", display.lastActiveText)
     }
 
     @Test
@@ -139,14 +162,12 @@ class ProfileDisplayDataTest {
         assertEquals("", state.editName)
         assertFalse(state.isSaving)
         assertNull(state.saveError)
+        assertEquals("", state.lastActiveText)
     }
 
     @Test
     fun `editing state tracks name changes`() {
-        val state = ProfileUiState(
-            isEditing = true,
-            editName = "New Name"
-        )
+        val state = ProfileUiState(isEditing = true, editName = "New Name")
 
         assertTrue(state.isEditing)
         assertEquals("New Name", state.editName)
@@ -160,5 +181,116 @@ class ProfileDisplayDataTest {
         val display = resolveProfileDisplayData(state)
 
         assertEquals("owner", display.role)
+    }
+
+    // --- Save path simulation tests ---
+
+    @Test
+    fun `after save own profile shows updated name not stale member name`() {
+        val oldUser = User(id = "u1", name = "OldName", email = "test@example.com")
+        val member = Member(id = "m1", userId = "u1", role = "admin", name = "OldName", displayName = "OldName")
+
+        val beforeSave = ProfileUiState(user = oldUser, member = member, isOwnProfile = true)
+        assertEquals("OldName", resolveProfileDisplayData(beforeSave).name)
+
+        val updatedUser = User(id = "u1", name = "NewName", email = "test@example.com")
+        val afterSave = beforeSave.copy(
+            user = updatedUser,
+            member = member.copy(name = updatedUser.name, displayName = updatedUser.name),
+            isEditing = false,
+            editName = "",
+            isSaving = false
+        )
+
+        val display = resolveProfileDisplayData(afterSave)
+        assertEquals("NewName", display.name)
+        assertEquals("N", display.initial)
+    }
+
+    @Test
+    fun `stale member without sync still shows updated name for own profile`() {
+        val updatedUser = User(id = "u1", name = "NewName")
+        val staleMember = Member(id = "m1", userId = "u1", role = "admin", name = "OldName", displayName = "OldDisplay")
+        val state = ProfileUiState(user = updatedUser, member = staleMember, isOwnProfile = true)
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("NewName", display.name)
+    }
+
+    @Test
+    fun `stale member for other profile still shows member displayName`() {
+        val user = User(id = "u1", name = "NewName")
+        val member = Member(id = "m1", userId = "u1", role = "admin", name = "OldName", displayName = "OldDisplay")
+        val state = ProfileUiState(user = user, member = member, isOwnProfile = false)
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("OldDisplay", display.name)
+    }
+
+    // --- Last active / recent activity tests ---
+
+    @Test
+    fun `last active shows Active now when online`() {
+        val state = ProfileUiState(user = User(id = "u1", name = "Test"), isOnline = true)
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("Active now", display.lastActiveText)
+    }
+
+    @Test
+    fun `last active shows Offline when not online`() {
+        val state = ProfileUiState(user = User(id = "u1", name = "Test"), isOnline = false)
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("Offline", display.lastActiveText)
+    }
+
+    @Test
+    fun `explicit lastActiveText overrides default`() {
+        val state = ProfileUiState(
+            user = User(id = "u1", name = "Test"),
+            isOnline = true,
+            lastActiveText = "Active now"
+        )
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("Active now", display.lastActiveText)
+    }
+
+    @Test
+    fun `own profile loading sets last active to Active now`() {
+        val state = ProfileUiState(
+            user = User(id = "u1", name = "Me"),
+            isOwnProfile = true,
+            isOnline = true,
+            lastActiveText = "Active now"
+        )
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("Active now", display.lastActiveText)
+        assertTrue(display.isOnline)
+    }
+
+    @Test
+    fun `other profile offline shows Offline in last active`() {
+        val member = Member(id = "m1", userId = "u2", role = "member", name = "Bob")
+        val state = ProfileUiState(
+            user = User(id = "u2", name = "Bob"),
+            member = member,
+            isOwnProfile = false,
+            isOnline = false,
+            lastActiveText = "Offline"
+        )
+
+        val display = resolveProfileDisplayData(state)
+
+        assertEquals("Offline", display.lastActiveText)
+        assertFalse(display.isOnline)
     }
 }
