@@ -86,6 +86,12 @@ interface ApiService {
     @GET("channels/{channelId}/members")
     suspend fun getChannelMembers(@Path("channelId") channelId: String): Response<List<ChannelMember>>
 
+    @POST("channels/{channelId}/stop-all-agents")
+    suspend fun stopAllChannelAgents(@Path("channelId") channelId: String): Response<Unit>
+
+    @POST("channels/{channelId}/resume-all-agents")
+    suspend fun resumeAllChannelAgents(@Path("channelId") channelId: String, @Body request: ResumeAllAgentsRequest): Response<Unit>
+
     @GET("channels/unread")
     suspend fun getUnreadChannels(): Response<List<Channel>>
 

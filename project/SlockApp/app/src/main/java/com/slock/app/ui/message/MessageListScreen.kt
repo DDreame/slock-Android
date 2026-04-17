@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.slock.app.data.model.Agent
 import com.slock.app.data.model.Message
 import com.slock.app.ui.theme.*
 import com.slock.app.util.LogCollector
@@ -66,10 +67,15 @@ fun MessageListScreen(
     onToggleReaction: (Message, String) -> Unit = { _, _ -> },
     onToggleSavedChannel: () -> Unit = {},
     onSavedChannelFeedbackShown: () -> Unit = {},
-    onSendErrorShown: () -> Unit = {}
+    onSendErrorShown: () -> Unit = {},
+    channelAgents: List<Agent> = emptyList(),
+    channelName_raw: String = "",
+    onStopAllAgents: (onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit = { s, _ -> s() },
+    onResumeAllAgents: (prompt: String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit = { _, s, _ -> s() }
 ) {
     var text by remember { mutableStateOf("") }
     val context = LocalContext.current
+    var showAgentBatchSheet by remember { mutableStateOf(false) }
 
     LaunchedEffect(state.savedChannelFeedbackMessage) {
         val message = state.savedChannelFeedbackMessage ?: return@LaunchedEffect
@@ -96,7 +102,9 @@ fun MessageListScreen(
             onSearchClick = onToggleSearch,
             isSaved = state.isCurrentChannelSaved,
             isSavedStatusLoading = state.isSavedStatusLoading,
-            onToggleSavedChannel = onToggleSavedChannel
+            onToggleSavedChannel = onToggleSavedChannel,
+            hasAgents = channelAgents.isNotEmpty(),
+            onAgentControlClick = { showAgentBatchSheet = true }
         )
 
         // Search bar (shown when search is active)
@@ -255,6 +263,28 @@ fun MessageListScreen(
         )
     }
 
+    if (showAgentBatchSheet) {
+        AgentBatchControlSheet(
+            agents = channelAgents,
+            channelName = channelName_raw,
+            onDismiss = { showAgentBatchSheet = false },
+            onStopAll = { onSuccess ->
+                onStopAllAgents(
+                    { onSuccess() },
+                    { error -> android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show() }
+                )
+            },
+            onResumeAllWithCorrection = { prompt, onSuccess ->
+                onResumeAllAgents(
+                    prompt,
+                    { onSuccess() },
+                    { error -> android.widget.Toast.makeText(context, error, android.widget.Toast.LENGTH_SHORT).show() }
+                )
+            },
+            onKeepStopped = { showAgentBatchSheet = false }
+        )
+    }
+
     // Fullscreen image preview overlay
     state.previewImageUrl?.let { imageUrl ->
         ImagePreviewOverlay(
@@ -276,7 +306,9 @@ private fun ChannelHeader(
     onSearchClick: () -> Unit = {},
     isSaved: Boolean = false,
     isSavedStatusLoading: Boolean = false,
-    onToggleSavedChannel: () -> Unit = {}
+    onToggleSavedChannel: () -> Unit = {},
+    hasAgents: Boolean = false,
+    onAgentControlClick: () -> Unit = {}
 ) {
     Surface(color = White) {
         Row(
@@ -315,6 +347,9 @@ private fun ChannelHeader(
 
             // Action buttons
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (hasAgents) {
+                    MiniIconButton(icon = "\uD83E\uDD16", onClick = onAgentControlClick)
+                }
                 MiniIconButton(
                     icon = when {
                         isSavedStatusLoading -> "…"
@@ -1181,6 +1216,183 @@ private fun ImagePreviewOverlay(
                     }
                 }
                 .clickable { /* consume click to prevent dismiss */ }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun AgentBatchControlSheet(
+    agents: List<Agent>,
+    channelName: String,
+    onDismiss: () -> Unit,
+    onStopAll: (onSuccess: () -> Unit) -> Unit,
+    onResumeAllWithCorrection: (prompt: String, onSuccess: () -> Unit) -> Unit,
+    onKeepStopped: () -> Unit
+) {
+    var phase by remember { mutableStateOf(AgentControlPhase.CONFIRM_STOP) }
+    var correctionText by remember { mutableStateOf("") }
+    val activeCount = agents.count { it.status == "active" }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        containerColor = White,
+        shape = RectangleShape,
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 12.dp)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(Black)
+            )
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 24.dp)
+                .navigationBarsPadding()
+        ) {
+            when (phase) {
+                AgentControlPhase.CONFIRM_STOP -> {
+                    Text(
+                        text = "Agent Control",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Black,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Text(
+                        text = "This will immediately stop all running agents in #$channelName",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    agents.forEach { agent -> AgentStatusRow(agent = agent) }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    NeoButton(
+                        text = "STOP ALL AGENTS",
+                        onClick = {
+                            onStopAll { phase = AgentControlPhase.STOPPED }
+                        },
+                        containerColor = Pink,
+                        contentColor = Black,
+                        enabled = activeCount > 0
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    NeoButton(
+                        text = "CANCEL",
+                        onClick = onDismiss,
+                        containerColor = Cream,
+                        contentColor = Black
+                    )
+                }
+                AgentControlPhase.STOPPED -> {
+                    Text(
+                        text = "All Agents Stopped",
+                        style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                        color = Black,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+
+                    Text(
+                        text = "Provide new guidance or corrections. All agents will see this when they resume.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = TextSecondary,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    NeoTextField(
+                        value = correctionText,
+                        onValueChange = { correctionText = it },
+                        placeholder = "e.g. Stop modifying the database schema \u2014 focus only on the frontend changes I described...",
+                        focusHighlight = Orange
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    NeoButton(
+                        text = "RESUME ALL",
+                        onClick = {
+                            if (correctionText.isNotBlank()) {
+                                val prompt = buildSosPrompt(channelName, correctionText)
+                                onResumeAllWithCorrection(prompt) { onDismiss() }
+                            }
+                        },
+                        containerColor = Lime,
+                        contentColor = Black,
+                        enabled = correctionText.isNotBlank()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    NeoButton(
+                        text = "KEEP STOPPED",
+                        onClick = onKeepStopped,
+                        containerColor = Cream,
+                        contentColor = Black
+                    )
+                }
+            }
+        }
+    }
+}
+
+internal enum class AgentControlPhase { CONFIRM_STOP, STOPPED }
+
+internal fun buildSosPrompt(channelName: String, userText: String): String =
+    "[SOS] The user has emergency-stopped all agents in #$channelName because they were going off-track. " +
+        "Here is the user's correction and new guidance:\n\n$userText\n\n" +
+        "Read this carefully, acknowledge the correction, and adjust your approach accordingly. " +
+        "Use check_messages and read_history to understand the current state before taking any action."
+
+@Composable
+private fun AgentStatusRow(agent: Agent) {
+    val isActive = agent.status == "active"
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .background(if (isActive) Orange else Color(0xFFEEEEEE))
+                .border(2.dp, Black, RectangleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = agent.name.orEmpty().take(1).uppercase(),
+                fontWeight = FontWeight.Bold,
+                fontSize = 13.sp,
+                color = Black
+            )
+        }
+        Text(
+            text = agent.name.orEmpty(),
+            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = Black,
+            modifier = Modifier.weight(1f)
+        )
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(if (isActive) Lime else Color(0xFFCCCCCC))
+                .border(1.dp, Black, RectangleShape)
+        )
+        Text(
+            text = if (isActive) "Active" else "Stopped",
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isActive) Black else TextMuted
         )
     }
 }

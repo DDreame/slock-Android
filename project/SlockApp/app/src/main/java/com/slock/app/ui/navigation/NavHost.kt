@@ -506,9 +506,12 @@ fun SlockNavHost(
             val contextLabel = backStackEntry.arguments?.getString("contextLabel").orEmpty()
             val viewModel: MessageViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
+            val channelVM: ChannelViewModel = hiltViewModel()
+            val channelAgents by channelVM.channelAgents.collectAsState()
 
             LaunchedEffect(channelId) {
                 viewModel.loadMessages(channelId)
+                channelVM.loadChannelAgents(channelId)
             }
 
             MessageListScreen(
@@ -543,7 +546,11 @@ fun SlockNavHost(
                 onToggleReaction = viewModel::toggleReaction,
                 onToggleSavedChannel = viewModel::toggleSavedChannel,
                 onSavedChannelFeedbackShown = viewModel::consumeSavedChannelFeedback,
-                onSendErrorShown = viewModel::dismissSendError
+                onSendErrorShown = viewModel::dismissSendError,
+                channelAgents = channelAgents,
+                channelName_raw = channelName.ifBlank { channelId },
+                onStopAllAgents = { onSuccess, onError -> channelVM.stopAllChannelAgents(onSuccess, onError) },
+                onResumeAllAgents = { prompt, onSuccess, onError -> channelVM.resumeAllChannelAgents(prompt, onSuccess, onError) }
             )
         }
 
