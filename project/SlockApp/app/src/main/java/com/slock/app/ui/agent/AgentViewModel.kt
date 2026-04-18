@@ -6,6 +6,7 @@ import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.SettingsPreferencesStore
 import com.slock.app.data.model.Agent
 import com.slock.app.data.model.DEFAULT_AGENT_MODEL_OPTIONS
+import com.slock.app.data.model.supportsAgentReasoningEffort
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -194,11 +195,30 @@ class AgentViewModel @Inject constructor(
         }
     }
 
-    fun createAgent(name: String, description: String, prompt: String, model: String) {
+    fun createAgent(
+        name: String,
+        description: String,
+        prompt: String,
+        model: String,
+        runtime: String?,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?
+    ) {
         val serverId = activeServerHolder.serverId ?: return
+        val resolvedReasoningEffort = if (supportsAgentReasoningEffort(runtime)) reasoningEffort else null
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true) }
-            agentRepository.createAgent(serverId, name, description, prompt, model).fold(
+            agentRepository.createAgent(
+                serverId = serverId,
+                name = name,
+                description = description,
+                prompt = prompt,
+                model = model,
+                runtime = runtime,
+                reasoningEffort = resolvedReasoningEffort,
+                envVars = envVars,
+                avatar = null
+            ).fold(
                 onSuccess = { agent ->
                     settingsPreferencesStore.addRecentAgentModel(model)
                     _state.update {
@@ -264,10 +284,28 @@ class AgentViewModel @Inject constructor(
         }
     }
 
-    fun updateAgent(agentId: String, name: String?, description: String?, prompt: String?) {
+    fun updateAgent(
+        agentId: String,
+        name: String?,
+        description: String?,
+        prompt: String?,
+        runtime: String?,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?
+    ) {
         val serverId = activeServerHolder.serverId ?: return
+        val resolvedReasoningEffort = if (supportsAgentReasoningEffort(runtime)) reasoningEffort else null
         viewModelScope.launch {
-            agentRepository.updateAgent(serverId, agentId, name, description, prompt).fold(
+            agentRepository.updateAgent(
+                serverId = serverId,
+                agentId = agentId,
+                name = name,
+                description = description,
+                prompt = prompt,
+                runtime = runtime,
+                reasoningEffort = resolvedReasoningEffort,
+                envVars = envVars
+            ).fold(
                 onSuccess = { updatedAgent ->
                     _state.update { it.copy(agents = it.agents.map { a -> if (a.id == agentId) updatedAgent else a }) }
                 },

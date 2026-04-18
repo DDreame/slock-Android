@@ -12,8 +12,27 @@ import javax.inject.Inject
 interface AgentRepository {
     suspend fun getAgents(serverId: String): Result<List<Agent>>
     suspend fun refreshAgents(serverId: String): Result<List<Agent>>
-    suspend fun createAgent(serverId: String, name: String, description: String, prompt: String, model: String = DEFAULT_AGENT_MODEL_ID, avatar: String? = null): Result<Agent>
-    suspend fun updateAgent(serverId: String, agentId: String, name: String?, description: String?, prompt: String?): Result<Agent>
+    suspend fun createAgent(
+        serverId: String,
+        name: String,
+        description: String,
+        prompt: String,
+        model: String = DEFAULT_AGENT_MODEL_ID,
+        runtime: String? = null,
+        reasoningEffort: String? = null,
+        envVars: Map<String, String>? = null,
+        avatar: String? = null
+    ): Result<Agent>
+    suspend fun updateAgent(
+        serverId: String,
+        agentId: String,
+        name: String?,
+        description: String?,
+        prompt: String?,
+        runtime: String? = null,
+        reasoningEffort: String? = null,
+        envVars: Map<String, String>? = null
+    ): Result<Agent>
     suspend fun deleteAgent(serverId: String, agentId: String): Result<Unit>
     suspend fun startAgent(serverId: String, agentId: String): Result<Unit>
     suspend fun stopAgent(serverId: String, agentId: String): Result<Unit>
@@ -88,11 +107,25 @@ class AgentRepositoryImpl @Inject constructor(
         description: String,
         prompt: String,
         model: String,
+        runtime: String?,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?,
         avatar: String?
     ): Result<Agent> {
         return try {
             activeServerHolder.serverId = serverId
-            val response = apiService.createAgent(CreateAgentRequest(name, description, prompt, model, avatar))
+            val response = apiService.createAgent(
+                CreateAgentRequest(
+                    name = name,
+                    description = description,
+                    prompt = prompt,
+                    model = model,
+                    runtime = runtime,
+                    reasoningEffort = reasoningEffort,
+                    envVars = envVars,
+                    avatar = avatar
+                )
+            )
             if (response.isSuccessful && response.body() != null) {
                 val agent = response.body()!!
                 agentDao.insertAgent(agent.toEntity(serverId))
@@ -110,11 +143,24 @@ class AgentRepositoryImpl @Inject constructor(
         agentId: String,
         name: String?,
         description: String?,
-        prompt: String?
+        prompt: String?,
+        runtime: String?,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?
     ): Result<Agent> {
         return try {
             activeServerHolder.serverId = serverId
-            val response = apiService.updateAgent(agentId, UpdateAgentRequest(name, description, prompt))
+            val response = apiService.updateAgent(
+                agentId,
+                UpdateAgentRequest(
+                    name = name,
+                    description = description,
+                    prompt = prompt,
+                    runtime = runtime,
+                    reasoningEffort = reasoningEffort,
+                    envVars = envVars
+                )
+            )
             if (response.isSuccessful && response.body() != null) {
                 val agent = response.body()!!
                 agentDao.insertAgent(agent.toEntity(serverId))

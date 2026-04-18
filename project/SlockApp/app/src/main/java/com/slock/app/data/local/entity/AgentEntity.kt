@@ -20,5 +20,8 @@ data class AgentEntity(
     val status: String? = null,
     val activity: String? = null,
     val activityDetail: String? = null,
-    val createdAt: String? = null
+    val createdAt: String? = null,
+    val runtime: String? = null,
+    val reasoningEffort: String? = null,
+    val envVars: String? = null
 )

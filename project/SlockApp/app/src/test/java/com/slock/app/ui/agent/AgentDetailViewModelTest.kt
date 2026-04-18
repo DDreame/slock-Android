@@ -313,8 +313,27 @@ private class FakeAgentRepository(
 ) : AgentRepository {
     override suspend fun getAgents(serverId: String) = agentsResult
     override suspend fun refreshAgents(serverId: String) = agentsResult
-    override suspend fun createAgent(serverId: String, name: String, description: String, prompt: String, model: String, avatar: String?) = Result.failure<Agent>(NotImplementedError())
-    override suspend fun updateAgent(serverId: String, agentId: String, name: String?, description: String?, prompt: String?) = Result.failure<Agent>(NotImplementedError())
+    override suspend fun createAgent(
+        serverId: String,
+        name: String,
+        description: String,
+        prompt: String,
+        model: String,
+        runtime: String?,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?,
+        avatar: String?
+    ) = Result.failure<Agent>(NotImplementedError())
+    override suspend fun updateAgent(
+        serverId: String,
+        agentId: String,
+        name: String?,
+        description: String?,
+        prompt: String?,
+        runtime: String?,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?
+    ) = Result.failure<Agent>(NotImplementedError())
     override suspend fun deleteAgent(serverId: String, agentId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun startAgent(serverId: String, agentId: String) = Result.success(Unit)
     override suspend fun stopAgent(serverId: String, agentId: String) = Result.success(Unit)
