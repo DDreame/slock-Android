@@ -11,6 +11,7 @@ import com.slock.app.data.repository.TaskRepository
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -56,6 +57,7 @@ class MessageConvertToTaskExecutionTest {
 
     private fun createViewModel(): MessageViewModel {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
+        runBlocking { whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false) }
         return MessageViewModel(messageRepository, taskRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
     }
 
