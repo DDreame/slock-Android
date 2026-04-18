@@ -155,6 +155,55 @@ class ThreadInboxUiTest {
     }
 
     @Test
+    fun `ThreadReplyUiState has isFollowing field`() {
+        assertTrue(
+            "ThreadReplyUiState must have isFollowing: Boolean",
+            replyViewModelSource.contains("val isFollowing: Boolean")
+        )
+    }
+
+    @Test
+    fun `ThreadReplyViewModel loadThread checks followed threads for initial state`() {
+        val loadMethod = replyViewModelSource
+            .substringAfter("fun loadThread(")
+            .substringBefore("fun sendReply(")
+        assertTrue(
+            "loadThread must check getFollowedThreads to determine isFollowing",
+            loadMethod.contains("getFollowedThreads") && loadMethod.contains("isFollowing")
+        )
+    }
+
+    @Test
+    fun `ThreadReplyViewModel followThread updates isFollowing optimistically`() {
+        val method = replyViewModelSource
+            .substringAfter("fun followThread()")
+            .substringBefore("fun unfollowThread()")
+        assertTrue(
+            "followThread must set isFollowing = true optimistically",
+            method.contains("isFollowing = true")
+        )
+    }
+
+    @Test
+    fun `ThreadReplyViewModel unfollowThread updates isFollowing optimistically`() {
+        val method = replyViewModelSource
+            .substringAfter("fun unfollowThread()")
+            .substringBefore("fun markThreadDone()")
+        assertTrue(
+            "unfollowThread must set isFollowing = false optimistically",
+            method.contains("isFollowing = false")
+        )
+    }
+
+    @Test
+    fun `ThreadReplyScreen uses state isFollowing not local variable`() {
+        assertTrue(
+            "ThreadReplyScreen must use state.isFollowing for ParticipantBar",
+            replyScreenSource.contains("state.isFollowing")
+        )
+    }
+
+    @Test
     fun `ThreadReplyViewModel has followThread method`() {
         assertTrue(
             "ThreadReplyViewModel must have followThread calling repository",

@@ -35,7 +35,6 @@ fun ThreadReplyScreen(
     onMarkDone: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
-    var isFollowing by remember { mutableStateOf(true) }
 
     Column(
         modifier = Modifier
@@ -53,10 +52,9 @@ fun ThreadReplyScreen(
         // Participant status bar
         ParticipantBar(
             participants = buildParticipantList(state),
-            isFollowing = isFollowing,
+            isFollowing = state.isFollowing,
             onToggleFollow = {
-                if (isFollowing) onUnfollowThread() else onFollowThread()
-                isFollowing = !isFollowing
+                if (state.isFollowing) onUnfollowThread() else onFollowThread()
             },
             onMarkDone = onMarkDone
         )

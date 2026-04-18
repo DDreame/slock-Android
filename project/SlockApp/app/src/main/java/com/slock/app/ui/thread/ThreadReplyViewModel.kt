@@ -26,6 +26,7 @@ data class ThreadReplyUiState(
     val isLoadingMore: Boolean = false,
     val hasMoreReplies: Boolean = false,
     val isSending: Boolean = false,
+    val isFollowing: Boolean = false,
     val error: String? = null
 )
 
@@ -87,6 +88,14 @@ class ThreadReplyViewModel @Inject constructor(
         Log.d("ThreadReplyVM", "loadThread: threadChannelId=$threadChannelId, serverId=$serverId")
         viewModelScope.launch {
             _state.update { it.copy(isLoading = it.replies.isEmpty()) }
+
+            threadRepository.getFollowedThreads(serverId).fold(
+                onSuccess = { followed ->
+                    val isFollowed = followed.any { it.threadChannelId == threadChannelId }
+                    _state.update { it.copy(isFollowing = isFollowed) }
+                },
+                onFailure = { }
+            )
 
             // Try wrapped format first: GET /messages/channel/{id} → { messages: [...] }
             var replies: List<Message>? = null
@@ -198,8 +207,11 @@ class ThreadReplyViewModel @Inject constructor(
     fun followThread() {
         val serverId = activeServerHolder.serverId ?: return
         val parentMessageId = _state.value.parentMessage?.id ?: return
+        _state.update { it.copy(isFollowing = true) }
         viewModelScope.launch {
-            threadRepository.followThread(serverId, parentMessageId)
+            threadRepository.followThread(serverId, parentMessageId).onFailure {
+                _state.update { it.copy(isFollowing = false) }
+            }
         }
     }
 
@@ -207,8 +219,11 @@ class ThreadReplyViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         val threadChannelId = _state.value.threadChannelId
         if (threadChannelId.isBlank()) return
+        _state.update { it.copy(isFollowing = false) }
         viewModelScope.launch {
-            threadRepository.unfollowThread(serverId, threadChannelId)
+            threadRepository.unfollowThread(serverId, threadChannelId).onFailure {
+                _state.update { it.copy(isFollowing = true) }
+            }
         }
     }
 
