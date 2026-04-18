@@ -44,7 +44,7 @@ class MarkReadUnreadSourceTest {
 
     @Test
     fun `ApiService markChannelUnread uses POST method`() {
-        val beforeMethod = apiSource.substringBefore("fun markChannelUnread(")
+        val beforeMethod = apiSource.substringBefore("suspend fun markChannelUnread(")
         val lastAnnotation = beforeMethod.trimEnd().lines().last()
         assertTrue(
             "markChannelUnread must use @POST annotation",
