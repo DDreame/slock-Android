@@ -34,8 +34,7 @@ class AgentSettingsComposeTest {
         model = "claude-sonnet-4-20250514"
     )
 
-    private data class UpdateCall(
-        val agentId: String,
+    private data class SaveCall(
         val name: String?,
         val description: String?,
         val prompt: String?,
@@ -44,60 +43,52 @@ class AgentSettingsComposeTest {
         val envVars: Map<String, String>?
     )
 
-    private fun renderAndOpenSettings(
+    private fun renderContent(
         agent: Agent = testAgent,
-        onUpdateAgent: (String, String?, String?, String?, String?, String?, Map<String, String>?) -> Unit = { _, _, _, _, _, _, _ -> }
+        onSave: (String?, String?, String?, String, String?, Map<String, String>?) -> Unit = { _, _, _, _, _, _ -> },
+        onDelete: () -> Unit = {}
     ) {
         composeTestRule.setContent {
-            AgentListScreen(
-                state = AgentUiState(agents = listOf(agent)),
-                onCreateAgent = { _, _, _, _, _, _, _ -> },
-                onStartAgent = {},
-                onStopAgent = {},
-                onResetAgent = {},
-                onDeleteAgent = {},
-                onUpdateAgent = onUpdateAgent,
-                onDmAgent = {},
-                onAgentClick = {},
-                onNavigateBack = {},
-                showHeader = false
+            AgentSettingsContent(
+                agent = agent,
+                onSave = onSave,
+                onDelete = onDelete
             )
         }
-        composeTestRule.onNodeWithText("CONFIG").performClick()
         composeTestRule.waitForIdle()
     }
 
     @Test
     fun `settings sheet shows editable name field with current value`() {
-        renderAndOpenSettings()
+        renderContent()
         composeTestRule.onNodeWithText("Agent Settings").assertIsDisplayed()
         composeTestRule.onNodeWithText("TestBot").assertIsDisplayed()
     }
 
     @Test
     fun `settings sheet shows editable description field`() {
-        renderAndOpenSettings()
+        renderContent()
         composeTestRule.onNodeWithText("A helpful bot").assertIsDisplayed()
     }
 
     @Test
     fun `settings sheet shows editable prompt field`() {
-        renderAndOpenSettings()
+        renderContent()
         composeTestRule.onNodeWithText("Be helpful").assertIsDisplayed()
     }
 
     @Test
     fun `settings sheet shows read-only model badge`() {
-        renderAndOpenSettings()
+        renderContent()
         composeTestRule.onNodeWithText("Sonnet").assertIsDisplayed()
     }
 
     @Test
-    fun `saving settings passes edited name to onUpdateAgent`() {
-        var captured: UpdateCall? = null
-        renderAndOpenSettings(
-            onUpdateAgent = { id, name, desc, prompt, runtime, reasoning, envVars ->
-                captured = UpdateCall(id, name, desc, prompt, runtime, reasoning, envVars)
+    fun `saving settings passes edited name to onSave`() {
+        var captured: SaveCall? = null
+        renderContent(
+            onSave = { name, desc, prompt, runtime, reasoning, envVars ->
+                captured = SaveCall(name, desc, prompt, runtime, reasoning, envVars)
             }
         )
 
@@ -109,17 +100,16 @@ class AgentSettingsComposeTest {
         composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
         composeTestRule.waitForIdle()
 
-        assertNotNull("onUpdateAgent must have been called", captured)
-        assertEquals("agent-1", captured?.agentId)
+        assertNotNull("onSave must have been called", captured)
         assertEquals("NewName", captured?.name)
     }
 
     @Test
-    fun `saving settings passes edited description to onUpdateAgent`() {
-        var captured: UpdateCall? = null
-        renderAndOpenSettings(
-            onUpdateAgent = { id, name, desc, prompt, runtime, reasoning, envVars ->
-                captured = UpdateCall(id, name, desc, prompt, runtime, reasoning, envVars)
+    fun `saving settings passes edited description to onSave`() {
+        var captured: SaveCall? = null
+        renderContent(
+            onSave = { name, desc, prompt, runtime, reasoning, envVars ->
+                captured = SaveCall(name, desc, prompt, runtime, reasoning, envVars)
             }
         )
 
@@ -131,16 +121,16 @@ class AgentSettingsComposeTest {
         composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
         composeTestRule.waitForIdle()
 
-        assertNotNull("onUpdateAgent must have been called", captured)
+        assertNotNull("onSave must have been called", captured)
         assertEquals("New description", captured?.description)
     }
 
     @Test
-    fun `saving settings passes edited prompt to onUpdateAgent`() {
-        var captured: UpdateCall? = null
-        renderAndOpenSettings(
-            onUpdateAgent = { id, name, desc, prompt, runtime, reasoning, envVars ->
-                captured = UpdateCall(id, name, desc, prompt, runtime, reasoning, envVars)
+    fun `saving settings passes edited prompt to onSave`() {
+        var captured: SaveCall? = null
+        renderContent(
+            onSave = { name, desc, prompt, runtime, reasoning, envVars ->
+                captured = SaveCall(name, desc, prompt, runtime, reasoning, envVars)
             }
         )
 
@@ -152,13 +142,13 @@ class AgentSettingsComposeTest {
         composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
         composeTestRule.waitForIdle()
 
-        assertNotNull("onUpdateAgent must have been called", captured)
+        assertNotNull("onSave must have been called", captured)
         assertEquals("New prompt", captured?.prompt)
     }
 
     @Test
     fun `model badge is displayed but not editable`() {
-        renderAndOpenSettings()
+        renderContent()
         composeTestRule.onNodeWithText("Sonnet").assertIsDisplayed()
         composeTestRule.onNode(hasText("Sonnet") and hasSetTextAction()).assertDoesNotExist()
     }
