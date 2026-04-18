@@ -87,9 +87,10 @@ object Routes {
     }
 
     fun messagesRoute(channelId: String, channelName: String, contextLabel: String? = null): String {
+        val encodedChannelId = Uri.encode(channelId)
         val encodedName = encodeQueryValue(channelName)
         val encodedContext = encodeQueryValue(contextLabel.orEmpty())
-        return "channel/$channelId/messages?name=$encodedName&context=$encodedContext"
+        return "channel/$encodedChannelId/messages?name=$encodedName&context=$encodedContext"
     }
 
     fun agentDetailRoute(agentId: String, contextLabel: String? = null, serverId: String? = null): String {
