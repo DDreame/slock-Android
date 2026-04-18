@@ -44,6 +44,7 @@ class ChannelViewModelTest {
         whenever(socketIOManager.connectionState).thenReturn(emptyFlow())
         whenever(channelRepository.getChannels(any())).thenReturn(Result.success(emptyList()))
         whenever(channelRepository.refreshChannels(any())).thenReturn(Result.success(emptyList()))
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
 
@@ -69,6 +70,7 @@ class ChannelViewModelTest {
         whenever(channelRepository.refreshChannels("server-1")).thenReturn(
             Result.success(listOf(Channel(id = "channel-1", name = "General", type = "text")))
         )
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
         whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
@@ -103,6 +105,7 @@ class ChannelViewModelTest {
         whenever(channelRepository.refreshChannels("server-1")).thenReturn(
             Result.success(listOf(Channel(id = "channel-1", name = "General", type = "text")))
         )
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
         whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
@@ -143,6 +146,7 @@ class ChannelViewModelTest {
         whenever(channelRepository.refreshChannels("server-1")).thenReturn(
             Result.success(listOf(Channel(id = "channel-1", name = "General", type = "text")))
         )
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(
             mapOf(
                 "channel-1" to Message(
@@ -180,6 +184,7 @@ class ChannelViewModelTest {
         whenever(socketIOManager.connectionState).thenReturn(emptyFlow())
         whenever(channelRepository.getChannels(any())).thenReturn(Result.success(emptyList()))
         whenever(channelRepository.refreshChannels(any())).thenReturn(Result.success(emptyList()))
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(channelRepository.getDMs("server-1")).thenReturn(
             Result.success(listOf(Channel(id = "dm-1", name = "Direct Message", type = "dm")))
         )
@@ -257,6 +262,7 @@ class ChannelViewModelManagementTest {
                 Channel(id = "ch-2", name = "random", type = "text")
             ))
         )
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
         whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
