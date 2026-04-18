@@ -9,7 +9,6 @@ import com.slock.app.data.model.Attachment
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
-import com.slock.app.data.repository.ServerRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -90,7 +89,6 @@ fun computeSearchMatches(state: MessageUiState): MessageUiState {
 class MessageViewModel @Inject constructor(
     private val messageRepository: MessageRepository,
     private val channelRepository: ChannelRepository,
-    private val serverRepository: ServerRepository,
     private val socketIOManager: SocketIOManager,
     private val activeServerHolder: ActiveServerHolder,
     private val presenceTracker: PresenceTracker
@@ -404,10 +402,8 @@ class MessageViewModel @Inject constructor(
         if (channelId.isNotBlank()) {
             if (activeServerHolder.serverId.isNullOrBlank()) {
                 viewModelScope.launch {
-                    serverRepository.getServers().onSuccess { servers ->
-                        servers.firstOrNull()?.id?.let { id ->
-                            activeServerHolder.serverId = id
-                        }
+                    channelRepository.getServerIdForChannel(channelId)?.let { id ->
+                        activeServerHolder.serverId = id
                     }
                     loadMessages(channelId)
                 }

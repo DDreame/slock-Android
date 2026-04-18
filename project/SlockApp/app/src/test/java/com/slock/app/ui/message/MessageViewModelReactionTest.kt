@@ -5,7 +5,6 @@ import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
-import com.slock.app.data.repository.ServerRepository
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,7 +27,6 @@ class MessageViewModelReactionTest {
 
     private val messageRepository: MessageRepository = mock()
     private val channelRepository: ChannelRepository = mock()
-    private val serverRepository: ServerRepository = mock()
     private val socketIOManager: SocketIOManager = mock()
     private val activeServerHolder: ActiveServerHolder = mock()
     private val presenceTracker = PresenceTracker()
@@ -37,7 +35,7 @@ class MessageViewModelReactionTest {
     fun toggleReaction_updatesLocalReactionOverrides() = runTest {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         val message = Message(id = "msg-1", content = "hello")
 
         viewModel.toggleReaction(message, "👍")
@@ -52,7 +50,7 @@ class MessageViewModelReactionTest {
     fun toggleReaction_ignoresMessagesWithoutId() = runTest {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
 
         viewModel.toggleReaction(Message(id = null, content = "draft"), "👍")
 
@@ -72,7 +70,7 @@ class MessageViewModelReactionTest {
         whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
             .thenReturn(Result.success(listOf(existing)))
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
 
@@ -95,7 +93,7 @@ class MessageViewModelReactionTest {
         val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
         whenever(socketIOManager.events).thenReturn(events)
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         advanceUntilIdle()
 
         events.emit(SocketIOManager.SocketEvent.UserPresence(userId = "user-1", status = "online"))
@@ -112,7 +110,7 @@ class MessageViewModelReactionTest {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
         presenceTracker.setOnline("agent-1")
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         advanceUntilIdle()
 
         assertTrue("agent-1" in viewModel.state.value.onlineIds)
@@ -123,7 +121,7 @@ class MessageViewModelReactionTest {
         val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
         whenever(socketIOManager.events).thenReturn(events)
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         advanceUntilIdle()
 
         events.emit(

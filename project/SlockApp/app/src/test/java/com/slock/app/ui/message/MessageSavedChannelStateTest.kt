@@ -4,7 +4,6 @@ import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
-import com.slock.app.data.repository.ServerRepository
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -28,7 +27,6 @@ class MessageSavedChannelStateTest {
 
     private val messageRepository: MessageRepository = mock()
     private val channelRepository: ChannelRepository = mock()
-    private val serverRepository: ServerRepository = mock()
     private val socketIOManager: SocketIOManager = mock()
     private val activeServerHolder: ActiveServerHolder = mock()
     private val presenceTracker = PresenceTracker()
@@ -43,7 +41,7 @@ class MessageSavedChannelStateTest {
         whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
             .thenReturn(Result.success(emptyList()))
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
 
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
@@ -64,7 +62,7 @@ class MessageSavedChannelStateTest {
         whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
             .thenReturn(Result.success(emptyList()))
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
 
@@ -86,7 +84,7 @@ class MessageSavedChannelStateTest {
         whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
             .thenReturn(Result.success(emptyList()))
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
 
@@ -109,7 +107,7 @@ class MessageSavedChannelStateTest {
         whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
             .thenReturn(Result.success(emptyList()))
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
 
@@ -138,7 +136,7 @@ class MessageSavedChannelStateTest {
         whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
             .thenReturn(Result.success(emptyList()))
 
-        val viewModel = MessageViewModel(messageRepository, channelRepository, serverRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
 

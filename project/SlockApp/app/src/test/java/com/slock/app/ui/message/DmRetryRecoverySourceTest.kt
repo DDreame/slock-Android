@@ -12,13 +12,37 @@ class DmRetryRecoverySourceTest {
         File("app/src/main/java/com/slock/app/ui/message/MessageViewModel.kt")
     ).first { it.exists() }.readText()
 
+    private val repoSource: String = listOf(
+        File("src/main/java/com/slock/app/data/repository/ChannelRepository.kt"),
+        File("app/src/main/java/com/slock/app/data/repository/ChannelRepository.kt")
+    ).first { it.exists() }.readText()
+
     @Test
-    fun `MessageViewModel constructor includes ServerRepository`() {
-        val constructor = vmSource.substringAfter("class MessageViewModel")
-            .substringBefore(") : ViewModel()")
+    fun `ChannelRepository interface declares getServerIdForChannel`() {
+        val interfaceBlock = repoSource.substringAfter("interface ChannelRepository")
+            .substringBefore("class ChannelRepositoryImpl")
         assertTrue(
-            "MessageViewModel must depend on ServerRepository",
-            constructor.contains("ServerRepository")
+            "ChannelRepository must declare getServerIdForChannel",
+            interfaceBlock.contains("getServerIdForChannel")
+        )
+    }
+
+    @Test
+    fun `ChannelRepositoryImpl overrides getServerIdForChannel`() {
+        val implBlock = repoSource.substringAfter("class ChannelRepositoryImpl")
+        assertTrue(
+            "ChannelRepositoryImpl must implement getServerIdForChannel",
+            implBlock.contains("override suspend fun getServerIdForChannel")
+        )
+    }
+
+    @Test
+    fun `getServerIdForChannel uses channelDao getChannelById`() {
+        val implBlock = repoSource.substringAfter("override suspend fun getServerIdForChannel")
+            .substringBefore("}")
+        assertTrue(
+            "getServerIdForChannel must use channelDao.getChannelById",
+            implBlock.contains("channelDao.getChannelById")
         )
     }
 
@@ -34,48 +58,35 @@ class DmRetryRecoverySourceTest {
     }
 
     @Test
-    fun `retryLoadMessages fetches servers when serverId is null`() {
+    fun `retryLoadMessages resolves serverId via channelRepository`() {
         val retryBlock = vmSource
             .substringAfter("fun retryLoadMessages()")
             .substringBefore("fun loadMoreMessages()")
         assertTrue(
-            "retryLoadMessages must call serverRepository.getServers() when serverId is null",
-            retryBlock.contains("serverRepository.getServers()")
+            "retryLoadMessages must use channelRepository.getServerIdForChannel for precise mapping",
+            retryBlock.contains("channelRepository.getServerIdForChannel")
         )
     }
 
     @Test
-    fun `retryLoadMessages sets serverId from fetched servers`() {
-        val retryBlock = vmSource
-            .substringAfter("fun retryLoadMessages()")
-            .substringBefore("fun loadMoreMessages()")
-        assertTrue(
-            "retryLoadMessages must set activeServerHolder.serverId from server list",
-            retryBlock.contains("activeServerHolder.serverId =")
-        )
-    }
-
-    @Test
-    fun `retryLoadMessages still calls loadMessages after server resolution`() {
-        val retryBlock = vmSource
-            .substringAfter("fun retryLoadMessages()")
-            .substringBefore("fun loadMoreMessages()")
-        assertTrue(
-            "retryLoadMessages must still call loadMessages",
-            retryBlock.contains("loadMessages(channelId)")
-        )
-    }
-
-    @Test
-    fun `retryLoadMessages does not blindly re-call loadMessages without server check`() {
+    fun `retryLoadMessages does not use serverRepository`() {
         val retryBlock = vmSource
             .substringAfter("fun retryLoadMessages()")
             .substringBefore("fun loadMoreMessages()")
         assertFalse(
-            "retryLoadMessages must not unconditionally call loadMessages without checking serverId first",
-            retryBlock.trimStart().startsWith("val channelId = _state.value.channelId\n" +
-                "        if (channelId.isNotBlank()) {\n" +
-                "            loadMessages(channelId)")
+            "retryLoadMessages must not blindly use serverRepository.getServers()",
+            retryBlock.contains("serverRepository")
+        )
+    }
+
+    @Test
+    fun `retryLoadMessages still calls loadMessages after resolution`() {
+        val retryBlock = vmSource
+            .substringAfter("fun retryLoadMessages()")
+            .substringBefore("fun loadMoreMessages()")
+        assertTrue(
+            "retryLoadMessages must call loadMessages",
+            retryBlock.contains("loadMessages(channelId)")
         )
     }
 }
