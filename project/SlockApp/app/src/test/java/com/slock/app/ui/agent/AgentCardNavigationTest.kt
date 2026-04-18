@@ -42,7 +42,7 @@ class AgentCardNavigationTest {
     @Test
     fun `inactive agents call site passes onClick with guarded onAgentClick`() {
         val inactiveBlock = source.substringAfter("items(inactiveAgents)")
-            .substringBefore("}")
+            .substringBefore("if (showCreateDialog)")
         assertTrue(
             "Inactive agent NeoAgentCard must guard empty id before calling onAgentClick",
             inactiveBlock.contains("agent.id?.takeIf") && inactiveBlock.contains("let(onAgentClick)")
