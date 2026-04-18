@@ -213,7 +213,11 @@ class MessageViewModel @Inject constructor(
             // Get cached data first
             messageRepository.getMessages(serverId, channelId).fold(
                 onSuccess = { messages ->
-                    _state.update { recomputeSearchMatches(it.copy(messages = messages.reversed(), isLoading = false)) }
+                    _state.update {
+                        recomputeSearchMatches(
+                            it.copy(messages = messages.reversed(), isLoading = false, error = null)
+                        )
+                    }
                 },
                 onFailure = { error ->
                     _state.update { it.copy(isLoading = false, error = error.message) }
@@ -222,7 +226,11 @@ class MessageViewModel @Inject constructor(
             // Then refresh from cloud (cloud always wins)
             messageRepository.refreshMessages(serverId, channelId).fold(
                 onSuccess = { messages ->
-                    _state.update { recomputeSearchMatches(it.copy(messages = messages.reversed())) }
+                    _state.update {
+                        recomputeSearchMatches(
+                            it.copy(messages = messages.reversed(), error = null)
+                        )
+                    }
                 },
                 onFailure = { /* keep cached data */ }
             )

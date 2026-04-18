@@ -120,6 +120,42 @@ class MessageErrorRecoveryExecutionTest {
         verify(messageRepository, times(2)).getMessages("srv-1", "ch-1", 50, null, null)
     }
 
+    @Test
+    fun `empty DM opens to empty state`() = runTest {
+        whenever(activeServerHolder.serverId).thenReturn("srv-1")
+        whenever(channelRepository.isChannelSaved("srv-1", "dm-1")).thenReturn(Result.success(false))
+        whenever(messageRepository.getMessages("srv-1", "dm-1", 50, null, null))
+            .thenReturn(Result.success(emptyList()))
+        whenever(messageRepository.refreshMessages("srv-1", "dm-1", 50))
+            .thenReturn(Result.success(emptyList()))
+
+        val vm = createViewModel()
+
+        vm.loadMessages("dm-1")
+        advanceUntilIdle()
+
+        assertTrue("Empty DM should keep empty messages list", vm.state.value.messages.isEmpty())
+        assertNull("Empty DM should not surface full-page load error", vm.state.value.error)
+    }
+
+    @Test
+    fun `failed first load then successful empty refresh clears error`() = runTest {
+        whenever(activeServerHolder.serverId).thenReturn("srv-1")
+        whenever(channelRepository.isChannelSaved("srv-1", "ch-1")).thenReturn(Result.success(false))
+        whenever(messageRepository.getMessages("srv-1", "ch-1", 50, null, null))
+            .thenReturn(Result.failure(Exception("network error")))
+        whenever(messageRepository.refreshMessages("srv-1", "ch-1", 50))
+            .thenReturn(Result.success(emptyList()))
+
+        val vm = createViewModel()
+
+        vm.loadMessages("ch-1")
+        advanceUntilIdle()
+
+        assertTrue(vm.state.value.messages.isEmpty())
+        assertNull("Successful empty refresh must clear previous load error", vm.state.value.error)
+    }
+
     // Issue 2: sendMessage failure sets sendError, preserves existing messages
     @Test
     fun `sendMessage failure sets sendError not error and preserves messages`() = runTest {
@@ -220,17 +256,15 @@ class MessageRepositoryRawFallbackTest {
     }
 
     @Test
-    fun `raw fallback receives before when wrapped returns empty`() = runTest {
+    fun `wrapped empty response does not require raw fallback`() = runTest {
         whenever(apiService.getMessages("ch-1", 50, "cursor-100", null))
             .thenReturn(retrofit2.Response.success(com.slock.app.data.model.MessagesResponse(messages = emptyList())))
-        whenever(apiService.getMessagesRaw("ch-1", 50, "cursor-100", null))
-            .thenReturn(retrofit2.Response.success(listOf(Message(id = "m1", content = "older", seq = 50))))
 
         val result = repo.getMessages("srv-1", "ch-1", 50, before = "cursor-100", after = null)
 
         assertTrue(result.isSuccess)
-        assertEquals(1, result.getOrNull()!!.size)
-        verify(apiService).getMessagesRaw("ch-1", 50, "cursor-100", null)
+        assertTrue(result.getOrNull()!!.isEmpty())
+        verify(apiService, times(0)).getMessagesRaw(any(), any(), anyOrNull(), anyOrNull())
     }
 
     @Test
@@ -247,9 +281,9 @@ class MessageRepositoryRawFallbackTest {
     }
 
     @Test
-    fun `raw fallback forwards after param for forward pagination`() = runTest {
+    fun `raw fallback forwards after param for forward pagination when wrapped throws`() = runTest {
         whenever(apiService.getMessages("ch-1", 50, null, "cursor-200"))
-            .thenReturn(retrofit2.Response.success(com.slock.app.data.model.MessagesResponse(messages = emptyList())))
+            .thenThrow(RuntimeException("deserialization error"))
         whenever(apiService.getMessagesRaw("ch-1", 50, null, "cursor-200"))
             .thenReturn(retrofit2.Response.success(listOf(Message(id = "m3", content = "newer", seq = 250))))
 
@@ -391,11 +425,33 @@ class MessageErrorRecoveryStructuralTest {
     @Test
     fun `fetchMessages passes before and after to raw fallback`() {
         val fallbackBlock = repoSource
-            .substringAfter("Fallback: plain array")
+            .substringAfter("Fallback only when wrapped parsing/shape handling fails.")
             .substringBefore("return null")
         assertTrue(
             "Raw fallback must forward before param for pagination",
             fallbackBlock.contains("before") && fallbackBlock.contains("after")
+        )
+    }
+
+    @Test
+    fun `wrapped success returns messages directly even when empty`() {
+        val wrappedBlock = repoSource
+            .substringAfter("val response = apiService.getMessages")
+            .substringBefore("if (!response.isSuccessful)")
+        assertTrue(
+            "Wrapped successful response should return body messages directly, including empty list",
+            wrappedBlock.contains("return response.body()!!.messages")
+        )
+    }
+
+    @Test
+    fun `loadMessages success path clears error`() {
+        val loadBlock = vmSource
+            .substringAfter("fun loadMessages(channelId: String)")
+            .substringBefore("fun toggleSavedChannel()")
+        assertTrue(
+            "loadMessages success branches must clear error for empty successful responses",
+            loadBlock.contains("error = null")
         )
     }
 }
