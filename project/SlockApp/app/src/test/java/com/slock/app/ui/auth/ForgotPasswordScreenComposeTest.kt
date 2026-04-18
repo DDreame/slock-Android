@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.slock.app.ui.theme.SlockAppTheme
 import org.junit.Assert.assertEquals
 import org.junit.Rule
@@ -39,8 +40,8 @@ class ForgotPasswordScreenComposeTest {
         composeTestRule.onNodeWithText("Forgot Password").assertIsDisplayed()
         composeTestRule.onNodeWithText("Reset Password").assertIsDisplayed()
         composeTestRule.onNodeWithText("EMAIL").assertIsDisplayed()
-        composeTestRule.onNodeWithText("SEND RESET LINK").assertIsDisplayed().performClick()
-        composeTestRule.onNodeWithText("Back to Sign In").assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText("SEND RESET LINK").performScrollTo().assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText("Back to Sign In").performScrollTo().assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(1, sendClicks)
@@ -68,7 +69,7 @@ class ForgotPasswordScreenComposeTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Check your inbox").assertIsDisplayed()
         composeTestRule.onNodeWithText("person@example.com").assertIsDisplayed()
-        composeTestRule.onNodeWithText("BACK TO SIGN IN").assertIsDisplayed().performClick()
+        composeTestRule.onNodeWithText("BACK TO SIGN IN").performScrollTo().assertIsDisplayed().performClick()
         composeTestRule.waitForIdle()
 
         assertEquals(1, backClicks)
