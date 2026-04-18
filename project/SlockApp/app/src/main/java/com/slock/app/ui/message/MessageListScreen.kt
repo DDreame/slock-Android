@@ -24,6 +24,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -491,7 +492,9 @@ private fun SearchBar(
     onClose: () -> Unit
 ) {
     val focusRequester = remember { androidx.compose.ui.focus.FocusRequester() }
-    LaunchedEffect(Unit) { focusRequester.requestFocus() }
+    LaunchedEffect(Unit) {
+        try { focusRequester.requestFocus() } catch (_: IllegalStateException) {}
+    }
 
     Surface(color = Cream) {
         Row(
@@ -525,6 +528,7 @@ private fun SearchBar(
                     .heightIn(min = 36.dp, max = 36.dp)
                     .neoShadowSmall()
                     .border(2.dp, Black, RectangleShape)
+                    .focusRequester(focusRequester)
                     .focusable(),
                 textStyle = MaterialTheme.typography.bodyMedium
             )
