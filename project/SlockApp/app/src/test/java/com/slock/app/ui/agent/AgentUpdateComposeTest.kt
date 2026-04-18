@@ -4,6 +4,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.slock.app.data.model.Agent
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -48,6 +49,62 @@ class AgentUpdateComposeTest {
         }
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Edit").assertExists()
+    }
+
+    @Test
+    fun `clicking Edit opens settings sheet with Agent Settings title`() {
+        composeTestRule.setContent {
+            AgentDetailScreen(
+                state = AgentDetailUiState(agent = testAgent)
+            )
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Edit").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Agent Settings").assertExists()
+    }
+
+    @Test
+    fun `clicking Edit opens sheet with SAVE CONFIG button`() {
+        composeTestRule.setContent {
+            AgentDetailScreen(
+                state = AgentDetailUiState(agent = testAgent)
+            )
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Edit").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("SAVE CONFIG").assertExists()
+    }
+
+    @Test
+    fun `SAVE CONFIG triggers onUpdateAgent callback`() {
+        var updateCalled = false
+        composeTestRule.setContent {
+            AgentDetailScreen(
+                state = AgentDetailUiState(agent = testAgent),
+                onUpdateAgent = { _, _, _, _, _, _ -> updateCalled = true }
+            )
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Edit").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("SAVE CONFIG").performScrollTo().performClick()
+        composeTestRule.waitForIdle()
+        assertTrue("onUpdateAgent must be called when SAVE CONFIG is clicked", updateCalled)
+    }
+
+    @Test
+    fun `edit sheet does not show DELETE AGENT button`() {
+        composeTestRule.setContent {
+            AgentDetailScreen(
+                state = AgentDetailUiState(agent = testAgent)
+            )
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("Edit").performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("DELETE AGENT").assertDoesNotExist()
     }
 
     @Test

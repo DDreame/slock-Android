@@ -172,4 +172,24 @@ class AgentUpdateSourceTest {
             screenSource.contains("\"Reset\"")
         )
     }
+
+    @Test
+    fun `AgentDetailScreen does not expose onDeleteAgent`() {
+        assertFalse(
+            "AgentDetailScreen must not expose delete as a new user-reachable action",
+            screenSource.contains("onDeleteAgent")
+        )
+    }
+
+    @Test
+    fun `AgentSettingsContent onDelete is nullable for reuse without delete`() {
+        val listSource: String = listOf(
+            File("src/main/java/com/slock/app/ui/agent/AgentListScreen.kt"),
+            File("app/src/main/java/com/slock/app/ui/agent/AgentListScreen.kt")
+        ).first { it.exists() }.readText()
+        assertTrue(
+            "AgentSettingsContent onDelete must be nullable to hide delete button when reused",
+            listSource.contains("onDelete: (() -> Unit)? = null")
+        )
+    }
 }

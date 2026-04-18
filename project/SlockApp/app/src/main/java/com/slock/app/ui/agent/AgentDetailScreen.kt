@@ -7,9 +7,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -48,6 +48,7 @@ internal fun resolveAgentDetailContentState(state: AgentDetailUiState): AgentDet
     else -> AgentDetailContentState.Loading
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentDetailScreen(
     state: AgentDetailUiState,
@@ -62,7 +63,6 @@ fun AgentDetailScreen(
     onResetAgent: () -> Unit = {},
     onConsumeResetFeedback: () -> Unit = {},
     onUpdateAgent: (name: String?, description: String?, prompt: String?, runtime: String, reasoningEffort: String?, envVars: Map<String, String>?) -> Unit = { _, _, _, _, _, _ -> },
-    onDeleteAgent: () -> Unit = {},
     onConsumeUpdateFeedback: () -> Unit = {}
 ) {
     val contentState = resolveAgentDetailContentState(state)
@@ -334,10 +334,6 @@ fun AgentDetailScreen(
                             agent = agent,
                             onSave = { name, description, prompt, runtime, reasoningEffort, envVars ->
                                 onUpdateAgent(name, description, prompt, runtime, reasoningEffort, envVars)
-                                showEditSheet = false
-                            },
-                            onDelete = {
-                                onDeleteAgent()
                                 showEditSheet = false
                             }
                         )

@@ -238,13 +238,6 @@ class AgentDetailViewModel @Inject constructor(
         _state.update { it.copy(updateFeedbackMessage = null) }
     }
 
-    fun deleteAgent() {
-        val serverId = serverId ?: return
-        viewModelScope.launch {
-            agentRepository.deleteAgent(serverId, agentId)
-        }
-    }
-
     fun retry() {
         loadAgent()
         loadActivityLog()
