@@ -2,7 +2,9 @@ package com.slock.app.data.repository
 
 import com.slock.app.data.api.ApiService
 import com.slock.app.data.local.ActiveServerHolder
+import com.slock.app.data.local.dao.ChannelDao
 import com.slock.app.data.local.dao.MessageDao
+import com.slock.app.data.local.entity.ChannelEntity
 import com.slock.app.data.local.toEntity
 import com.slock.app.data.local.toModel
 import com.slock.app.data.model.*
@@ -26,10 +28,17 @@ interface MessageRepository {
 class MessageRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
     private val activeServerHolder: ActiveServerHolder,
-    private val messageDao: MessageDao
+    private val messageDao: MessageDao,
+    private val channelDao: ChannelDao
 ) : MessageRepository {
 
     private val cacheFreshnessByChannelMs = mutableMapOf<String, Long>()
+
+    private suspend fun ensureChannelExists(channelId: String, serverId: String) {
+        if (channelDao.getChannelById(channelId) == null) {
+            channelDao.insertChannel(ChannelEntity(id = channelId, serverId = serverId))
+        }
+    }
 
     private fun markCacheFresh(channelId: String) {
         cacheFreshnessByChannelMs[channelId] = System.currentTimeMillis()
@@ -48,6 +57,7 @@ class MessageRepositoryImpl @Inject constructor(
             val response = apiService.sendMessage(SendMessageRequest(channelId, content, attachmentIds, asTask, parentMessageId))
             if (response.isSuccessful && response.body() != null) {
                 val message = response.body()!!
+                ensureChannelExists(channelId, serverId)
                 messageDao.insertMessage(message.toEntity())
                 Result.success(message)
             } else {
@@ -81,6 +91,7 @@ class MessageRepositoryImpl @Inject constructor(
         return try {
             val messages = fetchMessages(channelId, limit, before, after)
             if (messages != null) {
+                ensureChannelExists(channelId, serverId)
                 messageDao.insertMessages(messages.map { it.toEntity() })
                 messageDao.trimMessages(channelId, 200)
                 markCacheFresh(channelId)
@@ -98,6 +109,7 @@ class MessageRepositoryImpl @Inject constructor(
             activeServerHolder.serverId = serverId
             val messages = fetchMessages(channelId, limit)
             if (messages != null) {
+                ensureChannelExists(channelId, serverId)
                 messageDao.insertMessages(messages.map { it.toEntity() })
                 markCacheFresh(channelId)
                 Result.success(messages)

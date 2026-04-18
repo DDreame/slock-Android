@@ -3,6 +3,7 @@ package com.slock.app.ui.message
 import com.slock.app.data.api.ApiService
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
+import com.slock.app.data.local.dao.ChannelDao
 import com.slock.app.data.local.dao.MessageDao
 import com.slock.app.data.model.Message
 import com.slock.app.data.model.UploadResponse
@@ -367,6 +368,7 @@ class MessageRepositoryRawFallbackTest {
     private val apiService: ApiService = mock()
     private val activeServerHolder: ActiveServerHolder = mock()
     private val messageDao: MessageDao = mock()
+    private val channelDao: ChannelDao = mock()
     private lateinit var logMock: org.mockito.MockedStatic<android.util.Log>
 
     private lateinit var repo: MessageRepositoryImpl
@@ -374,7 +376,7 @@ class MessageRepositoryRawFallbackTest {
     @org.junit.Before
     fun setup() {
         logMock = org.mockito.Mockito.mockStatic(android.util.Log::class.java)
-        repo = MessageRepositoryImpl(apiService, activeServerHolder, messageDao)
+        repo = MessageRepositoryImpl(apiService, activeServerHolder, messageDao, channelDao)
     }
 
     @org.junit.After
