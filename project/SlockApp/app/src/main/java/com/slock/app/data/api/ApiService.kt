@@ -107,6 +107,10 @@ interface ApiService {
     @DELETE("channels/saved/{channelId}")
     suspend fun removeSavedChannel(@Path("channelId") channelId: String): Response<Unit>
 
+    // Billing
+    @GET("billing/subscription")
+    suspend fun getBillingSubscription(): Response<BillingSubscriptionResponse>
+
     // Messages (X-Server-Id header added automatically by ServerIdInterceptor)
     @POST("messages")
     suspend fun sendMessage(@Body request: SendMessageRequest): Response<Message>

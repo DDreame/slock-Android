@@ -10,7 +10,7 @@ class ScreenRouteRegistryTest {
 
     private val allScreens: List<Screen> = listOf(
         Screen.Splash, Screen.Login, Screen.Register, Screen.ForgotPassword,
-        Screen.Home, Screen.AgentDetail, Screen.Profile, Screen.UserProfile, Screen.Settings
+        Screen.Home, Screen.AgentDetail, Screen.Profile, Screen.UserProfile, Screen.Settings, Screen.BillingPlans
     )
     private val allRoutes = allScreens.map { it.route }.toSet()
 
@@ -33,7 +33,7 @@ class ScreenRouteRegistryTest {
     fun `Screen sealed class contains only expected routes`() {
         val expectedRoutes = setOf(
             "splash", "login", "register", "forgot_password", "home",
-            "agent/{agentId}", "profile", "profile/{userId}", "settings"
+            "agent/{agentId}", "profile", "profile/{userId}", "settings", "billing_plans"
         )
         assertEquals(expectedRoutes, allRoutes)
         val srcFile = listOf(
@@ -42,7 +42,7 @@ class ScreenRouteRegistryTest {
         ).first { it.exists() }.readText()
         val dataObjects = Regex("""data object (\w+)""").findAll(srcFile).map { it.groupValues[1] }.toSet()
         assertEquals(
-            setOf("Splash", "Login", "Register", "ForgotPassword", "Home", "AgentDetail", "Profile", "UserProfile", "Settings"),
+            setOf("Splash", "Login", "Register", "ForgotPassword", "Home", "AgentDetail", "Profile", "UserProfile", "Settings", "BillingPlans"),
             dataObjects
         )
     }

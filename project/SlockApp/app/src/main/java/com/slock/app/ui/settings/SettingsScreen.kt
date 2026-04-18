@@ -51,6 +51,7 @@ fun SettingsScreen(
     onNotificationPreferenceChange: (NotificationPreference) -> Unit,
     onRefreshAccount: () -> Unit,
     onOpenProfile: () -> Unit = {},
+    onOpenBillingPlans: () -> Unit = {},
     onOpenSavedChannels: () -> Unit = {},
     onOpenReleaseNotes: () -> Unit = {},
     onSendFeedback: () -> Unit,
@@ -127,6 +128,21 @@ fun SettingsScreen(
             }
 
             SettingsSection(title = "Workspace") {
+                SettingsInfoCard(
+                    accentColor = Pink,
+                    title = "Billing / Plans",
+                    subtitle = "See your current plan and Android billing guidance"
+                ) {
+                    NeoButtonSecondary(
+                        text = "VIEW BILLING / PLANS",
+                        onClick = onOpenBillingPlans,
+                        containerColor = Pink,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
                 SettingsInfoCard(
                     accentColor = Yellow,
                     title = "Saved Channels",
