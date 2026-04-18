@@ -14,8 +14,9 @@ android {
         applicationId = "com.slock.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        val buildNum = System.getenv("CI_VERSION_CODE")?.toIntOrNull() ?: 1
+        versionCode = buildNum
+        versionName = "0.0.$buildNum"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -23,7 +24,19 @@ android {
         }
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "slockdebug"
+            keyAlias = "slock-debug"
+            keyPassword = "slockdebug"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
