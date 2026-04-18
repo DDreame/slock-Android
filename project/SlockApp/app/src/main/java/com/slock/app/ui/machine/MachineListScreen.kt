@@ -881,6 +881,18 @@ private fun MachineCardContent(
                 }
             }
         }
+        Text(
+            text = "✕",
+            modifier = Modifier
+                .clickable(onClick = onDelete)
+                .border(1.5.dp, Color.Black, RectangleShape)
+                .background(Pink)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+            fontFamily = SpaceGrotesk,
+            fontWeight = FontWeight.Bold,
+            fontSize = 14.sp,
+            color = Color.Black
+        )
     }
 
     val metaTags = machine.meta

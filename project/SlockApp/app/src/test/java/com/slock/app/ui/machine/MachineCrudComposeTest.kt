@@ -2,10 +2,12 @@ package com.slock.app.ui.machine
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import com.slock.app.data.model.Machine
 import com.slock.app.data.model.MachineAgent
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -164,5 +166,38 @@ class MachineCrudComposeTest {
         composeTestRule.onNodeWithText("知道了").performClick()
         composeTestRule.waitForIdle()
         assertTrue("onDismissDeleteBlocked must be called", dismissed)
+    }
+
+    @Test
+    fun `delete button shows confirm dialog for machine without agents`() {
+        composeTestRule.setContent {
+            MachineListScreen(
+                state = MachineUiState(machines = listOf(connectedMachine)),
+                showHeader = false
+            )
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onAllNodesWithText("✕")[0].performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("删除 Machine?", substring = true).assertExists()
+        composeTestRule.onNodeWithText("删除").assertExists()
+    }
+
+    @Test
+    fun `delete confirm triggers onConfirmDelete callback`() {
+        var deletedId: String? = null
+        composeTestRule.setContent {
+            MachineListScreen(
+                state = MachineUiState(machines = listOf(connectedMachine)),
+                onConfirmDelete = { deletedId = it },
+                showHeader = false
+            )
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onAllNodesWithText("✕")[0].performClick()
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("删除").performClick()
+        composeTestRule.waitForIdle()
+        assertEquals("m-1", deletedId)
     }
 }
