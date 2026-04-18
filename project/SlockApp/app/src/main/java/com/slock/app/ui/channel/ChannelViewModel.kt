@@ -365,6 +365,43 @@ class ChannelViewModel @Inject constructor(
         }
     }
 
+    fun markAsRead(channelId: String) {
+        val previousCount = _state.value.unreadCounts[channelId]
+        _state.update { it.copy(unreadCounts = it.unreadCounts - channelId) }
+        val serverId = activeServerHolder.serverId ?: return
+        viewModelScope.launch {
+            channelRepository.markChannelRead(serverId, channelId, Long.MAX_VALUE).onFailure { err ->
+                _state.update { current ->
+                    val rollback = if (previousCount != null) {
+                        current.unreadCounts + (channelId to previousCount)
+                    } else {
+                        current.unreadCounts
+                    }
+                    current.copy(
+                        unreadCounts = rollback,
+                        actionFeedbackMessage = "Mark as read failed: ${err.message}"
+                    )
+                }
+            }
+        }
+    }
+
+    fun markAsUnread(channelId: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        viewModelScope.launch {
+            channelRepository.markChannelUnread(serverId, channelId).fold(
+                onSuccess = {
+                    channelRepository.getUnreadChannels(serverId).onSuccess { counts ->
+                        _state.update { it.copy(unreadCounts = counts) }
+                    }
+                },
+                onFailure = { err ->
+                    _state.update { it.copy(actionFeedbackMessage = "Mark as unread failed: ${err.message}") }
+                }
+            )
+        }
+    }
+
     fun clearCurrentChannel() {
         _currentChannelId = null
     }

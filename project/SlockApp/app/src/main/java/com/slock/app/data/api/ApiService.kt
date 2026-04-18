@@ -77,6 +77,9 @@ interface ApiService {
     @POST("channels/{channelId}/read")
     suspend fun markChannelRead(@Path("channelId") channelId: String, @Body request: MarkReadRequest): Response<Unit>
 
+    @POST("channels/{channelId}/unread")
+    suspend fun markChannelUnread(@Path("channelId") channelId: String): Response<Unit>
+
     @GET("channels/dm")
     suspend fun getDMs(): Response<List<Channel>>
 

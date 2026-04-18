@@ -540,8 +540,12 @@ fun SlockNavHost(
             val contextLabel = backStackEntry.arguments?.getString("contextLabel").orEmpty()
             val viewModel: MessageViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
-            val channelVM: ChannelViewModel = hiltViewModel()
+            val channelVM: ChannelViewModel = run {
+                val homeEntry = try { navController.getBackStackEntry(Routes.HOME) } catch (_: Exception) { null }
+                if (homeEntry != null) hiltViewModel(homeEntry) else hiltViewModel()
+            }
             val channelAgents by channelVM.channelAgents.collectAsState()
+            val channelState by channelVM.state.collectAsState()
 
             LaunchedEffect(channelId) {
                 viewModel.loadMessages(channelId)
@@ -594,7 +598,11 @@ fun SlockNavHost(
                 onDismissConvertToTask = viewModel::dismissConvertToTask,
                 onConvertTaskStatusChange = viewModel::updateConvertToTaskStatus,
                 onSubmitConvertToTask = viewModel::submitConvertToTask,
-                onConvertTaskFeedbackShown = viewModel::consumeConvertTaskFeedback
+                onConvertTaskFeedbackShown = viewModel::consumeConvertTaskFeedback,
+                onMarkAsRead = { channelVM.markAsRead(channelId) },
+                onMarkAsUnread = { channelVM.markAsUnread(channelId) },
+                markReadFeedbackMessage = channelState.actionFeedbackMessage,
+                onMarkReadFeedbackShown = channelVM::consumeActionFeedback
             )
         }
 
