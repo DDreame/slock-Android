@@ -148,7 +148,7 @@ class AgentViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             agents = agents,
-                            agentActivities = it.agentActivities + activities,
+                            agentActivities = activities,
                             isLoading = false,
                             availableModels = deriveAvailableAgentModels(
                                 recentModels = recentModels,
@@ -173,7 +173,7 @@ class AgentViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             agents = agents,
-                            agentActivities = it.agentActivities + activities,
+                            agentActivities = activities,
                             error = null,
                             availableModels = deriveAvailableAgentModels(
                                 recentModels = recentModels,
@@ -222,7 +222,10 @@ class AgentViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.startAgent(serverId, agentId).fold(
-                onSuccess = { _state.update { it.copy(agents = it.agents.map { a -> if (a.id == agentId) a.copy(status = "active") else a }) } },
+                onSuccess = { _state.update { it.copy(
+                    agents = it.agents.map { a -> if (a.id == agentId) a.copy(status = "active") else a },
+                    agentActivities = it.agentActivities - agentId
+                ) } },
                 onFailure = { }
             )
         }
@@ -232,7 +235,10 @@ class AgentViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.stopAgent(serverId, agentId).fold(
-                onSuccess = { _state.update { it.copy(agents = it.agents.map { a -> if (a.id == agentId) a.copy(status = "stopped") else a }) } },
+                onSuccess = { _state.update { it.copy(
+                    agents = it.agents.map { a -> if (a.id == agentId) a.copy(status = "stopped") else a },
+                    agentActivities = it.agentActivities - agentId
+                ) } },
                 onFailure = { }
             )
         }
