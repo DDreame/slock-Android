@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -51,6 +52,21 @@ import com.slock.app.util.LogCollector
 import java.io.File
 import java.io.IOException
 import java.util.Locale
+
+internal fun messageListItemKey(message: Message): String {
+    return message.id
+        ?: "${message.seq}:${message.createdAt.orEmpty()}:${message.senderId.orEmpty()}"
+}
+
+internal fun buildMessagesById(messages: List<Message>): Map<String, Message> {
+    return messages.mapNotNull { message ->
+        message.id?.let { id -> id to message }
+    }.toMap()
+}
+
+internal fun resolveQuotedMessage(parentMessageId: String?, messagesById: Map<String, Message>): Message? {
+    return parentMessageId?.let(messagesById::get)
+}
 
 @Composable
 fun MessageListScreen(
@@ -164,6 +180,9 @@ fun MessageListScreen(
                 }
                 else -> {
                     val listState = rememberLazyListState()
+                    val messagesById = remember(state.messages) {
+                        buildMessagesById(state.messages)
+                    }
 
                     // Scroll to current search match
                     val targetIndex = if (state.isSearchActive && state.currentSearchMatchPosition >= 0 && state.searchMatchIndices.isNotEmpty()) {
@@ -197,14 +216,14 @@ fun MessageListScreen(
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                         reverseLayout = true
                     ) {
-                        items(state.messages.size) { index ->
-                            val message = state.messages[index]
+                        itemsIndexed(
+                            items = state.messages,
+                            key = { _, message -> messageListItemKey(message) }
+                        ) { index, message ->
                             if (message.senderType.orEmpty() == "system") {
                                 SystemMessageDivider(message.content.orEmpty())
                             } else {
-                                val quotedMessage = if (message.parentMessageId != null) {
-                                    state.messages.find { it.id == message.parentMessageId }
-                                } else null
+                                val quotedMessage = resolveQuotedMessage(message.parentMessageId, messagesById)
                                 val isCurrentMatch = index == currentHighlightMessageIndex
                                 NeoMessage(
                                     message = message,
