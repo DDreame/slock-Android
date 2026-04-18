@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -46,6 +48,7 @@ internal fun resolveAgentDetailContentState(state: AgentDetailUiState): AgentDet
     else -> AgentDetailContentState.Loading
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentDetailScreen(
     state: AgentDetailUiState,
@@ -58,7 +61,9 @@ fun AgentDetailScreen(
     onSelectTab: (Int) -> Unit = {},
     onRetry: () -> Unit = {},
     onResetAgent: () -> Unit = {},
-    onConsumeResetFeedback: () -> Unit = {}
+    onConsumeResetFeedback: () -> Unit = {},
+    onUpdateAgent: (name: String?, description: String?, prompt: String?, runtime: String, reasoningEffort: String?, envVars: Map<String, String>?) -> Unit = { _, _, _, _, _, _ -> },
+    onConsumeUpdateFeedback: () -> Unit = {}
 ) {
     val contentState = resolveAgentDetailContentState(state)
     val headerContextLabel = resolveAgentDetailHeaderContext(contextLabel)
@@ -68,6 +73,13 @@ fun AgentDetailScreen(
         state.resetFeedbackMessage?.let { message ->
             Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
             onConsumeResetFeedback()
+        }
+    }
+
+    LaunchedEffect(state.updateFeedbackMessage) {
+        state.updateFeedbackMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            onConsumeUpdateFeedback()
         }
     }
 
@@ -145,6 +157,7 @@ fun AgentDetailScreen(
                 val agent = contentState.agent
                 var showStopConfirm by remember(agent.id) { mutableStateOf(false) }
                 var showResetConfirm by remember(agent.id) { mutableStateOf(false) }
+                var showEditSheet by remember(agent.id) { mutableStateOf(false) }
                 val agentName = agent.name.orEmpty().ifEmpty { "Agent" }
                 val agentModel = agent.model.orEmpty()
                 val isActive = agent.status == "active"
@@ -269,7 +282,7 @@ fun AgentDetailScreen(
 
                     // ── Tab Content ──
                     if (state.selectedTab == 0) {
-                        OverviewContent(state, agent, agentModel, isActive, displayState, onDmClick, onStartAgent, onMachineClick, onStopClick = { showStopConfirm = true }, onResetClick = { showResetConfirm = true })
+                        OverviewContent(state, agent, agentModel, isActive, displayState, onDmClick, onStartAgent, onMachineClick, onStopClick = { showStopConfirm = true }, onResetClick = { showResetConfirm = true }, onEditClick = { showEditSheet = true })
                     } else {
                         ActivityLogContent(state)
                     }
@@ -301,6 +314,31 @@ fun AgentDetailScreen(
                         onDismiss = { showResetConfirm = false }
                     )
                 }
+
+                if (showEditSheet) {
+                    ModalBottomSheet(
+                        onDismissRequest = { showEditSheet = false },
+                        containerColor = Color.White,
+                        shape = RectangleShape,
+                        dragHandle = {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 12.dp)
+                                    .width(40.dp)
+                                    .height(4.dp)
+                                    .background(Color.Black)
+                            )
+                        }
+                    ) {
+                        AgentSettingsContent(
+                            agent = agent,
+                            onSave = { name, description, prompt, runtime, reasoningEffort, envVars ->
+                                onUpdateAgent(name, description, prompt, runtime, reasoningEffort, envVars)
+                                showEditSheet = false
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -320,7 +358,8 @@ private fun OverviewContent(
     onStartAgent: () -> Unit,
     onMachineClick: (String) -> Unit,
     onStopClick: () -> Unit,
-    onResetClick: () -> Unit
+    onResetClick: () -> Unit,
+    onEditClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -334,6 +373,7 @@ private fun OverviewContent(
         } else {
             ActionButton(displayState.toggleLabel, NeoLime, Modifier.weight(1f), onStartAgent)
         }
+        ActionButton("Edit", NeoGold, Modifier.weight(1f), onEditClick)
         ActionButton("Reset", NeoOrange, Modifier.weight(1f), onResetClick)
     }
 

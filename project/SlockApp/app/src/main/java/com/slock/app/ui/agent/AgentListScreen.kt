@@ -688,7 +688,7 @@ internal fun AgentSettingsContent(
         reasoningEffort: String?,
         envVars: Map<String, String>?
     ) -> Unit,
-    onDelete: () -> Unit
+    onDelete: (() -> Unit)? = null
 ) {
     var draftName by remember(agent.id) { mutableStateOf(agent.name.orEmpty()) }
     var draftDescription by remember(agent.id) { mutableStateOf(agent.description.orEmpty()) }
@@ -843,12 +843,14 @@ internal fun AgentSettingsContent(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        NeoButton(
-            text = "DELETE AGENT",
-            onClick = onDelete,
-            containerColor = Pink,
-            contentColor = Black
-        )
+        if (onDelete != null) {
+            NeoButton(
+                text = "DELETE AGENT",
+                onClick = onDelete,
+                containerColor = Pink,
+                contentColor = Black
+            )
+        }
     }
 }
 

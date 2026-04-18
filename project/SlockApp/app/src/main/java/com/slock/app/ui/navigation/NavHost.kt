@@ -822,7 +822,9 @@ fun SlockNavHost(
                 onSelectTab = viewModel::selectTab,
                 onRetry = viewModel::retry,
                 onResetAgent = viewModel::resetAgent,
-                onConsumeResetFeedback = viewModel::consumeResetFeedback
+                onConsumeResetFeedback = viewModel::consumeResetFeedback,
+                onUpdateAgent = viewModel::updateAgent,
+                onConsumeUpdateFeedback = viewModel::consumeUpdateFeedback
             )
         }
 
