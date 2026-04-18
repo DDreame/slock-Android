@@ -81,7 +81,7 @@ fun SettingsScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Control notifications, account details, theme, and app info.",
+                        text = "Control notifications, account details, and app info.",
                         style = MaterialTheme.typography.titleMedium,
                         color = Black
                     )
@@ -144,7 +144,7 @@ fun SettingsScreen(
                 SettingsInfoCard(
                     accentColor = Lavender,
                     title = "Neo Brutalism",
-                    subtitle = "Current app theme"
+                    subtitle = "Built-in app theme"
                 )
             }
 
