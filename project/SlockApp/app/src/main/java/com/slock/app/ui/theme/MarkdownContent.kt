@@ -18,6 +18,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -40,6 +41,7 @@ private val mentionPattern = Regex("@[\\w.-]+")
 private val codeBlockRegex = Regex("```(?:\\w*\\n)?([\\s\\S]*?)```")
 private val headingRegex = Regex("^(#{1,6})\\s+(.+)$")
 private val unorderedListRegex = Regex("^\\s*[-*+]\\s+(.+)$")
+private val taskListRegex = Regex("^\\s*[-*+]\\s+\\[([ xX])\\]\\s+(.+)$")
 private val orderedListRegex = Regex("^\\s*(\\d+)[.)]\\s+(.+)$")
 private val horizontalRuleRegex = Regex("^\\s{0,3}((\\*\\s*){3,}|(-\\s*){3,}|(_\\s*){3,})$")
 private val tableSeparatorRegex = Regex("^\\s*\\|?(\\s*:?-{3,}:?\\s*\\|)+\\s*:?-{3,}:?\\s*\\|?\\s*$")
@@ -57,6 +59,9 @@ sealed interface MarkdownBlock {
         val startNumber: Int = 1
     ) : MarkdownBlock
     object HorizontalRule : MarkdownBlock
+    data class TaskListBlock(
+        val items: List<Pair<Boolean, AnnotatedString>>
+    ) : MarkdownBlock
     data class Table(
         val headers: List<AnnotatedString>,
         val rows: List<List<AnnotatedString>>
@@ -91,6 +96,11 @@ private data class LinkToken(
 
 private data class ListParseResult(
     val block: MarkdownBlock.ListBlock,
+    val nextIndex: Int
+)
+
+private data class TaskListParseResult(
+    val block: MarkdownBlock.TaskListBlock,
     val nextIndex: Int
 )
 
@@ -219,6 +229,30 @@ private fun MarkdownBlockView(
                             text = item,
                             style = MessageTextStyles.bodyStyle(MaterialTheme.typography),
                             color = textColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+
+        is MarkdownBlock.TaskListBlock -> {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                block.items.forEach { (checked, text) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        androidx.compose.material3.Text(
+                            text = if (checked) "☑" else "☐",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (checked) textColor.copy(alpha = 0.6f) else textColor,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        MarkdownAnnotatedText(
+                            text = text,
+                            style = MessageTextStyles.bodyStyle(MaterialTheme.typography),
+                            color = if (checked) textColor.copy(alpha = 0.6f) else textColor,
                             modifier = Modifier.weight(1f)
                         )
                     }
@@ -390,6 +424,13 @@ private fun parseTextBlocks(content: String, highlightQuery: String): List<Markd
             continue
         }
 
+        val taskListBlock = parseTaskList(lines, index, highlightQuery)
+        if (taskListBlock != null) {
+            blocks += taskListBlock.block
+            index = taskListBlock.nextIndex
+            continue
+        }
+
         val listBlock = parseList(lines, index, highlightQuery)
         if (listBlock != null) {
             blocks += listBlock.block
@@ -410,6 +451,37 @@ private fun parseTextBlocks(content: String, highlightQuery: String): List<Markd
     }
 
     return blocks
+}
+
+private fun parseTaskList(lines: List<String>, startIndex: Int, highlightQuery: String): TaskListParseResult? {
+    if (taskListRegex.matchEntire(lines[startIndex]) == null) return null
+
+    val items = mutableListOf<Pair<Boolean, AnnotatedString>>()
+    var index = startIndex
+
+    while (index < lines.size) {
+        val match = taskListRegex.matchEntire(lines[index]) ?: break
+        val checked = match.groupValues[1] != " "
+        val content = match.groupValues[2]
+
+        val itemLines = mutableListOf(content)
+        index++
+        while (index < lines.size) {
+            val nextLine = lines[index]
+            if (nextLine.isBlank()) break
+            if (startsNewBlock(lines, index) || isListLine(nextLine)) break
+            itemLines += nextLine.trim()
+            index++
+        }
+        items += checked to buildMentionAnnotatedString(itemLines.joinToString(" "), highlightQuery)
+
+        if (index < lines.size && lines[index].isBlank()) break
+    }
+
+    return if (items.isEmpty()) null else TaskListParseResult(
+        block = MarkdownBlock.TaskListBlock(items = items),
+        nextIndex = index
+    )
 }
 
 private fun parseList(lines: List<String>, startIndex: Int, highlightQuery: String): ListParseResult? {
@@ -492,7 +564,7 @@ private fun startsNewBlock(lines: List<String>, index: Int): Boolean {
 }
 
 private fun isListLine(line: String): Boolean {
-    return unorderedListRegex.matches(line) || orderedListRegex.matches(line)
+    return taskListRegex.matches(line) || unorderedListRegex.matches(line) || orderedListRegex.matches(line)
 }
 
 private fun AnnotatedString.Builder.appendMarkdownInline(
