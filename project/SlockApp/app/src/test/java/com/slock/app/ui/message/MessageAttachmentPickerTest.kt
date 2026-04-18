@@ -94,6 +94,7 @@ class MessageAttachmentPickerExecutionTest {
 
     private fun createViewModel(): MessageViewModel {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
+        whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false)
         return MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
     }
 

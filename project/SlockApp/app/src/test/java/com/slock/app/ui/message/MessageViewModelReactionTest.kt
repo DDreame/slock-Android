@@ -12,10 +12,12 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import org.junit.Before
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 
@@ -30,6 +32,11 @@ class MessageViewModelReactionTest {
     private val socketIOManager: SocketIOManager = mock()
     private val activeServerHolder: ActiveServerHolder = mock()
     private val presenceTracker = PresenceTracker()
+
+    @Before
+    fun stubCacheFreshness() {
+        whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false)
+    }
 
     @Test
     fun toggleReaction_updatesLocalReactionOverrides() = runTest {

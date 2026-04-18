@@ -95,6 +95,9 @@ class MessageErrorRecoveryExecutionTest {
         socketManager: SocketIOManager = socketIOManager
     ): MessageViewModel {
         whenever(socketManager.events).thenReturn(emptyFlow())
+        if (repository === messageRepository) {
+            whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false)
+        }
         return MessageViewModel(repository, channels, socketManager, activeServerHolder, presenceTracker)
     }
 
