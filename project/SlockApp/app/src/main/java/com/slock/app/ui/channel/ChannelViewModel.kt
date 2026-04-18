@@ -363,6 +363,10 @@ class ChannelViewModel @Inject constructor(
         }
     }
 
+    fun clearCurrentChannel() {
+        _currentChannelId = null
+    }
+
     fun loadChannelAgents(channelId: String) {
         val serverId = activeServerHolder.serverId ?: return
         _currentChannelId = channelId

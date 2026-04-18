@@ -230,4 +230,49 @@ class UnreadBadgeViewModelTest {
 
         assertEquals(5, viewModel.state.value.unreadCounts["ch-1"])
     }
+
+    @Test
+    fun `after leaving channel new messages resume incrementing unread`() = runTest {
+        val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
+        whenever(socketIOManager.events).thenReturn(events)
+        whenever(socketIOManager.connectionState).thenReturn(emptyFlow())
+        whenever(channelRepository.getChannels("server-1")).thenReturn(
+            Result.success(listOf(Channel(id = "ch-1", name = "General", type = "text")))
+        )
+        whenever(channelRepository.refreshChannels("server-1")).thenReturn(
+            Result.success(listOf(Channel(id = "ch-1", name = "General", type = "text")))
+        )
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
+        whenever(channelRepository.markChannelRead(any(), any(), any())).thenReturn(Result.success(Unit))
+        whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
+        whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
+
+        val viewModel = createViewModel()
+        viewModel.loadChannels("server-1")
+        advanceUntilIdle()
+
+        viewModel.clearUnreadCount("ch-1")
+        advanceUntilIdle()
+        assertEquals(null, viewModel.state.value.unreadCounts["ch-1"])
+
+        viewModel.clearCurrentChannel()
+
+        events.emit(
+            SocketIOManager.SocketEvent.MessageNew(
+                SocketIOManager.MessageNewData(
+                    id = "msg-after-leave",
+                    channelId = "ch-1",
+                    content = "new after leaving",
+                    senderId = "u-1",
+                    senderName = "User",
+                    senderType = "user",
+                    seq = 1,
+                    createdAt = "2026-04-17T00:00:00Z"
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals(1, viewModel.state.value.unreadCounts["ch-1"])
+    }
 }

@@ -1,6 +1,7 @@
 package com.slock.app.ui.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -518,6 +519,10 @@ fun SlockNavHost(
             LaunchedEffect(channelId) {
                 viewModel.loadMessages(channelId)
                 channelVM.loadChannelAgents(channelId)
+            }
+
+            DisposableEffect(channelId) {
+                onDispose { channelVM.clearCurrentChannel() }
             }
 
             MessageListScreen(

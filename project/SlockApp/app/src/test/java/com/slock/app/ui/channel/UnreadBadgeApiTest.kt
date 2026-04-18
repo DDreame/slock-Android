@@ -157,4 +157,31 @@ class UnreadBadgeApiTest {
             dmBlock.contains("clearUnreadCount")
         )
     }
+
+    @Test
+    fun `clearCurrentChannel method exists`() {
+        assertTrue(
+            "ChannelViewModel must have clearCurrentChannel method",
+            viewModelSource.contains("fun clearCurrentChannel()")
+        )
+        val method = viewModelSource
+            .substringAfter("fun clearCurrentChannel()")
+            .substringBefore("fun loadChannelAgents(")
+        assertTrue(
+            "clearCurrentChannel must set _currentChannelId to null",
+            method.contains("_currentChannelId = null")
+        )
+    }
+
+    @Test
+    fun `NavHost message screen clears current channel on dispose`() {
+        val messageBlock = navHostSource
+            .substringAfter("// Message List Screen")
+            .substringBefore("// Thread")
+        assertTrue(
+            "Message screen must use DisposableEffect to clear current channel",
+            messageBlock.contains("DisposableEffect") &&
+                messageBlock.contains("clearCurrentChannel")
+        )
+    }
 }
