@@ -80,28 +80,63 @@ class TypographyRegressionTest {
     }
 
     @Test
-    fun `SystemMessageDivider uses NeoMessageContent not plain Text`() {
+    fun `SystemMessageDivider uses plain centered text not markdown content`() {
         val sysBlock = messageListSource
             .substringAfter("fun SystemMessageDivider(")
             .substringBefore("@Composable")
         assertTrue(
-            "SystemMessageDivider must route through NeoMessageContent for rich text rendering",
-            sysBlock.contains("NeoMessageContent(")
+            "SystemMessageDivider must render plain Text",
+            sysBlock.contains("Text(")
+        )
+        assertTrue(
+            "SystemMessageDivider text must be centered",
+            sysBlock.contains("textAlign = TextAlign.Center")
+        )
+        assertTrue(
+            "SystemMessageDivider must clamp to a single line",
+            sysBlock.contains("maxLines = 1")
         )
         assertFalse(
-            "SystemMessageDivider must not use plain Text for content",
-            sysBlock.contains("Text(\n") || sysBlock.matches(Regex(""".*\bText\(\s*\n\s*text\s*=\s*content.*""", RegexOption.DOT_MATCHES_ALL))
+            "SystemMessageDivider must not route through NeoMessageContent",
+            sysBlock.contains("NeoMessageContent(")
         )
     }
 
     @Test
-    fun `SystemMessageDivider passes TextSecondary as textColor to NeoMessageContent`() {
+    fun `SystemMessageDivider omits divider lines avatar and interactions`() {
         val sysBlock = messageListSource
             .substringAfter("fun SystemMessageDivider(")
             .substringBefore("@Composable")
+        assertFalse(
+            "SystemMessageDivider must not render divider lines",
+            sysBlock.contains("Divider(")
+        )
+        assertFalse(
+            "SystemMessageDivider must not render avatars",
+            sysBlock.contains("MessageAvatar(")
+        )
+        assertFalse(
+            "SystemMessageDivider must not be clickable / long-pressable",
+            sysBlock.contains("combinedClickable") || sysBlock.contains("clickable(")
+        )
+    }
+
+    @Test
+    fun `message list uses per branch spacing so system messages stay compact`() {
+        val listBlock = messageListSource
+            .substringAfter("LazyColumn(")
+            .substringBefore("if (state.isLoadingMore)")
         assertTrue(
-            "SystemMessageDivider must pass TextSecondary as textColor",
-            sysBlock.contains("textColor = TextSecondary")
+            "MessageListScreen must not use a global 14.dp gap for all items",
+            listBlock.contains("verticalArrangement = Arrangement.spacedBy(0.dp)")
+        )
+        assertTrue(
+            "System messages must use compact vertical padding",
+            listBlock.contains("modifier = Modifier.padding(vertical = 4.dp)")
+        )
+        assertTrue(
+            "Normal messages must keep their larger per-item spacing",
+            listBlock.contains("Box(modifier = Modifier.padding(vertical = 7.dp))")
         )
     }
 
