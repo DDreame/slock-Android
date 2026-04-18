@@ -6,6 +6,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.slock.app.data.model.Server
 import com.slock.app.ui.channel.ChannelUiState
 import com.slock.app.ui.member.MemberItem
@@ -69,6 +70,8 @@ class NewDmDialogComposeTest {
     }
 
     private fun clickDmPlusButton() {
+        composeTestRule.onNodeWithText("DIRECT MESSAGES").performScrollTo()
+        composeTestRule.waitForIdle()
         val plusButtons = composeTestRule.onAllNodesWithText("+")
         plusButtons[1].performClick()
         composeTestRule.waitForIdle()
