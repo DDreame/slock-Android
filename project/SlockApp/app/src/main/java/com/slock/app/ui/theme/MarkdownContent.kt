@@ -43,7 +43,7 @@ private val unorderedListRegex = Regex("^\\s*[-*+]\\s+(.+)$")
 private val orderedListRegex = Regex("^\\s*(\\d+)[.)]\\s+(.+)$")
 private val horizontalRuleRegex = Regex("^\\s{0,3}((\\*\\s*){3,}|(-\\s*){3,}|(_\\s*){3,})$")
 private val tableSeparatorRegex = Regex("^\\s*\\|?(\\s*:?-{3,}:?\\s*\\|)+\\s*:?-{3,}:?\\s*\\|?\\s*$")
-private val markdownTokenChars = setOf('[', '*', '_', '`', '@')
+private val markdownTokenChars = setOf('[', '*', '_', '`', '@', '~')
 private val LinkBlue = Color(0xFF0055FF)
 
 sealed interface MarkdownBlock {
@@ -66,14 +66,18 @@ sealed interface MarkdownBlock {
 private data class MarkdownInlineContext(
     val bold: Boolean = false,
     val italic: Boolean = false,
+    val strikethrough: Boolean = false,
     val link: String? = null
 ) {
     fun spanStyle(extra: SpanStyle = SpanStyle()): SpanStyle {
+        val linkDecoration = if (link != null) TextDecoration.Underline else null
+        val strikeDecoration = if (strikethrough) TextDecoration.LineThrough else null
+        val combined = TextDecoration.combine(listOfNotNull(linkDecoration, strikeDecoration))
         val base = SpanStyle(
             fontWeight = if (bold) FontWeight.Bold else null,
             fontStyle = if (italic) FontStyle.Italic else null,
             color = if (link != null) LinkBlue else Color.Unspecified,
-            textDecoration = if (link != null) TextDecoration.Underline else null
+            textDecoration = combined.takeIf { it != TextDecoration.None }
         )
         return base.merge(extra)
     }
@@ -520,6 +524,13 @@ private fun AnnotatedString.Builder.appendMarkdownInline(
         if (strongUnderscore != null) {
             appendMarkdownInline(strongUnderscore.first, highlightQuery, context.copy(bold = true))
             index = strongUnderscore.second
+            continue
+        }
+
+        val strikethrough = parseDelimited(content, index, "~~")
+        if (strikethrough != null) {
+            appendMarkdownInline(strikethrough.first, highlightQuery, context.copy(strikethrough = true))
+            index = strikethrough.second
             continue
         }
 
