@@ -52,6 +52,7 @@ fun SettingsScreen(
     onRefreshAccount: () -> Unit,
     onOpenProfile: () -> Unit = {},
     onOpenSavedChannels: () -> Unit = {},
+    onOpenReleaseNotes: () -> Unit = {},
     onSendFeedback: () -> Unit,
     onLogout: () -> Unit
 ) {
@@ -157,6 +158,13 @@ fun SettingsScreen(
                     InfoRow(label = "VERSION", value = BuildConfig.VERSION_NAME)
                     Spacer(modifier = Modifier.height(8.dp))
                     InfoRow(label = "PACKAGE", value = BuildConfig.APPLICATION_ID)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    NeoButtonSecondary(
+                        text = "RELEASE NOTES",
+                        onClick = onOpenReleaseNotes,
+                        containerColor = Lime,
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
             }
 
