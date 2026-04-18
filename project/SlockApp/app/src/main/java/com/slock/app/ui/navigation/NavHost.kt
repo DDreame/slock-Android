@@ -310,9 +310,11 @@ fun SlockNavHost(
                     serverTasksViewModel.loadAllTasks(server.id.orEmpty())
                 },
                 onChannelClick = { channelId, channelName ->
+                    channelViewModel.clearUnreadCount(channelId)
                     navController.navigate(Routes.messagesRoute(channelId, channelName))
                 },
                 onDmClick = { channelId, channelName ->
+                    channelViewModel.clearUnreadCount(channelId)
                     navController.navigate(Routes.messagesRoute(channelId, channelName))
                 },
                 onCreateChannel = channelViewModel::createChannel,

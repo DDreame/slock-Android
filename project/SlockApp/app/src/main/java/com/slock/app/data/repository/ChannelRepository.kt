@@ -23,7 +23,7 @@ interface ChannelRepository {
     suspend fun getChannelMembers(serverId: String, channelId: String): Result<List<ChannelMember>>
     suspend fun stopAllChannelAgents(serverId: String, channelId: String): Result<Unit>
     suspend fun resumeAllChannelAgents(serverId: String, channelId: String, prompt: String): Result<Unit>
-    suspend fun getUnreadChannels(serverId: String): Result<List<Channel>>
+    suspend fun getUnreadChannels(serverId: String): Result<Map<String, Int>>
     suspend fun getSavedChannels(serverId: String): Result<List<Channel>> = Result.failure(NotImplementedError())
     suspend fun saveChannel(serverId: String, channelId: String): Result<Unit> = Result.failure(NotImplementedError())
     suspend fun removeSavedChannel(serverId: String, channelId: String): Result<Unit> = Result.failure(NotImplementedError())
@@ -241,7 +241,7 @@ class ChannelRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun getUnreadChannels(serverId: String): Result<List<Channel>> {
+    override suspend fun getUnreadChannels(serverId: String): Result<Map<String, Int>> {
         return try {
             activeServerHolder.serverId = serverId
             val response = apiService.getUnreadChannels()

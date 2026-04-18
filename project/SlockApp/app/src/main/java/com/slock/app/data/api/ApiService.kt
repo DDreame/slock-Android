@@ -93,7 +93,7 @@ interface ApiService {
     suspend fun resumeAllChannelAgents(@Path("channelId") channelId: String, @Body request: ResumeAllAgentsRequest): Response<Unit>
 
     @GET("channels/unread")
-    suspend fun getUnreadChannels(): Response<List<Channel>>
+    suspend fun getUnreadChannels(): Response<Map<String, Int>>
 
     @GET("channels/saved")
     suspend fun getSavedChannels(): Response<List<Channel>>
