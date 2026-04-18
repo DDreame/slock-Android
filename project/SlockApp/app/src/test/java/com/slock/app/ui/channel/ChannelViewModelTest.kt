@@ -189,6 +189,7 @@ class ChannelViewModelTest {
             Result.success(listOf(Channel(id = "dm-1", name = "Direct Message", type = "dm")))
         )
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
 
         val viewModel = createViewModel()
