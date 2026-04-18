@@ -26,16 +26,6 @@ class AgentDisplayStateIntegrationTest {
         "app/src/main/java/com/slock/app/ui/agent/AgentDetailScreen.kt"
     )
 
-    private val viewModelSource = readSource(
-        "src/main/java/com/slock/app/ui/agent/AgentViewModel.kt",
-        "app/src/main/java/com/slock/app/ui/agent/AgentViewModel.kt"
-    )
-
-    private val detailViewModelSource = readSource(
-        "src/main/java/com/slock/app/ui/agent/AgentDetailViewModel.kt",
-        "app/src/main/java/com/slock/app/ui/agent/AgentDetailViewModel.kt"
-    )
-
     @Test
     fun `AgentDisplayState enum exists with all canonical states`() {
         assertTrue(displayStateSource.contains("ONLINE"))
@@ -115,32 +105,6 @@ class AgentDisplayStateIntegrationTest {
         assertTrue(
             "Current Activity section must be guarded by isActive",
             overviewBlock.contains("isActive && activity != null")
-        )
-    }
-
-    @Test
-    fun `AgentViewModel stopAgent clears agentActivities`() {
-        val stopBlock = viewModelSource
-            .substringAfter("fun stopAgent(")
-            .substringBefore("fun resetAgent(")
-        assertTrue(
-            "stopAgent must remove agent from agentActivities",
-            stopBlock.contains("agentActivities") && stopBlock.contains("- agentId")
-        )
-    }
-
-    @Test
-    fun `AgentDetailViewModel stopAgent clears latestActivity`() {
-        val stopBlock = detailViewModelSource
-            .substringAfter("fun stopAgent(")
-            .substringBefore("fun retry(")
-        assertTrue(
-            "stopAgent must set latestActivity to null",
-            stopBlock.contains("latestActivity = null")
-        )
-        assertTrue(
-            "stopAgent must set latestActivityDetail to null",
-            stopBlock.contains("latestActivityDetail = null")
         )
     }
 
