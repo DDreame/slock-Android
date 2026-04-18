@@ -189,9 +189,13 @@ class MessageViewModel @Inject constructor(
                                             message
                                         }
                                     }
-                                    val updatedOverrides = current.reactionOverridesByMessageId
-                                        .toMutableMap()
-                                        .apply { remove(data.id) }
+                                    val updatedOverrides = if (data.reactions != null) {
+                                        current.reactionOverridesByMessageId
+                                            .toMutableMap()
+                                            .apply { remove(data.id) }
+                                    } else {
+                                        current.reactionOverridesByMessageId
+                                    }
                                     recomputeSearchMatches(
                                         current.copy(
                                             messages = updatedMessages,

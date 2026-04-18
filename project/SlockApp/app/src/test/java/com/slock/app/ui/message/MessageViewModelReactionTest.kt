@@ -116,6 +116,47 @@ class MessageViewModelReactionTest {
     }
 
     @Test
+    fun messageUpdatedEvent_withoutReactions_keepsOptimisticOverride() = runTest {
+        val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
+        whenever(socketIOManager.events).thenReturn(events)
+        whenever(activeServerHolder.serverId).thenReturn("server-1")
+        whenever(channelRepository.isChannelSaved("server-1", "channel-1")).thenReturn(Result.success(false))
+
+        val existing = Message(
+            id = "msg-1",
+            channelId = "channel-1",
+            content = "before",
+            reactions = listOf(MessageReactionPayload(emoji = "👍", count = 1, selected = false))
+        )
+        whenever(messageRepository.getMessages("server-1", "channel-1", 50, null, null))
+            .thenReturn(Result.success(listOf(existing)))
+        whenever(messageRepository.refreshMessages("server-1", "channel-1", 50))
+            .thenReturn(Result.success(listOf(existing)))
+
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
+        viewModel.loadMessages("channel-1")
+        advanceUntilIdle()
+        viewModel.toggleReaction(existing, "👍")
+
+        events.emit(
+            SocketIOManager.SocketEvent.MessageUpdated(
+                SocketIOManager.MessageUpdatedData(
+                    id = "msg-1",
+                    channelId = "channel-1",
+                    content = "after"
+                )
+            )
+        )
+        advanceUntilIdle()
+
+        assertEquals("after", viewModel.state.value.messages.first().content)
+        assertEquals(
+            listOf(MessageReactionUiModel(emoji = "👍", count = 2, isSelected = true)),
+            viewModel.state.value.reactionOverridesByMessageId["msg-1"]
+        )
+    }
+
+    @Test
     fun userPresenceEvent_updatesOnlineIds() = runTest {
         val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
         whenever(socketIOManager.events).thenReturn(events)
