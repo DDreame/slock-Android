@@ -49,7 +49,7 @@ class OnboardingGuidanceComposeTest {
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("Create Server").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Server Name").assertIsDisplayed()
+        composeTestRule.onNodeWithText("SERVER NAME").assertIsDisplayed()
     }
 
     @Test

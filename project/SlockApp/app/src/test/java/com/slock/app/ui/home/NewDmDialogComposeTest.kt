@@ -55,6 +55,7 @@ class NewDmDialogComposeTest {
                 serverState = ServerUiState(servers = listOf(testServer)),
                 channelState = ChannelUiState(),
                 selectedServer = testServer,
+                agentCount = 1,
                 onServerSelect = {},
                 onChannelClick = { _, _ -> },
                 onDmClick = { _, _ -> },
