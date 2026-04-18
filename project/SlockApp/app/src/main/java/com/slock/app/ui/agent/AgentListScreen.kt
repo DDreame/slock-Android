@@ -212,18 +212,18 @@ fun AgentListScreen(
         AgentSettingsSheet(
             agent = agent,
             onDismiss = { showSettingsAgent = null },
-            onSave = { runtime, reasoningEffort, envVars ->
+            onSave = { name, description, prompt, runtime, reasoningEffort, envVars ->
                 onUpdateAgent(
                     agent.id.orEmpty(),
-                    null,
-                    null,
-                    null,
+                    name,
+                    description,
+                    prompt,
                     runtime,
                     reasoningEffort,
                     envVars
                 )
                 showSettingsAgent = null
-                Toast.makeText(context, "${agent.name.orEmpty()} 配置已保存", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "${name ?: agent.name.orEmpty()} 配置已保存", Toast.LENGTH_SHORT).show()
             },
             onDelete = {
                 showSettingsAgent = null
@@ -651,9 +651,19 @@ internal fun resolveSelectedReasoningEffort(runtime: String?, reasoningEffort: S
 private fun AgentSettingsSheet(
     agent: Agent,
     onDismiss: () -> Unit,
-    onSave: (runtime: String, reasoningEffort: String?, envVars: Map<String, String>?) -> Unit,
+    onSave: (
+        name: String?,
+        description: String?,
+        prompt: String?,
+        runtime: String,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?
+    ) -> Unit,
     onDelete: () -> Unit
 ) {
+    var draftName by remember(agent.id) { mutableStateOf(agent.name.orEmpty()) }
+    var draftDescription by remember(agent.id) { mutableStateOf(agent.description.orEmpty()) }
+    var draftPrompt by remember(agent.id) { mutableStateOf(agent.prompt.orEmpty()) }
     var selectedRuntime by remember(agent.id, agent.runtime) {
         mutableStateOf(resolveSelectedAgentRuntime(agent.runtime))
     }
@@ -688,11 +698,21 @@ private fun AgentSettingsSheet(
                 .navigationBarsPadding()
         ) {
             Text(
-                text = "Agent Settings: ${agent.name}",
+                text = "Agent Settings",
                 style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 color = Black,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
+
+            NeoLabel("NAME")
+            NeoTextField(
+                value = draftName,
+                onValueChange = { draftName = it },
+                placeholder = "Agent name",
+                focusHighlight = Orange
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
 
             SettingsRow(label = "MODEL") {
                 Box(
@@ -710,14 +730,25 @@ private fun AgentSettingsSheet(
                 }
             }
 
-            SettingsRow(label = "ROLE") {
-                Text(
-                    text = agent.description ?: "",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    color = Black
-                )
-            }
+            Spacer(modifier = Modifier.height(14.dp))
+
+            NeoLabel("ROLE DESCRIPTION")
+            NeoTextField(
+                value = draftDescription,
+                onValueChange = { draftDescription = it },
+                placeholder = "Describe what this agent does...",
+                focusHighlight = Orange
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            NeoLabel("SYSTEM PROMPT")
+            NeoTextField(
+                value = draftPrompt,
+                onValueChange = { draftPrompt = it },
+                placeholder = "Instructions for this agent...",
+                focusHighlight = Orange
+            )
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -783,6 +814,9 @@ private fun AgentSettingsSheet(
                 onClick = {
                     val normalizedEnvVars = normalizeAgentEnvVars(envVarDrafts)
                     onSave(
+                        draftName.takeIf { it != agent.name.orEmpty() },
+                        draftDescription.takeIf { it != agent.description.orEmpty() },
+                        draftPrompt.takeIf { it != agent.prompt.orEmpty() },
                         selectedRuntime,
                         if (runtimeSupportsReasoning) selectedReasoningEffort else null,
                         normalizedEnvVars.takeUnless { it.isEmpty() }
