@@ -142,7 +142,11 @@ class MessageViewModel @Inject constructor(
                                         senderId = data.senderId,
                                         senderName = data.senderName,
                                         senderType = data.senderType,
-                                        createdAt = data.createdAt
+                                        createdAt = data.createdAt,
+                                        threadChannelId = data.threadChannelId,
+                                        replyCount = data.replyCount,
+                                        lastReplyAt = data.lastReplyAt,
+                                        parentMessageId = data.parentMessageId
                                     )
                                     val exists = current.messages.any { it.id == newMessage.id }
                                     if (!exists) {

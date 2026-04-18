@@ -66,7 +66,11 @@ class SocketIOManager @Inject constructor(
         val senderName: String = "",
         val senderType: String = "",
         val seq: Long,
-        val createdAt: String
+        val createdAt: String,
+        val threadChannelId: String? = null,
+        val replyCount: Int = 0,
+        val lastReplyAt: String? = null,
+        val parentMessageId: String? = null
     )
 
     data class MessageUpdatedData(
@@ -278,7 +282,11 @@ class SocketIOManager @Inject constructor(
                         senderName = data.optString("senderName"),
                         senderType = data.optString("senderType"),
                         seq = data.optLong("seq"),
-                        createdAt = data.optString("createdAt")
+                        createdAt = data.optString("createdAt"),
+                        threadChannelId = data.optString("threadChannelId").ifEmpty { null },
+                        replyCount = data.optInt("replyCount", 0),
+                        lastReplyAt = data.optString("lastReplyAt").ifEmpty { null },
+                        parentMessageId = data.optString("parentMessageId").ifEmpty { null }
                     )
                 )
                 _events.tryEmit(event)

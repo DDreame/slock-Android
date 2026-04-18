@@ -607,7 +607,7 @@ private fun NeoMessage(
             .background(messageBgColor)
             .height(IntrinsicSize.Min)
             .combinedClickable(
-                onClick = { },
+                onClick = { onThreadClick?.invoke() },
                 onLongClick = { showMenu = true }
             ),
         horizontalArrangement = Arrangement.spacedBy(0.dp)
