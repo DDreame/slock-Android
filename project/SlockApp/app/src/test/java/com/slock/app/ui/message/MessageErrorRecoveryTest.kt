@@ -10,6 +10,7 @@ import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.repository.MessageRepositoryImpl
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -87,9 +88,13 @@ class MessageErrorRecoveryExecutionTest {
     private val activeServerHolder: ActiveServerHolder = mock()
     private val presenceTracker = PresenceTracker()
 
-    private fun createViewModel(): MessageViewModel {
-        whenever(socketIOManager.events).thenReturn(emptyFlow())
-        return MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
+    private fun createViewModel(
+        repository: MessageRepository = messageRepository,
+        channels: ChannelRepository = channelRepository,
+        socketManager: SocketIOManager = socketIOManager
+    ): MessageViewModel {
+        whenever(socketManager.events).thenReturn(emptyFlow())
+        return MessageViewModel(repository, channels, socketManager, activeServerHolder, presenceTracker)
     }
 
     // Issue 1: retryLoadMessages actually re-calls loadMessages from error state
@@ -179,6 +184,68 @@ class MessageErrorRecoveryExecutionTest {
         assertNull("Successful empty refresh must clear previous load error", vm.state.value.error)
     }
 
+    @Test
+    fun `fresh cache hit skips unconditional refresh`() = runTest {
+        whenever(activeServerHolder.serverId).thenReturn("srv-1")
+        whenever(channelRepository.isChannelSaved("srv-1", "ch-1")).thenReturn(Result.success(false))
+        whenever(messageRepository.getMessages("srv-1", "ch-1", 50, null, null))
+            .thenReturn(Result.success(listOf(Message(id = "m1", content = "cached", seq = 1))))
+        whenever(messageRepository.isCachedMessagesFresh(eq("ch-1"), any()))
+            .thenReturn(true)
+
+        val vm = createViewModel()
+
+        vm.loadMessages("ch-1")
+        advanceUntilIdle()
+
+        verify(messageRepository, times(0)).refreshMessages("srv-1", "ch-1", 50)
+        assertEquals(1, vm.state.value.messages.size)
+        assertEquals("cached", vm.state.value.messages.single().content)
+    }
+
+    @Test
+    fun `stale load from previous channel does not override new channel state`() = runTest {
+        whenever(activeServerHolder.serverId).thenReturn("srv-1")
+
+        val socketManager: SocketIOManager = mock()
+        whenever(socketManager.events).thenReturn(emptyFlow())
+
+        val channels: ChannelRepository = mock()
+        whenever(channels.isChannelSaved("srv-1", "old-channel")).thenReturn(Result.success(false))
+        whenever(channels.isChannelSaved("srv-1", "new-channel")).thenReturn(Result.success(false))
+
+        val repository = ControlledMessageRepository().apply {
+            cachedFreshness["old-channel"] = false
+            cachedFreshness["new-channel"] = true
+            getMessagesResults["old-channel"] = Result.success(
+                listOf(Message(id = "old-cached", channelId = "old-channel", content = "old cached", seq = 1))
+            )
+            getMessagesResults["new-channel"] = Result.success(
+                listOf(Message(id = "new-live", channelId = "new-channel", content = "new live", seq = 10))
+            )
+            refreshResults["old-channel"] = CompletableDeferred()
+        }
+
+        val vm = createViewModel(repository, channels, socketManager)
+
+        vm.loadMessages("old-channel")
+        advanceUntilIdle()
+
+        vm.loadMessages("new-channel")
+        advanceUntilIdle()
+
+        assertEquals("new-channel", vm.state.value.channelId)
+        assertEquals("new live", vm.state.value.messages.single().content)
+
+        repository.refreshResults.getValue("old-channel")
+            .complete(Result.success(listOf(Message(id = "old-live", channelId = "old-channel", content = "old live", seq = 2))))
+        advanceUntilIdle()
+
+        assertEquals("new-channel", vm.state.value.channelId)
+        assertEquals(1, vm.state.value.messages.size)
+        assertEquals("new live", vm.state.value.messages.single().content)
+    }
+
     // Issue 2: sendMessage failure sets sendError, preserves existing messages
     @Test
     fun `sendMessage failure sets sendError not error and preserves messages`() = runTest {
@@ -256,6 +323,32 @@ class MessageErrorRecoveryExecutionTest {
         verify(messageRepository).getMessages("srv-1", "ch-1", 50, "100", null)
         assertEquals(2, vm.state.value.messages.size)
     }
+}
+
+private class ControlledMessageRepository : MessageRepository {
+    val getMessagesResults = mutableMapOf<String, Result<List<Message>>>()
+    val refreshResults = mutableMapOf<String, CompletableDeferred<Result<List<Message>>>>()
+    val cachedFreshness = mutableMapOf<String, Boolean>()
+
+    override suspend fun sendMessage(serverId: String, channelId: String, content: String, attachmentIds: List<String>?, asTask: Boolean, parentMessageId: String?) =
+        Result.failure<Message>(NotImplementedError())
+
+    override suspend fun getMessages(serverId: String, channelId: String, limit: Int, before: String?, after: String?): Result<List<Message>> =
+        getMessagesResults[channelId] ?: Result.success(emptyList())
+
+    override suspend fun refreshMessages(serverId: String, channelId: String, limit: Int): Result<List<Message>> =
+        refreshResults[channelId]?.await() ?: Result.success(emptyList())
+
+    override suspend fun isCachedMessagesFresh(channelId: String, maxAgeMs: Long): Boolean =
+        cachedFreshness[channelId] ?: false
+
+    override suspend fun searchMessages(serverId: String, query: String, searchServerId: String?, channelId: String?) =
+        Result.success(emptyList<Message>())
+
+    override suspend fun getLatestMessagePerChannel(channelIds: List<String>) = emptyMap<String, Message>()
+
+    override suspend fun uploadFile(serverId: String, fileName: String, mimeType: String, bytes: ByteArray) =
+        Result.failure<UploadResponse>(NotImplementedError())
 }
 
 class MessageRepositoryRawFallbackTest {

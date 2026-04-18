@@ -417,6 +417,7 @@ private class FakeMessageRepository : MessageRepository {
     override suspend fun sendMessage(serverId: String, channelId: String, content: String, attachmentIds: List<String>?, asTask: Boolean, parentMessageId: String?) = Result.failure<Message>(NotImplementedError())
     override suspend fun getMessages(serverId: String, channelId: String, limit: Int, before: String?, after: String?) = Result.success(emptyList<Message>())
     override suspend fun refreshMessages(serverId: String, channelId: String, limit: Int) = Result.success(emptyList<Message>())
+    override suspend fun isCachedMessagesFresh(channelId: String, maxAgeMs: Long) = false
     override suspend fun searchMessages(serverId: String, query: String, searchServerId: String?, channelId: String?) = Result.success(emptyList<Message>())
     override suspend fun getLatestMessagePerChannel(channelIds: List<String>) = emptyMap<String, Message>()
     override suspend fun uploadFile(serverId: String, fileName: String, mimeType: String, bytes: ByteArray) = Result.failure<UploadResponse>(NotImplementedError())
