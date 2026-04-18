@@ -35,8 +35,10 @@ class MessageViewModelReactionTest {
     private val presenceTracker = PresenceTracker()
 
     @Before
-    fun stubCacheFreshness() = runBlocking {
-        whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false)
+    fun stubCacheFreshness() {
+        runBlocking {
+            whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false)
+        }
     }
 
     @Test

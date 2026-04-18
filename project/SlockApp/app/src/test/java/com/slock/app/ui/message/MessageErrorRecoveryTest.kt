@@ -195,10 +195,13 @@ class MessageErrorRecoveryExecutionTest {
         whenever(channelRepository.isChannelSaved("srv-1", "ch-1")).thenReturn(Result.success(false))
         whenever(messageRepository.getMessages("srv-1", "ch-1", 50, null, null))
             .thenReturn(Result.success(listOf(Message(id = "m1", content = "cached", seq = 1))))
-        whenever(messageRepository.isCachedMessagesFresh(eq("ch-1"), any()))
-            .thenReturn(true)
 
         val vm = createViewModel()
+
+        runBlocking {
+            whenever(messageRepository.isCachedMessagesFresh(eq("ch-1"), any()))
+                .thenReturn(true)
+        }
 
         vm.loadMessages("ch-1")
         advanceUntilIdle()
