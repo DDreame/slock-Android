@@ -88,4 +88,16 @@ class AgentResetSourceTest {
             agentDetailBlock.contains("onResetAgent = viewModel::resetAgent")
         )
     }
+
+    @Test
+    fun `AgentDetailScreen consumes resetFeedbackMessage in UI`() {
+        assertTrue(
+            "AgentDetailScreen must reference resetFeedbackMessage to display feedback",
+            screenSource.contains("resetFeedbackMessage")
+        )
+        assertTrue(
+            "AgentDetailScreen must call onConsumeResetFeedback after showing feedback",
+            screenSource.contains("onConsumeResetFeedback()")
+        )
+    }
 }

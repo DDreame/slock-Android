@@ -18,6 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.slock.app.data.model.ActivityLogEntry
 import com.slock.app.ui.theme.NeoPressableBox
 import com.slock.app.ui.theme.NeoConfirmDialog
@@ -60,6 +62,14 @@ fun AgentDetailScreen(
 ) {
     val contentState = resolveAgentDetailContentState(state)
     val headerContextLabel = resolveAgentDetailHeaderContext(contextLabel)
+
+    val context = LocalContext.current
+    LaunchedEffect(state.resetFeedbackMessage) {
+        state.resetFeedbackMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            onConsumeResetFeedback()
+        }
+    }
 
     Column(
         modifier = Modifier

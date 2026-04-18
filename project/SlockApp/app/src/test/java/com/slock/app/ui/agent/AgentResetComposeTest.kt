@@ -81,4 +81,20 @@ class AgentResetComposeTest {
         composeTestRule.waitForIdle()
         assertTrue("onResetAgent should be called after confirming", resetCalled)
     }
+
+    @Test
+    fun `reset feedback message triggers onConsumeResetFeedback`() {
+        var feedbackConsumed = false
+        composeTestRule.setContent {
+            AgentDetailScreen(
+                state = AgentDetailUiState(
+                    agent = activeAgent,
+                    resetFeedbackMessage = "Agent reset successful"
+                ),
+                onConsumeResetFeedback = { feedbackConsumed = true }
+            )
+        }
+        composeTestRule.waitForIdle()
+        assertTrue("onConsumeResetFeedback should be called when feedback is present", feedbackConsumed)
+    }
 }
