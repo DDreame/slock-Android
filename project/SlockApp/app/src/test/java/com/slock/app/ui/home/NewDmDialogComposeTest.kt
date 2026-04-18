@@ -2,10 +2,9 @@ package com.slock.app.ui.home
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.hasAnySibling
-import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -73,7 +72,7 @@ class NewDmDialogComposeTest {
 
     private fun clickDmPlusButton() {
         composeTestRule
-            .onNode(hasText("+") and hasAnySibling(hasText("DIRECT MESSAGES")))
+            .onNodeWithTag("section_add_DIRECT MESSAGES")
             .performScrollTo()
             .performClick()
         composeTestRule.waitForIdle()

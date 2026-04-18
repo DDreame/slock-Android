@@ -926,7 +926,8 @@ private fun SectionHeader(title: String, onAdd: (() -> Unit)? = null) {
                     .size(28.dp)
                     .background(Yellow)
                     .border(2.dp, Black, RectangleShape)
-                    .clickable(onClick = onAdd),
+                    .clickable(onClick = onAdd)
+                    .testTag("section_add_$title"),
                 contentAlignment = Alignment.Center
             ) {
                 Text(text = "+", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = Black)
