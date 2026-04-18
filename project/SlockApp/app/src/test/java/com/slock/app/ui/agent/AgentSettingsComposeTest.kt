@@ -5,11 +5,9 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextClearance
-import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import com.slock.app.data.model.Agent
 import org.junit.Assert.*
 import org.junit.Rule
@@ -92,9 +90,7 @@ class AgentSettingsComposeTest {
             }
         )
 
-        val nameFields = composeTestRule.onAllNodesWithText("TestBot")
-        nameFields[0].performTextClearance()
-        nameFields[0].performTextInput("NewName")
+        composeTestRule.onNodeWithText("TestBot").performTextReplacement("NewName")
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
@@ -113,9 +109,7 @@ class AgentSettingsComposeTest {
             }
         )
 
-        val descFields = composeTestRule.onAllNodesWithText("A helpful bot")
-        descFields[0].performTextClearance()
-        descFields[0].performTextInput("New description")
+        composeTestRule.onNodeWithText("A helpful bot").performTextReplacement("New description")
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
@@ -134,9 +128,7 @@ class AgentSettingsComposeTest {
             }
         )
 
-        val promptFields = composeTestRule.onAllNodesWithText("Be helpful")
-        promptFields[0].performTextClearance()
-        promptFields[0].performTextInput("New prompt")
+        composeTestRule.onNodeWithText("Be helpful").performTextReplacement("New prompt")
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
