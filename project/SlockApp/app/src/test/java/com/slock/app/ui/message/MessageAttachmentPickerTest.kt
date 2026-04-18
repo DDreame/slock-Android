@@ -7,6 +7,7 @@ import com.slock.app.data.model.Message
 import com.slock.app.data.model.UploadResponse
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
+import com.slock.app.data.repository.TaskRepository
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -82,6 +83,7 @@ class MessageAttachmentPickerExecutionTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val messageRepository: MessageRepository = mock()
+    private val taskRepository: TaskRepository = mock()
     private val channelRepository: ChannelRepository = mock()
     private val socketIOManager: SocketIOManager = mock()
     private val activeServerHolder: ActiveServerHolder = mock()
@@ -96,7 +98,7 @@ class MessageAttachmentPickerExecutionTest {
     private fun createViewModel(): MessageViewModel {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
         runBlocking { whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false) }
-        return MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
+        return MessageViewModel(messageRepository, taskRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
     }
 
     @Test

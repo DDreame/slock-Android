@@ -4,6 +4,7 @@ import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
+import com.slock.app.data.repository.TaskRepository
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,6 +25,7 @@ class ThreadEntryViewModelTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val messageRepository: MessageRepository = mock()
+    private val taskRepository: TaskRepository = mock()
     private val channelRepository: ChannelRepository = mock()
     private val socketIOManager: SocketIOManager = mock()
     private val activeServerHolder: ActiveServerHolder = mock()
@@ -37,7 +39,7 @@ class ThreadEntryViewModelTest {
         whenever(activeServerHolder.serverId).thenReturn(null)
 
         val viewModel = MessageViewModel(
-            messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker
+            messageRepository, taskRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker
         )
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
@@ -77,7 +79,7 @@ class ThreadEntryViewModelTest {
         whenever(activeServerHolder.serverId).thenReturn(null)
 
         val viewModel = MessageViewModel(
-            messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker
+            messageRepository, taskRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker
         )
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
