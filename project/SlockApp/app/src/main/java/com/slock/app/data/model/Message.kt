@@ -16,6 +16,7 @@ data class Message(
     @SerializedName("messageType")
     val messageType: String? = null,
     val attachments: List<Attachment> = emptyList(),
+    val reactions: List<MessageReactionPayload> = emptyList(),
     val seq: Long = 0,
     @SerializedName("createdAt")
     val createdAt: String? = null,
@@ -39,6 +40,27 @@ data class Message(
     val isAgent: Boolean get() = senderType == "agent"
     val isTask: Boolean get() = taskNumber != null
 }
+
+data class MessageReactionPayload(
+    val emoji: String? = null,
+    val count: Int? = null,
+    @SerializedName("isSelected")
+    val isSelected: Boolean? = null,
+    @SerializedName("selected")
+    val selected: Boolean? = null,
+    @SerializedName("reacted")
+    val reacted: Boolean? = null,
+    @SerializedName("userIds")
+    val userIds: List<String>? = null,
+    @SerializedName("users")
+    val users: List<MessageReactionUserPayload>? = null
+)
+
+data class MessageReactionUserPayload(
+    val id: String? = null,
+    @SerializedName("userId")
+    val userId: String? = null
+)
 
 data class Attachment(
     val id: String? = null,

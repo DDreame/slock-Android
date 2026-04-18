@@ -34,7 +34,8 @@ fun Message.toEntity() = MessageEntity(
     seq = seq, createdAt = createdAt, updatedAt = updatedAt,
     threadId = threadChannelId, taskNumber = taskNumber, taskStatus = taskStatus,
     replyCount = replyCount,
-    attachments = try { gson.toJson(attachments) } catch (_: Exception) { "[]" }
+    attachments = try { gson.toJson(attachments) } catch (_: Exception) { "[]" },
+    reactions = try { gson.toJson(reactions) } catch (_: Exception) { "[]" }
 )
 
 fun MessageEntity.toModel() = Message(
@@ -47,6 +48,10 @@ fun MessageEntity.toModel() = Message(
     attachments = try {
         val type = object : TypeToken<List<Attachment>>() {}.type
         gson.fromJson<List<Attachment>>(attachments ?: "[]", type) ?: emptyList()
+    } catch (_: Exception) { emptyList() },
+    reactions = try {
+        val type = object : TypeToken<List<MessageReactionPayload>>() {}.type
+        gson.fromJson<List<MessageReactionPayload>>(reactions ?: "[]", type) ?: emptyList()
     } catch (_: Exception) { emptyList() }
 )
 

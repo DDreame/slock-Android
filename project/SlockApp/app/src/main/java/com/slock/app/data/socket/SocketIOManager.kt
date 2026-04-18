@@ -1,6 +1,10 @@
 package com.slock.app.data.socket
 
 import android.util.Log
+import com.google.gson.Gson
+import com.google.gson.annotations.SerializedName
+import com.slock.app.data.model.Attachment
+import com.slock.app.data.model.MessageReactionPayload
 import io.socket.client.IO
 import io.socket.client.Socket
 import kotlinx.coroutines.channels.awaitClose
@@ -20,6 +24,8 @@ class SocketIOManager @Inject constructor(
     private val secureTokenStorage: com.slock.app.data.local.SecureTokenStorage
 ) {
     private val tokenProvider: () -> String? = { secureTokenStorage.accessToken }
+    private val gson = Gson()
+
     companion object {
         private const val TAG = "SocketIOManager"
         private const val BASE_URL = "https://api.slock.ai"
@@ -70,9 +76,38 @@ class SocketIOManager @Inject constructor(
     )
 
     data class MessageUpdatedData(
-        val id: String,
-        val channelId: String,
-        val content: String
+        val id: String = "",
+        val channelId: String = "",
+        val content: String? = null,
+        @SerializedName("senderId")
+        val senderId: String? = null,
+        @SerializedName("senderName")
+        val senderName: String? = null,
+        @SerializedName("senderType")
+        val senderType: String? = null,
+        @SerializedName("messageType")
+        val messageType: String? = null,
+        val attachments: List<Attachment>? = null,
+        val reactions: List<MessageReactionPayload>? = null,
+        val seq: Long? = null,
+        @SerializedName("createdAt")
+        val createdAt: String? = null,
+        @SerializedName("updatedAt")
+        val updatedAt: String? = null,
+        @SerializedName("threadChannelId")
+        val threadChannelId: String? = null,
+        @SerializedName("parentMessageId")
+        val parentMessageId: String? = null,
+        @SerializedName("replyCount")
+        val replyCount: Int? = null,
+        @SerializedName("lastReplyAt")
+        val lastReplyAt: String? = null,
+        @SerializedName("taskNumber")
+        val taskNumber: Int? = null,
+        @SerializedName("taskStatus")
+        val taskStatus: String? = null,
+        @SerializedName("taskClaimedByName")
+        val taskClaimedByName: String? = null
     )
 
     data class AgentCreatedData(
@@ -286,13 +321,11 @@ class SocketIOManager @Inject constructor(
 
             on("message:updated") { args ->
                 val data = args.firstOrNull() as? JSONObject ?: return@on
-                val event = SocketEvent.MessageUpdated(
-                    MessageUpdatedData(
-                        id = data.optString("id"),
-                        channelId = data.optString("channelId"),
-                        content = data.optString("content")
-                    )
-                )
+                val payload = runCatching {
+                    gson.fromJson(data.toString(), MessageUpdatedData::class.java)
+                }.getOrNull() ?: return@on
+                if (payload.id.isBlank() || payload.channelId.isBlank()) return@on
+                val event = SocketEvent.MessageUpdated(payload)
                 _events.tryEmit(event)
             }
 

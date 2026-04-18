@@ -1,6 +1,7 @@
 package com.slock.app.ui.message
 
 import com.slock.app.data.model.Message
+import com.slock.app.data.model.MessageReactionPayload
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -41,6 +42,27 @@ class MessageReactionStateTest {
         assertEquals(
             listOf(MessageReactionUiModel(emoji = "👀", count = 1, isSelected = true)),
             result["msg-1"]
+        )
+    }
+
+    @Test
+    fun `resolveDisplayedReactions maps server payload into ui model`() {
+        val message = Message(
+            id = "msg-1",
+            reactions = listOf(
+                MessageReactionPayload(emoji = "🎉", count = 3, selected = true),
+                MessageReactionPayload(emoji = "🔥", userIds = listOf("u1", "u2"))
+            )
+        )
+
+        val result = resolveDisplayedReactions(message, reactionOverride = null)
+
+        assertEquals(
+            listOf(
+                MessageReactionUiModel(emoji = "🎉", count = 3, isSelected = true),
+                MessageReactionUiModel(emoji = "🔥", count = 2, isSelected = false)
+            ),
+            result
         )
     }
 

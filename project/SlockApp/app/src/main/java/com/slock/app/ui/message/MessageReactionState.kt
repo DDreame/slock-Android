@@ -15,8 +15,32 @@ fun resolveDisplayedReactions(
     reactionOverride: List<MessageReactionUiModel>?
 ): List<MessageReactionUiModel> {
     if (message.id.isNullOrBlank()) return emptyList()
-    // TODO(task-89): map server-provided reaction payload from Message once the backend contract is confirmed.
-    return reactionOverride ?: emptyList()
+    return reactionOverride ?: resolveServerReactions(message.reactions)
+}
+
+private fun resolveServerReactions(
+    reactions: List<com.slock.app.data.model.MessageReactionPayload>
+): List<MessageReactionUiModel> {
+    val quickOrder = DefaultQuickReactions.withIndex().associate { it.value to it.index }
+    return reactions.mapNotNull { reaction ->
+        val emoji = reaction.emoji?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        val isSelected = reaction.isSelected ?: reaction.selected ?: reaction.reacted ?: false
+        val explicitCount = reaction.count ?: reaction.userIds?.size ?: reaction.users?.size ?: 0
+        val normalizedCount = when {
+            explicitCount > 0 -> explicitCount
+            isSelected -> 1
+            else -> 0
+        }
+        if (normalizedCount <= 0) return@mapNotNull null
+        MessageReactionUiModel(
+            emoji = emoji,
+            count = normalizedCount,
+            isSelected = isSelected
+        )
+    }.sortedWith(
+        compareBy<MessageReactionUiModel> { quickOrder[it.emoji] ?: Int.MAX_VALUE }
+            .thenBy { it.emoji }
+    )
 }
 
 fun quickReactionOptions(reactions: List<MessageReactionUiModel>): List<String> =

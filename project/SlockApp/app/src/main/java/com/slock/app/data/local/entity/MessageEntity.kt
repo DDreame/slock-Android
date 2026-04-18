@@ -32,5 +32,6 @@ data class MessageEntity(
     val taskStatus: String? = null,
     val taskNumber: Int? = null,
     val replyCount: Int = 0,
-    val attachments: String? = null
+    val attachments: String? = null,
+    val reactions: String? = null
 )

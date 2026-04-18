@@ -103,6 +103,33 @@ class MessageViewModel @Inject constructor(
     private fun recomputeSearchMatches(state: MessageUiState): MessageUiState =
         computeSearchMatches(state)
 
+    // Socket updates may carry only the fields that changed; preserve the rest locally.
+    private fun mergeUpdatedMessage(
+        existing: Message,
+        update: SocketIOManager.MessageUpdatedData
+    ): Message {
+        return existing.copy(
+            channelId = update.channelId.takeIf { it.isNotBlank() } ?: existing.channelId,
+            content = update.content ?: existing.content,
+            senderId = update.senderId ?: existing.senderId,
+            senderName = update.senderName ?: existing.senderName,
+            senderType = update.senderType ?: existing.senderType,
+            messageType = update.messageType ?: existing.messageType,
+            attachments = update.attachments ?: existing.attachments,
+            reactions = update.reactions ?: existing.reactions,
+            seq = update.seq ?: existing.seq,
+            createdAt = update.createdAt ?: existing.createdAt,
+            updatedAt = update.updatedAt ?: existing.updatedAt,
+            threadChannelId = update.threadChannelId ?: existing.threadChannelId,
+            parentMessageId = update.parentMessageId ?: existing.parentMessageId,
+            replyCount = update.replyCount ?: existing.replyCount,
+            lastReplyAt = update.lastReplyAt ?: existing.lastReplyAt,
+            taskNumber = update.taskNumber ?: existing.taskNumber,
+            taskStatus = update.taskStatus ?: existing.taskStatus,
+            taskClaimedByName = update.taskClaimedByName ?: existing.taskClaimedByName
+        )
+    }
+
     init {
         observePresence()
         observeSocketEvents()
@@ -157,12 +184,20 @@ class MessageViewModel @Inject constructor(
                                 _state.update { current ->
                                     val updatedMessages = current.messages.map { message ->
                                         if (message.id == data.id) {
-                                            message.copy(content = data.content.ifBlank { message.content })
+                                            mergeUpdatedMessage(message, data)
                                         } else {
                                             message
                                         }
                                     }
-                                    recomputeSearchMatches(current.copy(messages = updatedMessages))
+                                    val updatedOverrides = current.reactionOverridesByMessageId
+                                        .toMutableMap()
+                                        .apply { remove(data.id) }
+                                    recomputeSearchMatches(
+                                        current.copy(
+                                            messages = updatedMessages,
+                                            reactionOverridesByMessageId = updatedOverrides
+                                        )
+                                    )
                                 }
                             }
                         }

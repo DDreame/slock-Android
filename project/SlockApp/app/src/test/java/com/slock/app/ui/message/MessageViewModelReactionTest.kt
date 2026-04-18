@@ -3,6 +3,7 @@ package com.slock.app.ui.message
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.model.Message
+import com.slock.app.data.model.MessageReactionPayload
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
@@ -47,6 +48,25 @@ class MessageViewModelReactionTest {
     }
 
     @Test
+    fun toggleReaction_usesServerReactionsAsOptimisticBase() = runTest {
+        whenever(socketIOManager.events).thenReturn(emptyFlow())
+
+        val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
+        val message = Message(
+            id = "msg-1",
+            content = "hello",
+            reactions = listOf(MessageReactionPayload(emoji = "🔥", count = 2, selected = false))
+        )
+
+        viewModel.toggleReaction(message, "🔥")
+
+        assertEquals(
+            listOf(MessageReactionUiModel(emoji = "🔥", count = 3, isSelected = true)),
+            viewModel.state.value.reactionOverridesByMessageId["msg-1"]
+        )
+    }
+
+    @Test
     fun toggleReaction_ignoresMessagesWithoutId() = runTest {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
 
@@ -58,7 +78,7 @@ class MessageViewModelReactionTest {
     }
 
     @Test
-    fun messageUpdatedEvent_refreshesVisibleMessageContent() = runTest {
+    fun messageUpdatedEvent_refreshesVisibleMessageContentAndReactions() = runTest {
         val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
         whenever(socketIOManager.events).thenReturn(events)
         whenever(activeServerHolder.serverId).thenReturn("server-1")
@@ -73,19 +93,26 @@ class MessageViewModelReactionTest {
         val viewModel = MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
         viewModel.loadMessages("channel-1")
         advanceUntilIdle()
+        viewModel.toggleReaction(existing, "👍")
 
         events.emit(
             SocketIOManager.SocketEvent.MessageUpdated(
                 SocketIOManager.MessageUpdatedData(
                     id = "msg-1",
                     channelId = "channel-1",
-                    content = "after"
+                    content = "after",
+                    reactions = listOf(MessageReactionPayload(emoji = "👍", count = 4, selected = true))
                 )
             )
         )
         advanceUntilIdle()
 
         assertEquals("after", viewModel.state.value.messages.first().content)
+        assertEquals(
+            listOf(MessageReactionUiModel(emoji = "👍", count = 4, isSelected = true)),
+            resolveDisplayedReactions(viewModel.state.value.messages.first(), reactionOverride = null)
+        )
+        assertTrue(viewModel.state.value.reactionOverridesByMessageId.isEmpty())
     }
 
     @Test
