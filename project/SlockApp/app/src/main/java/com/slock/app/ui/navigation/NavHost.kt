@@ -822,7 +822,13 @@ fun SlockNavHost(
                 onSelectTab = viewModel::selectTab,
                 onRetry = viewModel::retry,
                 onResetAgent = viewModel::resetAgent,
-                onConsumeResetFeedback = viewModel::consumeResetFeedback
+                onConsumeResetFeedback = viewModel::consumeResetFeedback,
+                onUpdateAgent = viewModel::updateAgent,
+                onDeleteAgent = {
+                    viewModel.deleteAgent()
+                    navController.popBackStack()
+                },
+                onConsumeUpdateFeedback = viewModel::consumeUpdateFeedback
             )
         }
 

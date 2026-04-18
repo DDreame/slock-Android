@@ -28,7 +28,9 @@ data class AgentDetailUiState(
     val isLoadingLog: Boolean = false,
     val selectedTab: Int = 0,
     val isResetting: Boolean = false,
-    val resetFeedbackMessage: String? = null
+    val resetFeedbackMessage: String? = null,
+    val isSaving: Boolean = false,
+    val updateFeedbackMessage: String? = null
 )
 
 @HiltViewModel
@@ -201,6 +203,46 @@ class AgentDetailViewModel @Inject constructor(
 
     fun consumeResetFeedback() {
         _state.update { it.copy(resetFeedbackMessage = null) }
+    }
+
+    fun updateAgent(
+        name: String?,
+        description: String?,
+        prompt: String?,
+        runtime: String,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?
+    ) {
+        val serverId = serverId ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(isSaving = true) }
+            agentRepository.updateAgent(serverId, agentId, name, description, prompt, runtime, reasoningEffort, envVars).fold(
+                onSuccess = { updatedAgent ->
+                    _state.update { it.copy(
+                        agent = updatedAgent,
+                        isSaving = false,
+                        updateFeedbackMessage = "Agent updated successfully"
+                    ) }
+                },
+                onFailure = { err ->
+                    _state.update { it.copy(
+                        isSaving = false,
+                        updateFeedbackMessage = err.message ?: "Update failed"
+                    ) }
+                }
+            )
+        }
+    }
+
+    fun consumeUpdateFeedback() {
+        _state.update { it.copy(updateFeedbackMessage = null) }
+    }
+
+    fun deleteAgent() {
+        val serverId = serverId ?: return
+        viewModelScope.launch {
+            agentRepository.deleteAgent(serverId, agentId)
+        }
     }
 
     fun retry() {
