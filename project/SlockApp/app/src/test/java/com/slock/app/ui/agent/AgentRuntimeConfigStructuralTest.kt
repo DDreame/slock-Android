@@ -1,22 +1,26 @@
 package com.slock.app.ui.agent
 
-import java.nio.file.Files
-import java.nio.file.Path
+import java.io.File
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AgentRuntimeConfigStructuralTest {
 
-    private val agentListScreenSource: String = Files.readString(
-        Path.of(
-            "app/src/main/java/com/slock/app/ui/agent/AgentListScreen.kt"
-        )
+    private fun readSource(vararg candidates: String): String {
+        return candidates
+            .map(::File)
+            .first { it.exists() }
+            .readText()
+    }
+
+    private val agentListScreenSource: String = readSource(
+        "src/main/java/com/slock/app/ui/agent/AgentListScreen.kt",
+        "app/src/main/java/com/slock/app/ui/agent/AgentListScreen.kt"
     )
 
-    private val navHostSource: String = Files.readString(
-        Path.of(
-            "app/src/main/java/com/slock/app/ui/navigation/NavHost.kt"
-        )
+    private val navHostSource: String = readSource(
+        "src/main/java/com/slock/app/ui/navigation/NavHost.kt",
+        "app/src/main/java/com/slock/app/ui/navigation/NavHost.kt"
     )
 
     @Test
