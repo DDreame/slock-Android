@@ -41,12 +41,12 @@ class AgentCardClickComposeTest {
         composeTestRule.setContent {
             AgentListScreen(
                 state = AgentUiState(agents = agents),
-                onCreateAgent = { _, _, _, _ -> },
+                onCreateAgent = { _, _, _, _, _, _, _ -> },
                 onStartAgent = {},
                 onStopAgent = {},
                 onResetAgent = {},
                 onDeleteAgent = {},
-                onUpdateAgent = { _, _, _, _ -> },
+                onUpdateAgent = { _, _, _, _, _, _, _ -> },
                 onDmAgent = {},
                 onAgentClick = onAgentClick,
                 onNavigateBack = {},
