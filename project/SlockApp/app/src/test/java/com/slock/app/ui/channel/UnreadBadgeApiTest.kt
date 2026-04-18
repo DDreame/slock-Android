@@ -137,24 +137,13 @@ class UnreadBadgeApiTest {
     }
 
     @Test
-    fun `NavHost onChannelClick calls clearUnreadCount`() {
-        val navBlock = navHostSource
-            .substringAfter("onChannelClick = {")
-            .substringBefore("onDmClick = {")
+    fun `NavHost message screen calls clearUnreadCount in LaunchedEffect`() {
+        val messageBlock = navHostSource
+            .substringAfter("// Message List Screen")
+            .substringBefore("// Thread")
         assertTrue(
-            "onChannelClick must call clearUnreadCount",
-            navBlock.contains("clearUnreadCount")
-        )
-    }
-
-    @Test
-    fun `NavHost onDmClick calls clearUnreadCount`() {
-        val dmBlock = navHostSource
-            .substringAfter("onDmClick = {")
-            .substringBefore("onCreateChannel")
-        assertTrue(
-            "onDmClick must call clearUnreadCount",
-            dmBlock.contains("clearUnreadCount")
+            "Message screen LaunchedEffect must call clearUnreadCount for all entry paths",
+            messageBlock.contains("clearUnreadCount")
         )
     }
 

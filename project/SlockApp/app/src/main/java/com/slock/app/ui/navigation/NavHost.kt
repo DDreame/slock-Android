@@ -311,11 +311,9 @@ fun SlockNavHost(
                     serverTasksViewModel.loadAllTasks(server.id.orEmpty())
                 },
                 onChannelClick = { channelId, channelName ->
-                    channelViewModel.clearUnreadCount(channelId)
                     navController.navigate(Routes.messagesRoute(channelId, channelName))
                 },
                 onDmClick = { channelId, channelName ->
-                    channelViewModel.clearUnreadCount(channelId)
                     navController.navigate(Routes.messagesRoute(channelId, channelName))
                 },
                 onCreateChannel = channelViewModel::createChannel,
@@ -519,6 +517,7 @@ fun SlockNavHost(
             LaunchedEffect(channelId) {
                 viewModel.loadMessages(channelId)
                 channelVM.loadChannelAgents(channelId)
+                channelVM.clearUnreadCount(channelId)
             }
 
             DisposableEffect(channelId) {
