@@ -183,6 +183,7 @@ class ChannelViewModel @Inject constructor(
             channelRepository.getDMs(serverId).fold(
                 onSuccess = { dms ->
                     _state.update { it.copy(dms = dms) }
+                    loadChannelPreviews(dms)
                     dmsLoaded.complete(true)
                 },
                 onFailure = { dmsLoaded.complete(false) }
@@ -236,6 +237,7 @@ class ChannelViewModel @Inject constructor(
             channelRepository.getDMs(serverId).fold(
                 onSuccess = { dms ->
                     _state.update { it.copy(dms = dms, isDmLoading = false) }
+                    loadChannelPreviews(dms)
                     dmsLoaded.complete(true)
                 },
                 onFailure = { err ->

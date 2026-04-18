@@ -654,10 +654,12 @@ private fun ChannelListContent(
                     ?: dm.members?.firstOrNull { it.userId != null }?.userId
                 val isOnline = contactId != null && contactId in channelState.onlineIds
                 val isAgent = dm.members?.any { it.agentId != null } ?: true
+                val preview = channelState.channelPreviews[dm.id.orEmpty()]
                 DMItem(
                     name = dm.name.orEmpty(),
                     isAgent = isAgent,
                     isOnline = isOnline,
+                    lastMessage = preview?.content.orEmpty(),
                     onClick = { onDmClick(dm.id.orEmpty(), dm.name.orEmpty()) }
                 )
             }
