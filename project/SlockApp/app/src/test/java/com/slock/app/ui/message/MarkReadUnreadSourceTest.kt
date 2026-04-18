@@ -166,6 +166,32 @@ class MarkReadUnreadSourceTest {
     }
 
     @Test
+    fun `markAsRead saves previous count for rollback`() {
+        val markReadBlock = vmSource
+            .substringAfter("fun markAsRead(")
+            .substringBefore("fun markAsUnread(")
+        assertTrue(
+            "markAsRead must save previousCount before optimistic update",
+            markReadBlock.contains("previousCount")
+        )
+    }
+
+    @Test
+    fun `markAsRead rolls back unread count on failure`() {
+        val markReadBlock = vmSource
+            .substringAfter("fun markAsRead(")
+            .substringBefore("fun markAsUnread(")
+        assertTrue(
+            "markAsRead failure must restore previous unread count",
+            markReadBlock.contains("rollback") || markReadBlock.contains("previousCount")
+        )
+        assertTrue(
+            "markAsRead failure block must re-add channelId to unreadCounts",
+            markReadBlock.contains("current.unreadCounts + (channelId to previousCount)")
+        )
+    }
+
+    @Test
     fun `markAsUnread sets feedback message on failure`() {
         val markUnreadBlock = vmSource
             .substringAfter("fun markAsUnread(")
@@ -219,6 +245,17 @@ class MarkReadUnreadSourceTest {
     }
 
     // --- NavHost wiring ---
+
+    @Test
+    fun `NavHost Messages route shares ChannelViewModel with Home`() {
+        val messagesBlock = navSource
+            .substringAfter("val viewModel: MessageViewModel = hiltViewModel()")
+            .substringBefore("MessageListScreen(")
+        assertTrue(
+            "Messages route must get channelVM from Home backstack entry for shared state",
+            messagesBlock.contains("navController.getBackStackEntry(Routes.HOME)")
+        )
+    }
 
     @Test
     fun `NavHost wires onMarkAsRead to channelVM`() {

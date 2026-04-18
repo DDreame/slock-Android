@@ -525,7 +525,10 @@ fun SlockNavHost(
             val contextLabel = backStackEntry.arguments?.getString("contextLabel").orEmpty()
             val viewModel: MessageViewModel = hiltViewModel()
             val state by viewModel.state.collectAsState()
-            val channelVM: ChannelViewModel = hiltViewModel()
+            val channelVM: ChannelViewModel = run {
+                val homeEntry = try { navController.getBackStackEntry(Routes.HOME) } catch (_: Exception) { null }
+                if (homeEntry != null) hiltViewModel(homeEntry) else hiltViewModel()
+            }
             val channelAgents by channelVM.channelAgents.collectAsState()
             val channelState by channelVM.state.collectAsState()
 
