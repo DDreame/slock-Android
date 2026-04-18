@@ -7,6 +7,7 @@ import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -34,7 +35,7 @@ class MessageSavedChannelStateTest {
     private val presenceTracker = PresenceTracker()
 
     @Before
-    fun stubCacheFreshness() {
+    fun stubCacheFreshness() = runBlocking {
         whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false)
     }
 

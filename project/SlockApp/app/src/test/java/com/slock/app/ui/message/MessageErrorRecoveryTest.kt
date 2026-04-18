@@ -13,6 +13,7 @@ import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -96,7 +97,7 @@ class MessageErrorRecoveryExecutionTest {
     ): MessageViewModel {
         whenever(socketManager.events).thenReturn(emptyFlow())
         if (repository === messageRepository) {
-            whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false)
+            runBlocking { whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false) }
         }
         return MessageViewModel(repository, channels, socketManager, activeServerHolder, presenceTracker)
     }
