@@ -144,8 +144,8 @@ class MachineCrudComposeTest {
         }
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("无法删除 Machine", substring = true).assertExists()
-        composeTestRule.onNodeWithText("Agent1").assertExists()
-        composeTestRule.onNodeWithText("Agent2").assertExists()
+        composeTestRule.onAllNodesWithText("Agent1")[0].assertExists()
+        composeTestRule.onAllNodesWithText("Agent2")[0].assertExists()
         composeTestRule.onNodeWithText("知道了").assertExists()
     }
 
