@@ -388,6 +388,10 @@ fun SlockNavHost(
                         },
                         onNavigateBack = { },
                         onRetry = { selectedServer?.id?.let { threadListViewModel.loadThreads(it) } },
+                        onTabSelected = { threadListViewModel.selectTab(it) },
+                        onMarkDone = { threadListViewModel.markThreadDone(it) },
+                        onUndoDone = { threadListViewModel.undoThreadDone(it) },
+                        onUnfollow = { threadListViewModel.unfollowThread(it) },
                         showHeader = false
                     )
                 },
@@ -653,7 +657,11 @@ fun SlockNavHost(
                     )
                 },
                 onNavigateBack = { navController.popBackStack() },
-                onRetry = { viewModel.loadThreads(serverId) }
+                onRetry = { viewModel.loadThreads(serverId) },
+                onTabSelected = { viewModel.selectTab(it) },
+                onMarkDone = { viewModel.markThreadDone(it) },
+                onUndoDone = { viewModel.undoThreadDone(it) },
+                onUnfollow = { viewModel.unfollowThread(it) }
             )
         }
 
@@ -705,7 +713,13 @@ fun SlockNavHost(
                 state = state,
                 onSendReply = viewModel::sendReply,
                 onLoadMore = viewModel::loadMoreReplies,
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.popBackStack() },
+                onFollowThread = viewModel::followThread,
+                onUnfollowThread = viewModel::unfollowThread,
+                onMarkDone = {
+                    viewModel.markThreadDone()
+                    navController.popBackStack()
+                }
             )
         }
 

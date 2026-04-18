@@ -50,3 +50,11 @@ data class ThreadSummary(
     val unreadCount: Int = 0,
     val channelName: String? = null
 )
+
+data class FollowThreadRequest(
+    val parentMessageId: String
+)
+
+data class ThreadChannelIdRequest(
+    val threadChannelId: String
+)

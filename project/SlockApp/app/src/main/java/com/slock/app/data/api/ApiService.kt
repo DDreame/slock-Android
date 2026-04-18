@@ -170,6 +170,18 @@ interface ApiService {
     @GET("channels/threads/followed")
     suspend fun getFollowedThreads(): Response<FollowedThreadsResponse>
 
+    @POST("channels/threads/follow")
+    suspend fun followThread(@Body request: FollowThreadRequest): Response<Unit>
+
+    @POST("channels/threads/unfollow")
+    suspend fun unfollowThread(@Body request: ThreadChannelIdRequest): Response<Unit>
+
+    @POST("channels/threads/done")
+    suspend fun markThreadDone(@Body request: ThreadChannelIdRequest): Response<Unit>
+
+    @POST("channels/threads/undone")
+    suspend fun undoThreadDone(@Body request: ThreadChannelIdRequest): Response<Unit>
+
     @GET("threads/channel/{channelId}")
     suspend fun getThreadMessages(
         @Path("channelId") channelId: String,

@@ -29,7 +29,10 @@ fun ThreadReplyScreen(
     state: ThreadReplyUiState,
     onSendReply: (String) -> Unit,
     onLoadMore: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onFollowThread: () -> Unit = {},
+    onUnfollowThread: () -> Unit = {},
+    onMarkDone: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
     var isFollowing by remember { mutableStateOf(true) }
@@ -51,7 +54,11 @@ fun ThreadReplyScreen(
         ParticipantBar(
             participants = buildParticipantList(state),
             isFollowing = isFollowing,
-            onToggleFollow = { isFollowing = !isFollowing }
+            onToggleFollow = {
+                if (isFollowing) onUnfollowThread() else onFollowThread()
+                isFollowing = !isFollowing
+            },
+            onMarkDone = onMarkDone
         )
 
         // Scrollable content
@@ -226,7 +233,8 @@ private fun MiniActionButton(icon: String, onClick: () -> Unit = {}) {
 private fun ParticipantBar(
     participants: List<Participant>,
     isFollowing: Boolean,
-    onToggleFollow: () -> Unit
+    onToggleFollow: () -> Unit,
+    onMarkDone: () -> Unit = {}
 ) {
     Row(
         modifier = Modifier
@@ -235,7 +243,6 @@ private fun ParticipantBar(
             .padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Participant dots
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -268,20 +275,36 @@ private fun ParticipantBar(
             )
         }
 
-        // Follow button
-        Box(
-            modifier = Modifier
-                .background(if (isFollowing) Yellow else Cream)
-                .border(1.5.dp, Black, RectangleShape)
-                .clickable(onClick = onToggleFollow)
-                .padding(horizontal = 12.dp, vertical = 4.dp)
-        ) {
-            Text(
-                text = if (isFollowing) "\uD83D\uDD14 FOLLOWING" else "\uD83D\uDD14 FOLLOW",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Black
-            )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Box(
+                modifier = Modifier
+                    .background(Lime)
+                    .border(1.5.dp, Black, RectangleShape)
+                    .clickable(onClick = onMarkDone)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = "\u2713 DONE",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Black
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .background(if (isFollowing) Yellow else Cream)
+                    .border(1.5.dp, Black, RectangleShape)
+                    .clickable(onClick = onToggleFollow)
+                    .padding(horizontal = 12.dp, vertical = 4.dp)
+            ) {
+                Text(
+                    text = if (isFollowing) "\uD83D\uDD14 FOLLOWING" else "\uD83D\uDD14 FOLLOW",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Black
+                )
+            }
         }
     }
     Divider(thickness = 2.dp, color = Black)

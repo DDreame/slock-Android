@@ -195,6 +195,32 @@ class ThreadReplyViewModel @Inject constructor(
         }
     }
 
+    fun followThread() {
+        val serverId = activeServerHolder.serverId ?: return
+        val parentMessageId = _state.value.parentMessage?.id ?: return
+        viewModelScope.launch {
+            threadRepository.followThread(serverId, parentMessageId)
+        }
+    }
+
+    fun unfollowThread() {
+        val serverId = activeServerHolder.serverId ?: return
+        val threadChannelId = _state.value.threadChannelId
+        if (threadChannelId.isBlank()) return
+        viewModelScope.launch {
+            threadRepository.unfollowThread(serverId, threadChannelId)
+        }
+    }
+
+    fun markThreadDone() {
+        val serverId = activeServerHolder.serverId ?: return
+        val threadChannelId = _state.value.threadChannelId
+        if (threadChannelId.isBlank()) return
+        viewModelScope.launch {
+            threadRepository.markThreadDone(serverId, threadChannelId)
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         socketEventsJob?.cancel()
