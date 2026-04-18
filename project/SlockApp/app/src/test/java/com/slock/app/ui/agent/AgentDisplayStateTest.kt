@@ -64,4 +64,13 @@ class AgentDisplayStateTest {
         assertEquals("Error", AgentDisplayState.ERROR.statusText)
         assertEquals("Hibernating", AgentDisplayState.OFFLINE.statusText)
     }
+
+    @Test
+    fun `toggle label is Stop for active states and Start for offline`() {
+        assertEquals("Stop", AgentDisplayState.ONLINE.toggleLabel)
+        assertEquals("Stop", AgentDisplayState.THINKING.toggleLabel)
+        assertEquals("Stop", AgentDisplayState.WORKING.toggleLabel)
+        assertEquals("Stop", AgentDisplayState.ERROR.toggleLabel)
+        assertEquals("Start", AgentDisplayState.OFFLINE.toggleLabel)
+    }
 }

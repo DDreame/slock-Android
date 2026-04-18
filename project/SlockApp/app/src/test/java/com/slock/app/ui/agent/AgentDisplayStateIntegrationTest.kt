@@ -118,4 +118,23 @@ class AgentDisplayStateIntegrationTest {
             cardBlock.contains("\"Thinking\"") || cardBlock.contains("== \"thinking\"")
         )
     }
+
+    @Test
+    fun `List and Detail use same toggle label from displayState`() {
+        val listCardBlock = listScreenSource
+            .substringAfter("fun NeoAgentCard(")
+            .substringBefore("@Composable")
+        assertTrue(
+            "List screen must derive toggle label from displayState.toggleLabel",
+            listCardBlock.contains("displayState.toggleLabel")
+        )
+
+        val detailOverviewBlock = detailScreenSource
+            .substringAfter("fun OverviewContent(")
+            .substringBefore("fun ActivityLogContent(")
+        assertTrue(
+            "Detail screen must derive toggle label from displayState.toggleLabel",
+            detailOverviewBlock.contains("displayState.toggleLabel")
+        )
+    }
 }

@@ -302,9 +302,9 @@ private fun OverviewContent(
     ) {
         ActionButton("DM", NeoCyan, Modifier.weight(1f), onDmClick)
         if (isActive) {
-            ActionButton("Stop", NeoPink, Modifier.weight(1f), onStopClick)
+            ActionButton(displayState.toggleLabel, NeoPink, Modifier.weight(1f), onStopClick)
         } else {
-            ActionButton("Start", NeoLime, Modifier.weight(1f), onStartAgent)
+            ActionButton(displayState.toggleLabel, NeoLime, Modifier.weight(1f), onStartAgent)
         }
     }
 

@@ -8,13 +8,14 @@ import com.slock.app.ui.theme.Pink
 enum class AgentDisplayState(
     val dotColor: Color,
     val statusText: String,
-    val isActive: Boolean
+    val isActive: Boolean,
+    val toggleLabel: String
 ) {
-    ONLINE(Lime, "Online", true),
-    THINKING(Yellow, "Thinking...", true),
-    WORKING(Lime, "Working...", true),
-    ERROR(Pink, "Error", true),
-    OFFLINE(Color(0xFFCCCCCC), "Hibernating", false);
+    ONLINE(Lime, "Online", true, "Stop"),
+    THINKING(Yellow, "Thinking...", true, "Stop"),
+    WORKING(Lime, "Working...", true, "Stop"),
+    ERROR(Pink, "Error", true, "Stop"),
+    OFFLINE(Color(0xFFCCCCCC), "Hibernating", false, "Start");
 }
 
 fun resolveDisplayState(

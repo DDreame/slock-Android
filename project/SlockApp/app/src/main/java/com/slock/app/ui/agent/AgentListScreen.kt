@@ -479,7 +479,7 @@ private fun NeoAgentCard(
             )
             AgentActionButton(
                 icon = if (isRunning) "\u25A0" else "\u25B6",
-                label = if (isRunning) "Stop" else "Wake",
+                label = displayState.toggleLabel,
                 onClick = onToggle,
                 modifier = Modifier.weight(1f),
                 textColor = if (!isRunning) Color(0xFF22C55E) else Black
