@@ -90,8 +90,8 @@ class ThreadInboxComposeTest {
                 showHeader = false
             )
         }
-        composeTestRule.onNodeWithTag("threadReplyCountChip").assertExists()
-        composeTestRule.onNodeWithTag("threadUnreadBadge").assertExists()
+        composeTestRule.onNodeWithTag("threadReplyCountChip", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("threadUnreadBadge", useUnmergedTree = true).assertExists()
         composeTestRule.onNodeWithText("3 replies", substring = true).assertExists()
         composeTestRule.onNodeWithText("2 new", substring = true).assertExists()
         composeTestRule.onNodeWithText("2026-04-17 12:00").assertExists()
