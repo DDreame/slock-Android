@@ -18,6 +18,7 @@ interface ChannelRepository {
     suspend fun joinChannel(serverId: String, channelId: String): Result<Unit>
     suspend fun leaveChannel(serverId: String, channelId: String): Result<Unit>
     suspend fun markChannelRead(serverId: String, channelId: String, seq: Long): Result<Unit>
+    suspend fun markChannelUnread(serverId: String, channelId: String): Result<Unit>
     suspend fun getDMs(serverId: String): Result<List<Channel>>
     suspend fun createDM(serverId: String, agentId: String? = null, userId: String? = null): Result<Channel>
     suspend fun getChannelMembers(serverId: String, channelId: String): Result<List<ChannelMember>>
@@ -162,6 +163,20 @@ class ChannelRepositoryImpl @Inject constructor(
                 Result.success(Unit)
             } else {
                 Result.failure(Exception("Mark read failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun markChannelUnread(serverId: String, channelId: String): Result<Unit> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.markChannelUnread(channelId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Mark unread failed: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

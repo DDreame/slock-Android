@@ -100,7 +100,11 @@ fun MessageListScreen(
     onDismissConvertToTask: () -> Unit = {},
     onConvertTaskStatusChange: (String) -> Unit = {},
     onSubmitConvertToTask: () -> Unit = {},
-    onConvertTaskFeedbackShown: () -> Unit = {}
+    onConvertTaskFeedbackShown: () -> Unit = {},
+    onMarkAsRead: () -> Unit = {},
+    onMarkAsUnread: () -> Unit = {},
+    markReadFeedbackMessage: String? = null,
+    onMarkReadFeedbackShown: () -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
     val context = LocalContext.current
@@ -122,6 +126,12 @@ fun MessageListScreen(
         val message = state.convertTaskFeedbackMessage ?: return@LaunchedEffect
         android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
         onConvertTaskFeedbackShown()
+    }
+
+    LaunchedEffect(markReadFeedbackMessage) {
+        val message = markReadFeedbackMessage ?: return@LaunchedEffect
+        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
+        onMarkReadFeedbackShown()
     }
 
     Column(
@@ -255,7 +265,9 @@ fun MessageListScreen(
                                         onReply = { onReplyTo(message) },
                                         onToggleReaction = { emoji -> onToggleReaction(message, emoji) },
                                         onConvertToTask = { onShowConvertToTask(message, channelName) },
-                                        onImageClick = onImageClick
+                                        onImageClick = onImageClick,
+                                        onMarkAsRead = onMarkAsRead,
+                                        onMarkAsUnread = onMarkAsUnread
                                     )
                                 }
                             }
@@ -611,7 +623,9 @@ private fun NeoMessage(
     onReply: () -> Unit = {},
     onToggleReaction: (String) -> Unit = {},
     onConvertToTask: () -> Unit = {},
-    onImageClick: (String) -> Unit = {}
+    onImageClick: (String) -> Unit = {},
+    onMarkAsRead: () -> Unit = {},
+    onMarkAsUnread: () -> Unit = {}
 ) {
     val isAgent = message.isAgent
     val isPending = message.id.orEmpty().startsWith("pending-")
@@ -853,7 +867,9 @@ private fun NeoMessage(
             onCopyLink = {
                 copyTargets.link?.let { clipboardManager.setText(AnnotatedString(it)) }
                 showMenu = false
-            }
+            },
+            onMarkAsRead = { showMenu = false; onMarkAsRead() },
+            onMarkAsUnread = { showMenu = false; onMarkAsUnread() }
         )
     }
 }
@@ -916,7 +932,9 @@ private fun MessageActionSheet(
     onQuoteReply: () -> Unit,
     onConvertToTask: () -> Unit,
     onCopyMarkdown: () -> Unit,
-    onCopyLink: () -> Unit
+    onCopyLink: () -> Unit,
+    onMarkAsRead: () -> Unit,
+    onMarkAsUnread: () -> Unit
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -974,6 +992,16 @@ private fun MessageActionSheet(
                     onClick = onCopyLink
                 )
             }
+            ActionSheetItem(
+                icon = "\u2705",
+                label = "Mark as Read",
+                onClick = onMarkAsRead
+            )
+            ActionSheetItem(
+                icon = "\uD83D\uDD35",
+                label = "Mark as Unread",
+                onClick = onMarkAsUnread
+            )
             Spacer(modifier = Modifier.height(8.dp))
         }
     }

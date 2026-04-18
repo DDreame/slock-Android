@@ -527,6 +527,7 @@ fun SlockNavHost(
             val state by viewModel.state.collectAsState()
             val channelVM: ChannelViewModel = hiltViewModel()
             val channelAgents by channelVM.channelAgents.collectAsState()
+            val channelState by channelVM.state.collectAsState()
 
             LaunchedEffect(channelId) {
                 viewModel.loadMessages(channelId)
@@ -579,7 +580,11 @@ fun SlockNavHost(
                 onDismissConvertToTask = viewModel::dismissConvertToTask,
                 onConvertTaskStatusChange = viewModel::updateConvertToTaskStatus,
                 onSubmitConvertToTask = viewModel::submitConvertToTask,
-                onConvertTaskFeedbackShown = viewModel::consumeConvertTaskFeedback
+                onConvertTaskFeedbackShown = viewModel::consumeConvertTaskFeedback,
+                onMarkAsRead = { channelVM.markAsRead(channelId) },
+                onMarkAsUnread = { channelVM.markAsUnread(channelId) },
+                markReadFeedbackMessage = channelState.actionFeedbackMessage,
+                onMarkReadFeedbackShown = channelVM::consumeActionFeedback
             )
         }
 
