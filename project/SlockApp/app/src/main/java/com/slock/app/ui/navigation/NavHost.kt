@@ -608,12 +608,16 @@ fun SlockNavHost(
 
             AgentListScreen(
                 state = state,
-                onCreateAgent = { name, desc, prompt, model -> viewModel.createAgent(name, desc, prompt, model) },
+                onCreateAgent = { name, desc, prompt, model, runtime, reasoningEffort, envVars ->
+                    viewModel.createAgent(name, desc, prompt, model, runtime, reasoningEffort, envVars)
+                },
                 onStartAgent = viewModel::startAgent,
                 onStopAgent = viewModel::stopAgent,
                 onResetAgent = viewModel::resetAgent,
                 onDeleteAgent = viewModel::deleteAgent,
-                onUpdateAgent = { agentId, name, desc, prompt -> viewModel.updateAgent(agentId, name, desc, prompt) },
+                onUpdateAgent = { agentId, name, desc, prompt, runtime, reasoningEffort, envVars ->
+                    viewModel.updateAgent(agentId, name, desc, prompt, runtime, reasoningEffort, envVars)
+                },
                 onDmAgent = { agentId ->
                     channelVM.createDM(
                         agentId = agentId,

@@ -54,14 +54,21 @@ fun MessageEntity.toModel() = Message(
 fun Agent.toEntity(serverId: String) = AgentEntity(
     id = id.orEmpty(), serverId = serverId, name = name, description = description,
     prompt = prompt, model = model, avatar = avatar, status = status,
-    activity = activity, activityDetail = activityDetail, createdAt = createdAt
+    activity = activity, activityDetail = activityDetail, createdAt = createdAt,
+    runtime = runtime, reasoningEffort = reasoningEffort,
+    envVars = try { gson.toJson(envVars ?: emptyMap<String, String>()) } catch (_: Exception) { "{}" }
 )
 
 fun AgentEntity.toModel() = Agent(
     id = id, name = name.orEmpty(), description = description,
     prompt = prompt, model = model.orEmpty(), avatar = avatar,
     status = status.orEmpty(), activity = activity,
-    activityDetail = activityDetail, createdAt = createdAt.orEmpty()
+    activityDetail = activityDetail, createdAt = createdAt.orEmpty(),
+    runtime = runtime, reasoningEffort = reasoningEffort,
+    envVars = try {
+        val type = object : TypeToken<Map<String, String>>() {}.type
+        gson.fromJson<Map<String, String>>(envVars ?: "{}", type)?.filterKeys { it.isNotBlank() } ?: emptyMap()
+    } catch (_: Exception) { emptyMap() }
 )
 
 // Task
