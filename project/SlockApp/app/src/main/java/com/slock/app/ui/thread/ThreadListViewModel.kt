@@ -26,6 +26,7 @@ data class ThreadItem(
     val channelName: String,
     val threadChannelId: String,
     val replyCount: Int = 0,
+    val unreadCount: Int = 0,
     val lastActivity: String = ""
 )
 
@@ -262,6 +263,7 @@ class ThreadListViewModel @Inject constructor(
             channelName = summary.channelName.orEmpty(),
             threadChannelId = summary.threadChannelId.orEmpty(),
             replyCount = summary.replyCount,
+            unreadCount = summary.unreadCount,
             lastActivity = summary.lastReplyAt ?: ""
         )
     }

@@ -97,6 +97,17 @@ class ThreadInboxUiTest {
     }
 
     @Test
+    fun `ThreadCard shows reply count and unread indicator chips`() {
+        assertTrue(
+            "ThreadCard must render reply count and unread indicator chips",
+            screenSource.contains("threadReplyCountChip") &&
+                screenSource.contains("threadUnreadBadge") &&
+                screenSource.contains("thread.replyCount") &&
+                screenSource.contains("thread.unreadCount > 0")
+        )
+    }
+
+    @Test
     fun `Empty state varies by tab`() {
         assertTrue(
             "Empty state must show tab-specific messages",
