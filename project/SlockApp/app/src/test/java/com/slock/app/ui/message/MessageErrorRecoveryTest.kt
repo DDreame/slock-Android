@@ -5,6 +5,7 @@ import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
 import com.slock.app.data.local.dao.MessageDao
 import com.slock.app.data.model.Message
+import com.slock.app.data.model.UploadResponse
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.repository.MessageRepositoryImpl
