@@ -14,4 +14,5 @@ sealed class Screen(val route: String) {
         fun createRoute(userId: String) = "profile/$userId"
     }
     data object Settings : Screen("settings")
+    data object BillingPlans : Screen("billing_plans")
 }

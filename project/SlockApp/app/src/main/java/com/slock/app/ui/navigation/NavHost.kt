@@ -26,6 +26,8 @@ import com.slock.app.ui.auth.LoginScreen
 import com.slock.app.ui.auth.RegisterScreen
 import com.slock.app.ui.auth.ForgotPasswordScreen
 import com.slock.app.ui.auth.AuthViewModel
+import com.slock.app.ui.billing.BillingPlansScreen
+import com.slock.app.ui.billing.BillingPlansViewModel
 import com.slock.app.ui.home.HomeScreen
 import com.slock.app.ui.server.ServerViewModel
 import com.slock.app.ui.channel.ChannelViewModel
@@ -73,6 +75,7 @@ object Routes {
     const val AGENT_DETAIL = "agent/{agentId}?context={$CONTEXT_ARG}&serverId={$SERVER_ID_ARG}"
     const val MACHINE_LIST = "server/{serverId}/machines"
     const val SETTINGS = "settings"
+    const val BILLING_PLANS = "billing_plans"
     const val SAVED_CHANNELS = "saved_channels"
     const val PROFILE = "profile"
     const val USER_PROFILE = "profile/{userId}?context={$CONTEXT_ARG}"
@@ -451,6 +454,7 @@ fun SlockNavHost(
                 onNotificationPreferenceChange = viewModel::updateNotificationPreference,
                 onRefreshAccount = { viewModel.refreshAccount() },
                 onOpenProfile = { navController.navigate(Routes.PROFILE) },
+                onOpenBillingPlans = { navController.navigate(Routes.BILLING_PLANS) },
                 onOpenSavedChannels = { navController.navigate(Routes.SAVED_CHANNELS) },
                 onOpenReleaseNotes = { navController.navigate(Routes.RELEASE_NOTES) },
                 onSendFeedback = { LogCollector.shareReport(context) },
@@ -462,6 +466,17 @@ fun SlockNavHost(
                         }
                     }
                 }
+            )
+        }
+
+        composable(Routes.BILLING_PLANS) {
+            val viewModel: BillingPlansViewModel = hiltViewModel()
+            val state by viewModel.state.collectAsState()
+
+            BillingPlansScreen(
+                state = state,
+                onNavigateBack = { navController.popBackStack() },
+                onRetry = viewModel::loadBillingPlan
             )
         }
 
