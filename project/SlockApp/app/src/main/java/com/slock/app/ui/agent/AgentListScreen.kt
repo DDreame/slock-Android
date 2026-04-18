@@ -164,6 +164,7 @@ fun AgentListScreen(
                                 NeoAgentCard(
                                     agent = agent,
                                     activityInfo = state.agentActivities[agent.id.orEmpty()],
+                                    onClick = { agent.id?.takeIf { it.isNotBlank() }?.let(onAgentClick) },
                                     onDm = { onDmAgent(agent.id.orEmpty()) },
                                     onToggle = { confirmStopAgent = agent },
                                     onConfig = { showSettingsAgent = agent }
@@ -178,6 +179,7 @@ fun AgentListScreen(
                                 NeoAgentCard(
                                     agent = agent,
                                     activityInfo = state.agentActivities[agent.id.orEmpty()],
+                                    onClick = { agent.id?.takeIf { it.isNotBlank() }?.let(onAgentClick) },
                                     onDm = { onDmAgent(agent.id.orEmpty()) },
                                     onToggle = {
                                         onStartAgent(agent.id.orEmpty())
@@ -375,6 +377,7 @@ private fun SectionLabel(text: String) {
 private fun NeoAgentCard(
     agent: Agent,
     activityInfo: AgentActivityInfo?,
+    onClick: () -> Unit,
     onDm: () -> Unit,
     onToggle: () -> Unit,
     onConfig: () -> Unit
@@ -397,6 +400,7 @@ private fun NeoAgentCard(
             .neoShadow()
             .background(White)
             .border(3.dp, Black, RectangleShape)
+            .clickable(onClick = onClick)
     ) {
         // Card header
         Row(
