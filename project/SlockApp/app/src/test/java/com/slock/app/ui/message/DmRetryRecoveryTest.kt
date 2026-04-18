@@ -7,6 +7,7 @@ import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -14,6 +15,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.kotlin.any
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
@@ -32,6 +34,7 @@ class DmRetryRecoveryTest {
 
     private fun createViewModel(): MessageViewModel {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
+        runBlocking { whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false) }
         return MessageViewModel(
             messageRepository, channelRepository,
             socketIOManager, activeServerHolder, presenceTracker

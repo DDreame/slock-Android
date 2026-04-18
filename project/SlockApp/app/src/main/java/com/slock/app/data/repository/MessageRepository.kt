@@ -17,6 +17,7 @@ interface MessageRepository {
     suspend fun sendMessage(serverId: String, channelId: String, content: String, attachmentIds: List<String>? = null, asTask: Boolean = false, parentMessageId: String? = null): Result<Message>
     suspend fun getMessages(serverId: String, channelId: String, limit: Int = 50, before: String? = null, after: String? = null): Result<List<Message>>
     suspend fun refreshMessages(serverId: String, channelId: String, limit: Int = 50): Result<List<Message>>
+    suspend fun isCachedMessagesFresh(channelId: String, maxAgeMs: Long): Boolean
     suspend fun searchMessages(serverId: String, query: String, searchServerId: String? = null, channelId: String? = null): Result<List<Message>>
     suspend fun getLatestMessagePerChannel(channelIds: List<String>): Map<String, Message>
     suspend fun uploadFile(serverId: String, fileName: String, mimeType: String, bytes: ByteArray): Result<UploadResponse>
@@ -27,6 +28,12 @@ class MessageRepositoryImpl @Inject constructor(
     private val activeServerHolder: ActiveServerHolder,
     private val messageDao: MessageDao
 ) : MessageRepository {
+
+    private val cacheFreshnessByChannelMs = mutableMapOf<String, Long>()
+
+    private fun markCacheFresh(channelId: String) {
+        cacheFreshnessByChannelMs[channelId] = System.currentTimeMillis()
+    }
 
     override suspend fun sendMessage(
         serverId: String,
@@ -76,6 +83,7 @@ class MessageRepositoryImpl @Inject constructor(
             if (messages != null) {
                 messageDao.insertMessages(messages.map { it.toEntity() })
                 messageDao.trimMessages(channelId, 200)
+                markCacheFresh(channelId)
                 Result.success(messages)
             } else {
                 Result.failure(Exception("Get messages failed"))
@@ -91,6 +99,7 @@ class MessageRepositoryImpl @Inject constructor(
             val messages = fetchMessages(channelId, limit)
             if (messages != null) {
                 messageDao.insertMessages(messages.map { it.toEntity() })
+                markCacheFresh(channelId)
                 Result.success(messages)
             } else {
                 Result.failure(Exception("Refresh messages failed"))
@@ -98,6 +107,11 @@ class MessageRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    override suspend fun isCachedMessagesFresh(channelId: String, maxAgeMs: Long): Boolean {
+        val fetchedAtMs = cacheFreshnessByChannelMs[channelId] ?: return false
+        return System.currentTimeMillis() - fetchedAtMs <= maxAgeMs
     }
 
     /**

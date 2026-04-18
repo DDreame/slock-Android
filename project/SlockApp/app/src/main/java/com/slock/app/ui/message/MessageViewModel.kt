@@ -94,14 +94,23 @@ class MessageViewModel @Inject constructor(
     private val presenceTracker: PresenceTracker
 ) : ViewModel() {
 
+    companion object {
+        private const val MESSAGE_CACHE_TTL_MS = 15_000L
+    }
+
     private val _state = MutableStateFlow(MessageUiState())
     val state: StateFlow<MessageUiState> = _state.asStateFlow()
 
     private var socketEventsJob: Job? = null
     private var presenceJob: Job? = null
+    private var activeLoadJob: Job? = null
+    private var activeLoadToken: Long = 0
 
     private fun recomputeSearchMatches(state: MessageUiState): MessageUiState =
         computeSearchMatches(state)
+
+    private fun isActiveLoad(channelId: String, loadToken: Long): Boolean =
+        activeLoadToken == loadToken && _state.value.channelId == channelId
 
     init {
         observePresence()
@@ -200,7 +209,10 @@ class MessageViewModel @Inject constructor(
             }
             return
         }
-        viewModelScope.launch {
+
+        activeLoadJob?.cancel()
+        val loadToken = ++activeLoadToken
+        activeLoadJob = viewModelScope.launch {
             _state.update {
                 it.copy(
                     channelId = channelId,
@@ -212,32 +224,50 @@ class MessageViewModel @Inject constructor(
                 )
             }
 
-            refreshSavedChannelState(serverId, channelId)
+            refreshSavedChannelState(serverId, channelId, loadToken)
+
+            if (!isActiveLoad(channelId, loadToken)) return@launch
+
+            var shouldRefresh = false
 
             // Get cached data first
             messageRepository.getMessages(serverId, channelId).fold(
                 onSuccess = { messages ->
-                    _state.update {
-                        recomputeSearchMatches(
-                            it.copy(messages = messages.reversed(), isLoading = false, error = null)
-                        )
+                    if (isActiveLoad(channelId, loadToken)) {
+                        _state.update {
+                            recomputeSearchMatches(
+                                it.copy(messages = messages.reversed(), isLoading = false, error = null)
+                            )
+                        }
+                        shouldRefresh = !messageRepository.isCachedMessagesFresh(channelId, MESSAGE_CACHE_TTL_MS)
                     }
                 },
                 onFailure = { error ->
-                    _state.update { it.copy(isLoading = false, error = error.message) }
+                    if (isActiveLoad(channelId, loadToken)) {
+                        _state.update { it.copy(isLoading = false, error = error.message) }
+                        shouldRefresh = true
+                    }
                 }
             )
-            // Then refresh from cloud (cloud always wins)
-            messageRepository.refreshMessages(serverId, channelId).fold(
-                onSuccess = { messages ->
-                    _state.update {
-                        recomputeSearchMatches(
-                            it.copy(messages = messages.reversed(), error = null)
-                        )
-                    }
-                },
-                onFailure = { /* keep cached data */ }
-            )
+
+            if (!isActiveLoad(channelId, loadToken)) return@launch
+
+            if (shouldRefresh) {
+                messageRepository.refreshMessages(serverId, channelId).fold(
+                    onSuccess = { messages ->
+                        if (isActiveLoad(channelId, loadToken)) {
+                            _state.update {
+                                recomputeSearchMatches(
+                                    it.copy(messages = messages.reversed(), error = null)
+                                )
+                            }
+                        }
+                    },
+                    onFailure = { /* keep cached data */ }
+                )
+            }
+
+            if (!isActiveLoad(channelId, loadToken)) return@launch
             socketIOManager.joinChannel(channelId)
         }
     }
@@ -283,18 +313,22 @@ class MessageViewModel @Inject constructor(
         _state.update { it.copy(savedChannelFeedbackMessage = null) }
     }
 
-    private suspend fun refreshSavedChannelState(serverId: String, channelId: String) {
+    private suspend fun refreshSavedChannelState(serverId: String, channelId: String, loadToken: Long) {
         channelRepository.isChannelSaved(serverId, channelId).fold(
             onSuccess = { isSaved ->
-                _state.update {
-                    it.copy(
-                        isCurrentChannelSaved = isSaved,
-                        isSavedStatusLoading = false
-                    )
+                if (isActiveLoad(channelId, loadToken)) {
+                    _state.update {
+                        it.copy(
+                            isCurrentChannelSaved = isSaved,
+                            isSavedStatusLoading = false
+                        )
+                    }
                 }
             },
             onFailure = {
-                _state.update { it.copy(isSavedStatusLoading = false) }
+                if (isActiveLoad(channelId, loadToken)) {
+                    _state.update { it.copy(isSavedStatusLoading = false) }
+                }
             }
         )
     }
