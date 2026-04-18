@@ -28,7 +28,8 @@ data class AgentUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val agentActivities: Map<String, AgentActivityInfo> = emptyMap(),
-    val availableModels: List<String> = DEFAULT_AGENT_MODEL_OPTIONS
+    val availableModels: List<String> = DEFAULT_AGENT_MODEL_OPTIONS,
+    val createFeedbackMessage: String? = null
 )
 
 internal fun deriveAvailableAgentModels(
@@ -226,6 +227,7 @@ class AgentViewModel @Inject constructor(
                         it.copy(
                             agents = updatedAgents,
                             isLoading = false,
+                            createFeedbackMessage = "Agent created. Open a DM or configure it from the list.",
                             availableModels = deriveAvailableAgentModels(
                                 recentModels = recentModels,
                                 discoveredModels = updatedAgents.mapNotNull { existing -> existing.model } + model
@@ -316,5 +318,9 @@ class AgentViewModel @Inject constructor(
 
     fun clearError() {
         _state.update { it.copy(error = null) }
+    }
+
+    fun consumeCreateFeedback() {
+        _state.update { it.copy(createFeedbackMessage = null) }
     }
 }

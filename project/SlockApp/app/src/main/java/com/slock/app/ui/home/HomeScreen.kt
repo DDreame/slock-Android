@@ -37,6 +37,8 @@ fun HomeScreen(
     serverState: ServerUiState,
     channelState: ChannelUiState,
     selectedServer: Server?,
+    agentCount: Int = 0,
+    isAgentListLoading: Boolean = false,
     searchState: SearchUiState = SearchUiState(),
     onSearchQueryChange: (String) -> Unit = {},
     onClearSearch: () -> Unit = {},
@@ -45,6 +47,7 @@ fun HomeScreen(
     onDmClick: (channelId: String, channelName: String) -> Unit,
     onCreateChannel: (name: String, type: String) -> Unit,
     onCreateServer: (name: String, slug: String) -> Unit,
+    onOpenAgents: () -> Unit = {},
     onEditChannel: (channelId: String, newName: String) -> Unit = { _, _ -> },
     onDeleteChannel: (channelId: String) -> Unit = {},
     onLeaveChannel: (channelId: String) -> Unit = {},
@@ -61,6 +64,7 @@ fun HomeScreen(
     tasksContent: @Composable () -> Unit = {}
 ) {
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showCreateServerDialog by remember { mutableStateOf(false) }
     var showCreateChannelDialog by remember { mutableStateOf(false) }
     var showNewDmDialog by remember { mutableStateOf(false) }
     var editingChannel by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -79,7 +83,7 @@ fun HomeScreen(
                     onServerSelect(server)
                     scope.launch { drawerState.close() }
                 },
-                onCreateServer = onCreateServer
+                onShowCreateServer = { showCreateServerDialog = true }
             )
         }
     ) {
@@ -113,43 +117,77 @@ fun HomeScreen(
                     isReconnecting = isReconnecting
                 )
                 Box(modifier = Modifier.weight(1f)) {
-                    // All tabs stay composed to preserve scroll/selection state.
-                    // Visible tab gets zIndex(1f) so it draws on top and receives touches first.
-                    val tabs = listOf<@Composable () -> Unit>(
-                        {
-                            ChannelsTabContent(
-                                channelState = channelState,
-                                searchState = searchState,
-                                onSearchQueryChange = onSearchQueryChange,
-                                onChannelClick = onChannelClick,
-                                onDmClick = onDmClick,
-                                onShowCreateChannel = { showCreateChannelDialog = true },
-                                onShowNewDm = { showNewDmDialog = true },
-                                onSearchMessageClick = onSearchMessageClick,
-                                onSearchAgentClick = onSearchAgentClick,
-                                onEditChannel = { id, name -> editingChannel = id to name },
-                                onDeleteChannel = { deletingChannelId = it },
-                                onLeaveChannel = { leavingChannelId = it }
+                    when {
+                        serverState.isLoading && serverState.servers.isEmpty() -> {
+                            Box(modifier = Modifier.fillMaxSize()) {
+                                NeoSkeletonCardList()
+                            }
+                        }
+                        serverState.servers.isEmpty() -> {
+                            ZeroServerGuidanceCard(
+                                onCreateServer = { showCreateServerDialog = true },
+                                modifier = Modifier.align(Alignment.Center)
                             )
-                        },
-                        { threadsContent() },
-                        { membersContent() },
-                        { tasksContent() }
-                    )
-                    tabs.forEachIndexed { index, tab ->
-                        val isVisible = index == selectedTab
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .zIndex(if (isVisible) 1f else 0f)
-                                .graphicsLayer(alpha = if (isVisible) 1f else 0f)
-                        ) {
-                            tab()
+                        }
+                        else -> {
+                            // All tabs stay composed to preserve scroll/selection state.
+                            // Visible tab gets zIndex(1f) so it draws on top and receives touches first.
+                            val tabs = listOf<@Composable () -> Unit>(
+                                {
+                                    ChannelsTabContent(
+                                        channelState = channelState,
+                                        searchState = searchState,
+                                        showAgentEntry = selectedServer != null,
+                                        showFirstAgentGuidance =
+                                            selectedServer != null &&
+                                                !isAgentListLoading &&
+                                                agentCount == 0 &&
+                                                channelState.channels.isEmpty() &&
+                                                channelState.dms.isEmpty() &&
+                                                searchState.query.isBlank(),
+                                        onOpenAgents = onOpenAgents,
+                                        onSearchQueryChange = onSearchQueryChange,
+                                        onChannelClick = onChannelClick,
+                                        onDmClick = onDmClick,
+                                        onShowCreateChannel = { showCreateChannelDialog = true },
+                                        onShowNewDm = { showNewDmDialog = true },
+                                        onSearchMessageClick = onSearchMessageClick,
+                                        onSearchAgentClick = onSearchAgentClick,
+                                        onEditChannel = { id, name -> editingChannel = id to name },
+                                        onDeleteChannel = { deletingChannelId = it },
+                                        onLeaveChannel = { leavingChannelId = it }
+                                    )
+                                },
+                                { threadsContent() },
+                                { membersContent() },
+                                { tasksContent() }
+                            )
+                            tabs.forEachIndexed { index, tab ->
+                                val isVisible = index == selectedTab
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .zIndex(if (isVisible) 1f else 0f)
+                                        .graphicsLayer(alpha = if (isVisible) 1f else 0f)
+                                ) {
+                                    tab()
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    }
+
+    if (showCreateServerDialog) {
+        CreateServerNeoDialog(
+            onDismiss = { showCreateServerDialog = false },
+            onCreate = { name, slug ->
+                onCreateServer(name, slug)
+                showCreateServerDialog = false
+            }
+        )
     }
 
     if (showCreateChannelDialog) {
@@ -218,6 +256,9 @@ fun HomeScreen(
 private fun ChannelsTabContent(
     channelState: ChannelUiState,
     searchState: SearchUiState,
+    showAgentEntry: Boolean,
+    showFirstAgentGuidance: Boolean,
+    onOpenAgents: () -> Unit,
     onSearchQueryChange: (String) -> Unit,
     onChannelClick: (channelId: String, channelName: String) -> Unit,
     onDmClick: (channelId: String, channelName: String) -> Unit,
@@ -241,6 +282,17 @@ private fun ChannelsTabContent(
             )
         }
 
+        if (showAgentEntry) {
+            Box(modifier = Modifier.padding(horizontal = 16.dp, vertical = 0.dp)) {
+                NeoButtonSecondary(
+                    text = "OPEN AGENTS",
+                    onClick = onOpenAgents,
+                    containerColor = Orange,
+                    modifier = Modifier.testTag("home_open_agents")
+                )
+            }
+        }
+
         val isSearchActive = searchState.query.isNotBlank()
 
         when {
@@ -262,6 +314,7 @@ private fun ChannelsTabContent(
                     channelState = channelState,
                     onChannelClick = onChannelClick,
                     onDmClick = onDmClick,
+                    showFirstAgentGuidance = showFirstAgentGuidance,
                     onShowCreateChannel = onShowCreateChannel,
                     onShowNewDm = onShowNewDm,
                     onEditChannel = onEditChannel,
@@ -601,6 +654,7 @@ private fun ChannelListContent(
     channelState: ChannelUiState,
     onChannelClick: (channelId: String, channelName: String) -> Unit,
     onDmClick: (channelId: String, channelName: String) -> Unit,
+    showFirstAgentGuidance: Boolean,
     onShowCreateChannel: () -> Unit,
     onShowNewDm: () -> Unit,
     onEditChannel: (channelId: String, currentName: String) -> Unit = { _, _ -> },
@@ -608,6 +662,14 @@ private fun ChannelListContent(
     onLeaveChannel: (channelId: String) -> Unit = {}
 ) {
     LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (showFirstAgentGuidance) {
+            item {
+                FirstAgentGuidanceCard(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+
         item {
             SectionHeader(title = "CHANNELS", onAdd = onShowCreateChannel)
         }
@@ -681,6 +743,86 @@ private fun ChannelListContent(
         }
 
         item { Spacer(modifier = Modifier.height(8.dp)) }
+    }
+}
+
+@Composable
+private fun ZeroServerGuidanceCard(
+    onCreateServer: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    NeoCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        containerColor = White
+    ) {
+        Column(modifier = Modifier.padding(20.dp)) {
+            Text(
+                text = "SETUP",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    letterSpacing = 1.5.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = Black.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Create your first server",
+                style = MaterialTheme.typography.titleLarge,
+                color = Black,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Start by creating a server for your team, channels, and agents.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+            Spacer(modifier = Modifier.height(18.dp))
+            NeoButton(
+                text = "CREATE SERVER",
+                onClick = onCreateServer,
+                containerColor = Yellow
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "You can rename it later.",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextSecondary
+            )
+        }
+    }
+}
+
+@Composable
+private fun FirstAgentGuidanceCard(
+    modifier: Modifier = Modifier
+) {
+    NeoCard(modifier = modifier.fillMaxWidth(), containerColor = White) {
+        Column(modifier = Modifier.padding(18.dp)) {
+            Text(
+                text = "NEXT STEP",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    letterSpacing = 1.5.sp,
+                    fontWeight = FontWeight.Bold
+                ),
+                color = Black.copy(alpha = 0.6f)
+            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Text(
+                text = "Create your first agent",
+                style = MaterialTheme.typography.titleMedium,
+                color = Black,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Agents can join DMs and channels once your workspace is ready.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = TextSecondary
+            )
+        }
     }
 }
 
@@ -1142,10 +1284,8 @@ private fun ServerDrawer(
     servers: List<Server>,
     selectedServer: Server?,
     onServerSelect: (Server) -> Unit,
-    onCreateServer: (name: String, slug: String) -> Unit
+    onShowCreateServer: () -> Unit
 ) {
-    var showCreateDialog by remember { mutableStateOf(false) }
-
     ModalDrawerSheet(
         drawerContainerColor = White,
         drawerShape = RectangleShape,
@@ -1186,7 +1326,7 @@ private fun ServerDrawer(
                     .fillMaxWidth()
                     .border(2.dp, Black, RectangleShape)
                     .background(Cream)
-                    .clickable { showCreateDialog = true }
+                    .clickable(onClick = onShowCreateServer)
                     .padding(14.dp),
                 contentAlignment = Alignment.Center
             ) {
@@ -1197,16 +1337,6 @@ private fun ServerDrawer(
                 )
             }
         }
-    }
-
-    if (showCreateDialog) {
-        CreateServerNeoDialog(
-            onDismiss = { showCreateDialog = false },
-            onCreate = { name, slug ->
-                onCreateServer(name, slug)
-                showCreateDialog = false
-            }
-        )
     }
 }
 
