@@ -128,4 +128,41 @@ class MachineCrudComposeTest {
         composeTestRule.onNodeWithText("Machine 已连接!").assertExists()
         composeTestRule.onNodeWithText("完成").assertExists()
     }
+
+    @Test
+    fun `delete blocked shows agent chips and dismiss button`() {
+        composeTestRule.setContent {
+            MachineListScreen(
+                state = MachineUiState(
+                    machines = listOf(blockedMachine),
+                    deleteBlockedMachine = blockedMachine
+                ),
+                showHeader = false
+            )
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("无法删除 Machine", substring = true).assertExists()
+        composeTestRule.onNodeWithText("Agent1").assertExists()
+        composeTestRule.onNodeWithText("Agent2").assertExists()
+        composeTestRule.onNodeWithText("知道了").assertExists()
+    }
+
+    @Test
+    fun `delete blocked dismiss triggers callback`() {
+        var dismissed = false
+        composeTestRule.setContent {
+            MachineListScreen(
+                state = MachineUiState(
+                    machines = listOf(blockedMachine),
+                    deleteBlockedMachine = blockedMachine
+                ),
+                onDismissDeleteBlocked = { dismissed = true },
+                showHeader = false
+            )
+        }
+        composeTestRule.waitForIdle()
+        composeTestRule.onNodeWithText("知道了").performClick()
+        composeTestRule.waitForIdle()
+        assertTrue("onDismissDeleteBlocked must be called", dismissed)
+    }
 }

@@ -154,8 +154,10 @@ class MachineViewModel @Inject constructor(
         val originalName = _state.value.connectedMachine?.name
         viewModelScope.launch {
             if (newName.isNotBlank() && newName != originalName) {
-                machineRepository.renameMachine(serverId, machineId, newName).onFailure { err ->
-                    _state.update { it.copy(actionFeedback = "Rename failed: ${err.message}") }
+                val renameResult = machineRepository.renameMachine(serverId, machineId, newName)
+                if (renameResult.isFailure) {
+                    _state.update { it.copy(actionFeedback = "Rename failed: ${renameResult.exceptionOrNull()?.message}") }
+                    return@launch
                 }
             }
             machineRepository.getMachines(serverId).onSuccess { machines ->

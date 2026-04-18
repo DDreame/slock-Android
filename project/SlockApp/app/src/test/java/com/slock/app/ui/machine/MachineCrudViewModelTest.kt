@@ -190,4 +190,30 @@ class MachineCrudViewModelTest {
         verify(machineRepository).renameMachine("server-1", "m-1", "new-name")
         assertNull(viewModel.state.value.addMachineStep)
     }
+
+    @Test
+    fun `finishAddMachine keeps Connected step on rename failure`() = runTest {
+        val machine = Machine(id = "m-1", name = "original", hostname = "my-host")
+        val connectedMachine = machine.copy(status = "connected")
+        val createResponse = CreateMachineResponse(machine = machine, apiKey = "sk-key")
+        whenever(machineRepository.createMachine(any(), any())).thenReturn(Result.success(createResponse))
+        whenever(machineRepository.getMachines(any())).thenReturn(Result.success(listOf(connectedMachine)))
+        whenever(machineRepository.renameMachine(any(), any(), any())).thenReturn(
+            Result.failure(Exception("rename error"))
+        )
+
+        val viewModel = createViewModel()
+        viewModel.loadMachines("server-1")
+        advanceUntilIdle()
+
+        viewModel.createMachine("original")
+        advanceUntilIdle()
+
+        viewModel.finishAddMachine("new-name")
+        advanceUntilIdle()
+
+        assertEquals(AddMachineStep.Connected, viewModel.state.value.addMachineStep)
+        assertEquals("Rename failed: rename error", viewModel.state.value.actionFeedback)
+        assertNotNull(viewModel.state.value.newMachineId)
+    }
 }

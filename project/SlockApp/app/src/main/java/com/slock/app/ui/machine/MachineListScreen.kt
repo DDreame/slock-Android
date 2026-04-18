@@ -628,15 +628,80 @@ private fun DeleteBlockedDialog(
     machine: Machine,
     onDismiss: () -> Unit
 ) {
-    NeoConfirmDialog(
-        title = "\u26A0 无法删除 Machine",
-        message = "${machine.name.orEmpty()} 当前有 ${machine.runningAgents?.size ?: 0} 个 Agent 正在运行。\n\n请先移除所有关联的 Agent，然后再删除此 Machine。",
-        confirmText = "知道了",
-        confirmColor = Color.White,
-        onConfirm = onDismiss,
-        onDismiss = onDismiss,
-        showCancel = false
-    )
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        NeoCard(containerColor = Color.White, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(horizontal = 24.dp, vertical = 28.dp)) {
+                Text(
+                    text = "\u26A0\uFE0F 无法删除 Machine",
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                    color = Color.Black
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(2.dp, Color.Black, RectangleShape)
+                        .background(Cream)
+                        .padding(12.dp)
+                ) {
+                    Text(
+                        text = "${machine.name.orEmpty()} 当前有 ${machine.runningAgents?.size ?: 0} 个 Agent 正在运行。",
+                        fontFamily = SpaceGrotesk,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "请先移除所有关联的 Agent，然后再删除此 Machine。",
+                        fontFamily = SpaceGrotesk,
+                        fontSize = 13.sp,
+                        color = Color.Black.copy(alpha = 0.6f),
+                        lineHeight = 18.sp
+                    )
+                }
+
+                val agents = machine.runningAgents
+                if (!agents.isNullOrEmpty()) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "关联 AGENTS",
+                        fontFamily = SpaceGrotesk,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 11.sp,
+                        letterSpacing = 0.5.sp,
+                        color = Color.Black.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        agents.forEach { agent ->
+                            Text(
+                                text = agent.name.orEmpty(),
+                                fontFamily = SpaceGrotesk,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 11.sp,
+                                modifier = Modifier
+                                    .border(1.5.dp, Color.Black.copy(alpha = 0.15f), RectangleShape)
+                                    .background(Orange)
+                                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+                SheetButton(
+                    text = "知道了",
+                    onClick = onDismiss,
+                    modifier = Modifier.fillMaxWidth(),
+                    isPrimary = false
+                )
+            }
+        }
+    }
 }
 
 // ── Sheet Button ──
