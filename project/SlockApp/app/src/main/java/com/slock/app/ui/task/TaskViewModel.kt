@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.model.Task
+import com.slock.app.data.repository.ServerRepository
 import com.slock.app.data.repository.TaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,12 +18,14 @@ data class TaskUiState(
     val tasks: List<Task> = emptyList(),
     val channelId: String = "",
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val memberNames: Map<String, String> = emptyMap()
 )
 
 @HiltViewModel
 class TaskViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
+    private val serverRepository: ServerRepository,
     private val activeServerHolder: ActiveServerHolder
 ) : ViewModel() {
 
@@ -30,11 +33,28 @@ class TaskViewModel @Inject constructor(
     val state: StateFlow<TaskUiState> = _state.asStateFlow()
 
     fun loadTasks(channelId: String) {
+        val serverId = activeServerHolder.serverId ?: ""
         viewModelScope.launch {
             _state.update { it.copy(channelId = channelId, isLoading = true) }
-            taskRepository.getTasks(activeServerHolder.serverId ?: "", channelId).fold(
+            taskRepository.getTasks(serverId, channelId).fold(
                 onSuccess = { tasks -> _state.update { it.copy(tasks = tasks, isLoading = false) } },
                 onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
+            )
+            loadMemberNames(serverId)
+        }
+    }
+
+    private fun loadMemberNames(serverId: String) {
+        viewModelScope.launch {
+            serverRepository.getServerMembers(serverId).fold(
+                onSuccess = { members ->
+                    val names = members.associate { m ->
+                        (m.userId ?: m.id.orEmpty()) to
+                            (m.user?.name ?: m.displayName ?: m.name ?: "?")
+                    }
+                    _state.update { it.copy(memberNames = names) }
+                },
+                onFailure = { }
             )
         }
     }

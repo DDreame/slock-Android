@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.model.Task
+import com.slock.app.data.repository.ServerRepository
 import com.slock.app.data.repository.TaskRepository
 import com.slock.app.data.socket.SocketIOManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,12 +20,14 @@ data class ServerTasksUiState(
     val tasks: List<Task> = emptyList(),
     val isLoading: Boolean = false,
     val error: String? = null,
-    val collapsedGroups: Set<String> = setOf("todo", "done")
+    val collapsedGroups: Set<String> = setOf("todo", "done"),
+    val memberNames: Map<String, String> = emptyMap()
 )
 
 @HiltViewModel
 class ServerTasksViewModel @Inject constructor(
     private val taskRepository: TaskRepository,
+    private val serverRepository: ServerRepository,
     private val socketIOManager: SocketIOManager,
     private val activeServerHolder: ActiveServerHolder
 ) : ViewModel() {
@@ -78,7 +81,6 @@ class ServerTasksViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = it.tasks.isEmpty(), error = null) }
 
-            // Use server-level tasks endpoint (matches JS frontend: GET /tasks/server)
             taskRepository.getServerTasks(serverId).fold(
                 onSuccess = { tasks ->
                     _state.update { it.copy(tasks = tasks, isLoading = false) }
@@ -86,6 +88,22 @@ class ServerTasksViewModel @Inject constructor(
                 onFailure = { err ->
                     _state.update { it.copy(isLoading = false, error = err.message) }
                 }
+            )
+            loadMemberNames(serverId)
+        }
+    }
+
+    private fun loadMemberNames(serverId: String) {
+        viewModelScope.launch {
+            serverRepository.getServerMembers(serverId).fold(
+                onSuccess = { members ->
+                    val names = members.associate { m ->
+                        (m.userId ?: m.id.orEmpty()) to
+                            (m.user?.name ?: m.displayName ?: m.name ?: "?")
+                    }
+                    _state.update { it.copy(memberNames = names) }
+                },
+                onFailure = { }
             )
         }
     }
