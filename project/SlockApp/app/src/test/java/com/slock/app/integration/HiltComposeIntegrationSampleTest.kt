@@ -18,6 +18,7 @@ import com.slock.app.data.local.dao.TaskDao
 import com.slock.app.data.local.dao.UserDao
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.repository.AuthRepository
+import com.slock.app.data.repository.BillingRepository
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MachineRepository
 import com.slock.app.data.repository.MessageRepository
@@ -50,6 +51,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.mockito.Mockito
 import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 import org.robolectric.Robolectric
@@ -93,6 +95,7 @@ class HiltComposeIntegrationSampleTest {
         @Provides @Singleton fun provideTaskDao(): TaskDao = mock()
 
         @Provides @Singleton fun provideAuthRepository(): AuthRepository = mock()
+        @Provides @Singleton fun provideBillingRepository(): BillingRepository = Mockito.mock(BillingRepository::class.java)
         @Provides @Singleton fun provideServerRepository(): ServerRepository = mock()
         @Provides @Singleton fun provideChannelRepository(): ChannelRepository = mock()
         @Provides @Singleton fun provideMessageRepository(): MessageRepository = mock()
