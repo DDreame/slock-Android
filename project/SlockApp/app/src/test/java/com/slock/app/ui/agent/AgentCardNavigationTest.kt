@@ -30,22 +30,22 @@ class AgentCardNavigationTest {
     }
 
     @Test
-    fun `active agents call site passes onClick with onAgentClick`() {
+    fun `active agents call site passes onClick with guarded onAgentClick`() {
         val activeBlock = source.substringAfter("items(activeAgents)")
             .substringBefore("items(inactiveAgents)")
         assertTrue(
-            "Active agent NeoAgentCard must pass onClick = { onAgentClick(...) }",
-            activeBlock.contains("onClick = { onAgentClick(agent.id")
+            "Active agent NeoAgentCard must guard empty id before calling onAgentClick",
+            activeBlock.contains("agent.id?.takeIf") && activeBlock.contains("let(onAgentClick)")
         )
     }
 
     @Test
-    fun `inactive agents call site passes onClick with onAgentClick`() {
+    fun `inactive agents call site passes onClick with guarded onAgentClick`() {
         val inactiveBlock = source.substringAfter("items(inactiveAgents)")
             .substringBefore("}")
         assertTrue(
-            "Inactive agent NeoAgentCard must pass onClick = { onAgentClick(...) }",
-            inactiveBlock.contains("onClick = { onAgentClick(agent.id")
+            "Inactive agent NeoAgentCard must guard empty id before calling onAgentClick",
+            inactiveBlock.contains("agent.id?.takeIf") && inactiveBlock.contains("let(onAgentClick)")
         )
     }
 

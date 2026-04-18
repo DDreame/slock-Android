@@ -86,4 +86,46 @@ class AgentCardClickComposeTest {
         composeTestRule.onNodeWithText("TestBot").assertIsDisplayed()
         composeTestRule.onNodeWithText("SleepBot").assertIsDisplayed()
     }
+
+    @Test
+    fun `clicking agent with null id does not invoke onAgentClick`() {
+        var clickedId: String? = null
+        val nullIdAgent = Agent(
+            id = null,
+            name = "NullBot",
+            status = "active",
+            model = "claude-sonnet-4-20250514"
+        )
+        renderAgentList(
+            agents = listOf(nullIdAgent),
+            onAgentClick = { clickedId = it }
+        )
+
+        composeTestRule.onNodeWithText("NullBot").assertIsDisplayed()
+        composeTestRule.onNodeWithText("NullBot").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(null, clickedId)
+    }
+
+    @Test
+    fun `clicking agent with blank id does not invoke onAgentClick`() {
+        var clickedId: String? = null
+        val blankIdAgent = Agent(
+            id = "",
+            name = "BlankBot",
+            status = "stopped",
+            model = "claude-sonnet-4-20250514"
+        )
+        renderAgentList(
+            agents = listOf(blankIdAgent),
+            onAgentClick = { clickedId = it }
+        )
+
+        composeTestRule.onNodeWithText("BlankBot").assertIsDisplayed()
+        composeTestRule.onNodeWithText("BlankBot").performClick()
+        composeTestRule.waitForIdle()
+
+        assertEquals(null, clickedId)
+    }
 }

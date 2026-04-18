@@ -164,7 +164,7 @@ fun AgentListScreen(
                                 NeoAgentCard(
                                     agent = agent,
                                     activityInfo = state.agentActivities[agent.id.orEmpty()],
-                                    onClick = { onAgentClick(agent.id.orEmpty()) },
+                                    onClick = { agent.id?.takeIf { it.isNotBlank() }?.let(onAgentClick) },
                                     onDm = { onDmAgent(agent.id.orEmpty()) },
                                     onToggle = { confirmStopAgent = agent },
                                     onConfig = { showSettingsAgent = agent }
@@ -179,7 +179,7 @@ fun AgentListScreen(
                                 NeoAgentCard(
                                     agent = agent,
                                     activityInfo = state.agentActivities[agent.id.orEmpty()],
-                                    onClick = { onAgentClick(agent.id.orEmpty()) },
+                                    onClick = { agent.id?.takeIf { it.isNotBlank() }?.let(onAgentClick) },
                                     onDm = { onDmAgent(agent.id.orEmpty()) },
                                     onToggle = {
                                         onStartAgent(agent.id.orEmpty())
