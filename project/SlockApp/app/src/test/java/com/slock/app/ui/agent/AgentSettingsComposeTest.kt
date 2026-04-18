@@ -2,6 +2,8 @@ package com.slock.app.ui.agent
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -61,7 +63,7 @@ class AgentSettingsComposeTest {
                 showHeader = false
             )
         }
-        composeTestRule.onNodeWithText("Config").performClick()
+        composeTestRule.onNodeWithText("CONFIG").performClick()
         composeTestRule.waitForIdle()
     }
 
@@ -110,5 +112,54 @@ class AgentSettingsComposeTest {
         assertNotNull("onUpdateAgent must have been called", captured)
         assertEquals("agent-1", captured?.agentId)
         assertEquals("NewName", captured?.name)
+    }
+
+    @Test
+    fun `saving settings passes edited description to onUpdateAgent`() {
+        var captured: UpdateCall? = null
+        renderAndOpenSettings(
+            onUpdateAgent = { id, name, desc, prompt, runtime, reasoning, envVars ->
+                captured = UpdateCall(id, name, desc, prompt, runtime, reasoning, envVars)
+            }
+        )
+
+        val descFields = composeTestRule.onAllNodesWithText("A helpful bot")
+        descFields[0].performTextClearance()
+        descFields[0].performTextInput("New description")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
+        composeTestRule.waitForIdle()
+
+        assertNotNull("onUpdateAgent must have been called", captured)
+        assertEquals("New description", captured?.description)
+    }
+
+    @Test
+    fun `saving settings passes edited prompt to onUpdateAgent`() {
+        var captured: UpdateCall? = null
+        renderAndOpenSettings(
+            onUpdateAgent = { id, name, desc, prompt, runtime, reasoning, envVars ->
+                captured = UpdateCall(id, name, desc, prompt, runtime, reasoning, envVars)
+            }
+        )
+
+        val promptFields = composeTestRule.onAllNodesWithText("Be helpful")
+        promptFields[0].performTextClearance()
+        promptFields[0].performTextInput("New prompt")
+        composeTestRule.waitForIdle()
+
+        composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
+        composeTestRule.waitForIdle()
+
+        assertNotNull("onUpdateAgent must have been called", captured)
+        assertEquals("New prompt", captured?.prompt)
+    }
+
+    @Test
+    fun `model badge is displayed but not editable`() {
+        renderAndOpenSettings()
+        composeTestRule.onNodeWithText("Sonnet").assertIsDisplayed()
+        composeTestRule.onNode(hasText("Sonnet") and hasSetTextAction()).assertDoesNotExist()
     }
 }
