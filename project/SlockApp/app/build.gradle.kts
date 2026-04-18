@@ -14,7 +14,7 @@ android {
         applicationId = "com.slock.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
+        versionCode = System.getenv("CI_VERSION_CODE")?.toIntOrNull() ?: 1
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -23,7 +23,19 @@ android {
         }
     }
 
+    signingConfigs {
+        getByName("debug") {
+            storeFile = rootProject.file("debug.keystore")
+            storePassword = "slockdebug"
+            keyAlias = "slock-debug"
+            keyPassword = "slockdebug"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debug")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(

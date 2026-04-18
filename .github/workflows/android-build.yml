@@ -25,6 +25,7 @@ jobs:
         -Dorg.gradle.jvmargs=-Xmx4g
         -Dorg.gradle.workers.max=2
         -Dorg.gradle.parallel=true
+      CI_VERSION_CODE: ${{ github.run_number }}
 
     steps:
       - uses: actions/checkout@v4
