@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextReplacement
 import com.slock.app.data.model.Agent
 import org.junit.Assert.*
@@ -93,7 +94,7 @@ class AgentSettingsComposeTest {
         composeTestRule.onNodeWithText("TestBot").performTextReplacement("NewName")
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
+        composeTestRule.onNodeWithText("SAVE CONFIG").performScrollTo().performClick()
         composeTestRule.waitForIdle()
 
         assertNotNull("onSave must have been called", captured)
@@ -112,7 +113,7 @@ class AgentSettingsComposeTest {
         composeTestRule.onNodeWithText("A helpful bot").performTextReplacement("New description")
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
+        composeTestRule.onNodeWithText("SAVE CONFIG").performScrollTo().performClick()
         composeTestRule.waitForIdle()
 
         assertNotNull("onSave must have been called", captured)
@@ -131,7 +132,7 @@ class AgentSettingsComposeTest {
         composeTestRule.onNodeWithText("Be helpful").performTextReplacement("New prompt")
         composeTestRule.waitForIdle()
 
-        composeTestRule.onNodeWithText("SAVE CONFIG").performClick()
+        composeTestRule.onNodeWithText("SAVE CONFIG").performScrollTo().performClick()
         composeTestRule.waitForIdle()
 
         assertNotNull("onSave must have been called", captured)
