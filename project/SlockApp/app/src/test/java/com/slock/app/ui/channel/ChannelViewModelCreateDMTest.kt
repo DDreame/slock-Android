@@ -360,6 +360,7 @@ private class FakeChannelRepository(
     override suspend fun joinChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun markChannelUnread(serverId: String, channelId: String) = Result.success(Unit)
     override suspend fun getDMs(serverId: String) = getDMsResult
     override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
     override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
@@ -380,6 +381,7 @@ private class DelayedDMRepository(
     override suspend fun joinChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun markChannelUnread(serverId: String, channelId: String) = Result.success(Unit)
     override suspend fun getDMs(serverId: String) = getDMsGate.await()
     override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
     override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
@@ -401,6 +403,7 @@ private class SequentialDMRepository(
     override suspend fun joinChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun leaveChannel(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun markChannelRead(serverId: String, channelId: String, seq: Long) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun markChannelUnread(serverId: String, channelId: String) = Result.success(Unit)
     override suspend fun getDMs(serverId: String): Result<List<Channel>> {
         val idx = getDMsCallCount.coerceAtMost(getDMsResults.lastIndex)
         getDMsCallCount++
