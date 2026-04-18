@@ -617,6 +617,7 @@ private fun ChannelListContent(
             ChannelItem(
                 channel = channel,
                 onClick = { onChannelClick(channel.id.orEmpty(), channel.name.orEmpty()) },
+                unreadCount = channelState.unreadCounts[channel.id.orEmpty()] ?: 0,
                 lastMessageSender = preview?.senderName.orEmpty(),
                 lastMessageContent = preview?.content.orEmpty(),
                 lastMessageTime = preview?.createdAt.orEmpty(),

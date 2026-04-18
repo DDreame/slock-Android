@@ -363,7 +363,7 @@ private class FakeChannelRepository(
     override suspend fun getDMs(serverId: String) = getDMsResult
     override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
     override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
-    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyMap<String, Int>())
     override suspend fun stopAllChannelAgents(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun resumeAllChannelAgents(serverId: String, channelId: String, prompt: String) = Result.failure<Unit>(NotImplementedError())
 }
@@ -383,7 +383,7 @@ private class DelayedDMRepository(
     override suspend fun getDMs(serverId: String) = getDMsGate.await()
     override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
     override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
-    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyMap<String, Int>())
     override suspend fun stopAllChannelAgents(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun resumeAllChannelAgents(serverId: String, channelId: String, prompt: String) = Result.failure<Unit>(NotImplementedError())
 }
@@ -408,7 +408,7 @@ private class SequentialDMRepository(
     }
     override suspend fun createDM(serverId: String, agentId: String?, userId: String?) = createDMResult
     override suspend fun getChannelMembers(serverId: String, channelId: String) = Result.success(emptyList<ChannelMember>())
-    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyList<Channel>())
+    override suspend fun getUnreadChannels(serverId: String) = Result.success(emptyMap<String, Int>())
     override suspend fun stopAllChannelAgents(serverId: String, channelId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun resumeAllChannelAgents(serverId: String, channelId: String, prompt: String) = Result.failure<Unit>(NotImplementedError())
 }

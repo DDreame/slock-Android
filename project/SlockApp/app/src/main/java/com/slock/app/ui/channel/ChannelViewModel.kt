@@ -26,6 +26,7 @@ data class ChannelUiState(
     val dms: List<Channel> = emptyList(),
     val channelPreviews: Map<String, Message> = emptyMap(),
     val onlineIds: Set<String> = emptySet(),
+    val unreadCounts: Map<String, Int> = emptyMap(),
     val serverId: String = "",
     val isLoading: Boolean = false,
     val isDmLoading: Boolean = false,
@@ -121,18 +122,25 @@ class ChannelViewModel @Inject constructor(
                             if (event.data.channelId !in knownChannelIds) {
                                 current
                             } else {
+                                val channelId = event.data.channelId
+                                val updatedUnread = if (channelId != _currentChannelId) {
+                                    current.unreadCounts + (channelId to ((current.unreadCounts[channelId] ?: 0) + 1))
+                                } else {
+                                    current.unreadCounts
+                                }
                                 current.copy(
                                     channelPreviews = current.channelPreviews + (
-                                        event.data.channelId to Message(
+                                        channelId to Message(
                                             id = event.data.id,
-                                            channelId = event.data.channelId,
+                                            channelId = channelId,
                                             content = event.data.content,
                                             senderId = event.data.senderId,
                                             senderName = event.data.senderName,
                                             senderType = event.data.senderType,
                                             createdAt = event.data.createdAt
                                         )
-                                    )
+                                    ),
+                                    unreadCounts = updatedUnread
                                 )
                             }
                         }
@@ -201,6 +209,12 @@ class ChannelViewModel @Inject constructor(
                     loadChannelPreviews(channels)
                 },
                 onFailure = { /* keep cached data */ }
+            )
+            channelRepository.getUnreadChannels(serverId).fold(
+                onSuccess = { counts ->
+                    _state.update { it.copy(unreadCounts = counts) }
+                },
+                onFailure = { /* keep existing counts */ }
             )
         }
     }
@@ -338,6 +352,19 @@ class ChannelViewModel @Inject constructor(
                 }
             )
         }
+    }
+
+    fun clearUnreadCount(channelId: String) {
+        _currentChannelId = channelId
+        _state.update { it.copy(unreadCounts = it.unreadCounts - channelId) }
+        val serverId = activeServerHolder.serverId ?: return
+        viewModelScope.launch {
+            channelRepository.markChannelRead(serverId, channelId, Long.MAX_VALUE)
+        }
+    }
+
+    fun clearCurrentChannel() {
+        _currentChannelId = null
     }
 
     fun loadChannelAgents(channelId: String) {
