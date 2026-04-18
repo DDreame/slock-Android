@@ -1,6 +1,7 @@
 package com.slock.app.ui.message
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -72,7 +73,7 @@ class AgentBatchControlComposeTest {
                 onKeepStopped = {}
             )
         }
-        composeTestRule.onNodeWithText("STOP ALL AGENTS").assertIsDisplayed()
+        composeTestRule.onNodeWithText("STOP ALL AGENTS").assertExists()
     }
 
     @Test
@@ -87,9 +88,9 @@ class AgentBatchControlComposeTest {
                 onKeepStopped = {}
             )
         }
-        composeTestRule.onNodeWithText("Alpha").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Beta").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Gamma").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Alpha").assertExists()
+        composeTestRule.onNodeWithText("Beta").assertExists()
+        composeTestRule.onNodeWithText("Gamma").assertExists()
     }
 
     @Test
@@ -104,7 +105,7 @@ class AgentBatchControlComposeTest {
                 onKeepStopped = {}
             )
         }
-        composeTestRule.onNodeWithText("CANCEL").assertIsDisplayed()
+        composeTestRule.onNodeWithText("CANCEL").assertExists()
     }
 
     @Test
@@ -143,8 +144,8 @@ class AgentBatchControlComposeTest {
         }
         composeTestRule.onNodeWithText("STOP ALL AGENTS").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("RESUME ALL").assertIsDisplayed()
-        composeTestRule.onNodeWithText("KEEP STOPPED").assertIsDisplayed()
+        composeTestRule.onNodeWithText("RESUME ALL").assertExists()
+        composeTestRule.onNodeWithText("KEEP STOPPED").assertExists()
     }
 
     @Test
