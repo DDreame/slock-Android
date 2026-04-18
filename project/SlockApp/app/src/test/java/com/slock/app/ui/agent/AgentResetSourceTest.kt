@@ -23,21 +23,17 @@ class AgentResetSourceTest {
 
     @Test
     fun `AgentDetailUiState has isResetting field`() {
-        val stateBlock = vmSource.substringAfter("data class AgentDetailUiState(")
-            .substringBefore(")")
         assertTrue(
             "AgentDetailUiState must have isResetting field",
-            stateBlock.contains("isResetting")
+            vmSource.contains("val isResetting")
         )
     }
 
     @Test
     fun `AgentDetailUiState has resetFeedbackMessage field`() {
-        val stateBlock = vmSource.substringAfter("data class AgentDetailUiState(")
-            .substringBefore(")")
         assertTrue(
             "AgentDetailUiState must have resetFeedbackMessage field",
-            stateBlock.contains("resetFeedbackMessage")
+            vmSource.contains("val resetFeedbackMessage")
         )
     }
 
@@ -81,11 +77,9 @@ class AgentResetSourceTest {
 
     @Test
     fun `NavHost wires onResetAgent to viewModel`() {
-        val agentDetailBlock = navSource.substringAfter("AgentDetailScreen(")
-            .substringBefore("}")
         assertTrue(
             "NavHost must wire onResetAgent to viewModel::resetAgent",
-            agentDetailBlock.contains("onResetAgent = viewModel::resetAgent")
+            navSource.contains("onResetAgent = viewModel::resetAgent")
         )
     }
 

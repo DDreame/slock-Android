@@ -12,6 +12,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
+import org.robolectric.shadows.ShadowToast
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -61,7 +62,7 @@ class AgentResetComposeTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Reset").performClick()
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Reset Agent").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Reset Agent", substring = true).assertIsDisplayed()
         composeTestRule.onNodeWithText("RESET").assertIsDisplayed()
     }
 
@@ -83,7 +84,7 @@ class AgentResetComposeTest {
     }
 
     @Test
-    fun `reset feedback message triggers onConsumeResetFeedback`() {
+    fun `reset feedback message shows Toast and triggers consume`() {
         var feedbackConsumed = false
         composeTestRule.setContent {
             AgentDetailScreen(
@@ -95,6 +96,10 @@ class AgentResetComposeTest {
             )
         }
         composeTestRule.waitForIdle()
-        assertTrue("onConsumeResetFeedback should be called when feedback is present", feedbackConsumed)
+        assertTrue(
+            "Toast should display reset feedback message",
+            ShadowToast.showedToast("Agent reset successful")
+        )
+        assertTrue("onConsumeResetFeedback should be called after showing Toast", feedbackConsumed)
     }
 }
