@@ -28,6 +28,7 @@ interface ChannelRepository {
     suspend fun saveChannel(serverId: String, channelId: String): Result<Unit> = Result.failure(NotImplementedError())
     suspend fun removeSavedChannel(serverId: String, channelId: String): Result<Unit> = Result.failure(NotImplementedError())
     suspend fun isChannelSaved(serverId: String, channelId: String): Result<Boolean> = Result.failure(NotImplementedError())
+    suspend fun getServerIdForChannel(channelId: String): String? = null
 }
 
 class ChannelRepositoryImpl @Inject constructor(
@@ -308,6 +309,14 @@ class ChannelRepositoryImpl @Inject constructor(
             }
         } catch (e: Exception) {
             Result.failure(e)
+        }
+    }
+
+    override suspend fun getServerIdForChannel(channelId: String): String? {
+        return try {
+            channelDao.getChannelById(channelId)?.serverId
+        } catch (_: Exception) {
+            null
         }
     }
 }

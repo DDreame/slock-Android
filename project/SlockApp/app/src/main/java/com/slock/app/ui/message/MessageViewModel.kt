@@ -400,7 +400,16 @@ class MessageViewModel @Inject constructor(
     fun retryLoadMessages() {
         val channelId = _state.value.channelId
         if (channelId.isNotBlank()) {
-            loadMessages(channelId)
+            if (activeServerHolder.serverId.isNullOrBlank()) {
+                viewModelScope.launch {
+                    channelRepository.getServerIdForChannel(channelId)?.let { id ->
+                        activeServerHolder.serverId = id
+                    }
+                    loadMessages(channelId)
+                }
+            } else {
+                loadMessages(channelId)
+            }
         }
     }
 
