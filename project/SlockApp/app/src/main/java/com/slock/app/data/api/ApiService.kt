@@ -206,6 +206,9 @@ interface ApiService {
     @POST("tasks")
     suspend fun createTask(@Body request: CreateTaskRequest): Response<Task>
 
+    @POST("tasks/convert-message")
+    suspend fun convertMessageToTask(@Body request: ConvertMessageToTaskRequest): Response<ConvertMessageToTaskResponse>
+
     @PATCH("tasks/{taskId}")
     suspend fun updateTask(
         @Path("taskId") taskId: String,

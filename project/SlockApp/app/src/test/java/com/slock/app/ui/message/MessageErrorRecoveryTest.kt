@@ -9,6 +9,7 @@ import com.slock.app.data.model.UploadResponse
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.repository.MessageRepositoryImpl
+import com.slock.app.data.repository.TaskRepository
 import com.slock.app.data.socket.SocketIOManager
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.CompletableDeferred
@@ -85,6 +86,7 @@ class MessageErrorRecoveryExecutionTest {
     val mainDispatcherRule = MainDispatcherRule()
 
     private val messageRepository: MessageRepository = mock()
+    private val taskRepository: TaskRepository = mock()
     private val channelRepository: ChannelRepository = mock()
     private val socketIOManager: SocketIOManager = mock()
     private val activeServerHolder: ActiveServerHolder = mock()
@@ -92,6 +94,7 @@ class MessageErrorRecoveryExecutionTest {
 
     private fun createViewModel(
         repository: MessageRepository = messageRepository,
+        tasks: TaskRepository = taskRepository,
         channels: ChannelRepository = channelRepository,
         socketManager: SocketIOManager = socketIOManager
     ): MessageViewModel {
@@ -99,7 +102,7 @@ class MessageErrorRecoveryExecutionTest {
         if (repository === messageRepository) {
             runBlocking { whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false) }
         }
-        return MessageViewModel(repository, channels, socketManager, activeServerHolder, presenceTracker)
+        return MessageViewModel(repository, tasks, channels, socketManager, activeServerHolder, presenceTracker)
     }
 
     // Issue 1: retryLoadMessages actually re-calls loadMessages from error state
@@ -234,7 +237,7 @@ class MessageErrorRecoveryExecutionTest {
             refreshResults["old-channel"] = CompletableDeferred()
         }
 
-        val vm = createViewModel(repository, channels, socketManager)
+        val vm = createViewModel(repository = repository, channels = channels, socketManager = socketManager)
 
         vm.loadMessages("old-channel")
         advanceUntilIdle()
