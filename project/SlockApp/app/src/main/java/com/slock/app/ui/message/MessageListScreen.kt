@@ -770,8 +770,8 @@ private fun NeoMessage(
                     if (lastReplyLabel.isNotBlank()) {
                         Text(
                             text = " \u00B7 $lastReplyLabel",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = TextMuted
+                            style = MessageTextStyles.timestampStyle(MaterialTheme.typography),
+                            color = MessageTextStyles.timestampColor
                         )
                     }
                     Text(
@@ -809,8 +809,8 @@ private fun NeoMessage(
 
 private fun formatMessageThreadTime(isoTime: String?): String {
     if (isoTime.isNullOrBlank()) return ""
-    val timePart = isoTime.split("T").getOrNull(1)?.take(5) ?: ""
-    val datePart = isoTime.split("T").getOrNull(0) ?: ""
+    val datePart = isoTime.substringBefore("T", "")
+    val timePart = isoTime.substringAfter("T", "").take(5)
     return if (datePart.isNotBlank() && timePart.isNotBlank()) {
         "$datePart $timePart"
     } else {
