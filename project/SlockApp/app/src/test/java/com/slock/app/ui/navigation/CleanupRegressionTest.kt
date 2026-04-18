@@ -121,7 +121,10 @@ class CleanupRegressionTest {
         )
         assertTrue(
             "NavHost standalone AgentList onAgentClick must navigate to agentDetailRoute",
-            source.contains("onAgentClick = { agentId -> navController.navigate(Routes.agentDetailRoute(agentId))")
+            source.contains("onAgentClick = { agentId ->") &&
+                source.contains("Routes.agentDetailRoute(") &&
+                source.contains("agentId = agentId") &&
+                source.contains("serverId = serverId")
         )
     }
 
