@@ -76,6 +76,7 @@ object Routes {
     const val SAVED_CHANNELS = "saved_channels"
     const val PROFILE = "profile"
     const val USER_PROFILE = "profile/{userId}?context={$CONTEXT_ARG}"
+    const val RELEASE_NOTES = "release_notes"
 
     private fun encodeQueryValue(value: String): String = java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
@@ -451,6 +452,7 @@ fun SlockNavHost(
                 onRefreshAccount = { viewModel.refreshAccount() },
                 onOpenProfile = { navController.navigate(Routes.PROFILE) },
                 onOpenSavedChannels = { navController.navigate(Routes.SAVED_CHANNELS) },
+                onOpenReleaseNotes = { navController.navigate(Routes.RELEASE_NOTES) },
                 onSendFeedback = { LogCollector.shareReport(context) },
                 onLogout = {
                     authViewModel.logout {
@@ -607,6 +609,16 @@ fun SlockNavHost(
                 onRemoveSavedChannel = viewModel::removeSavedChannel,
                 onRetry = viewModel::loadSavedChannels,
                 onFeedbackShown = viewModel::consumeFeedback
+            )
+        }
+
+        composable(Routes.RELEASE_NOTES) {
+            val viewModel = androidx.lifecycle.viewmodel.compose.viewModel<com.slock.app.ui.release.ReleaseNotesViewModel>()
+            val state by viewModel.state.collectAsState()
+
+            com.slock.app.ui.release.ReleaseNotesScreen(
+                state = state,
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
