@@ -39,6 +39,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -213,7 +214,7 @@ fun MessageListScreen(
                     LazyColumn(
                         state = listState,
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalArrangement = Arrangement.spacedBy(0.dp),
                         reverseLayout = true
                     ) {
                         itemsIndexed(
@@ -221,27 +222,32 @@ fun MessageListScreen(
                             key = { _, message -> messageListItemKey(message) }
                         ) { index, message ->
                             if (message.senderType.orEmpty() == "system") {
-                                SystemMessageDivider(message.content.orEmpty())
+                                SystemMessageDivider(
+                                    content = message.content.orEmpty(),
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
                             } else {
                                 val quotedMessage = resolveQuotedMessage(message.parentMessageId, messagesById)
                                 val isCurrentMatch = index == currentHighlightMessageIndex
-                                NeoMessage(
-                                    message = message,
-                                    quotedMessage = quotedMessage,
-                                    isOnline = message.senderId.orEmpty() in state.onlineIds,
-                                    reactions = resolveDisplayedReactions(
+                                Box(modifier = Modifier.padding(vertical = 7.dp)) {
+                                    NeoMessage(
                                         message = message,
-                                        reactionOverride = state.reactionOverridesByMessageId[message.id]
-                                    ),
-                                    highlightQuery = if (state.isSearchActive) state.searchQuery else "",
-                                    isCurrentSearchMatch = isCurrentMatch,
-                                    onThreadClick = if (message.threadChannelId != null) {
-                                        { onNavigateToThread(message.threadChannelId!!, message) }
-                                    } else null,
-                                    onReply = { onReplyTo(message) },
-                                    onToggleReaction = { emoji -> onToggleReaction(message, emoji) },
-                                    onImageClick = onImageClick
-                                )
+                                        quotedMessage = quotedMessage,
+                                        isOnline = message.senderId.orEmpty() in state.onlineIds,
+                                        reactions = resolveDisplayedReactions(
+                                            message = message,
+                                            reactionOverride = state.reactionOverridesByMessageId[message.id]
+                                        ),
+                                        highlightQuery = if (state.isSearchActive) state.searchQuery else "",
+                                        isCurrentSearchMatch = isCurrentMatch,
+                                        onThreadClick = if (message.threadChannelId != null) {
+                                            { onNavigateToThread(message.threadChannelId!!, message) }
+                                        } else null,
+                                        onReply = { onReplyTo(message) },
+                                        onToggleReaction = { emoji -> onToggleReaction(message, emoji) },
+                                        onImageClick = onImageClick
+                                    )
+                                }
                             }
                         }
                         if (state.isLoadingMore) {
@@ -1395,29 +1401,20 @@ private fun PendingFileAttachmentCard(attachment: PendingAttachment) {
     }
 }
 
-// System message divider (Style A: centered text with lines)
 @Composable
-private fun SystemMessageDivider(content: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+private fun SystemMessageDivider(content: String, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
     ) {
-        Divider(
-            modifier = Modifier.weight(1f),
-            thickness = 1.dp,
-            color = Color(0xFFCCCCCC)
-        )
-        NeoMessageContent(
-            content = content,
-            modifier = Modifier.padding(horizontal = 12.dp),
-            textColor = TextSecondary
-        )
-        Divider(
-            modifier = Modifier.weight(1f),
-            thickness = 1.dp,
-            color = Color(0xFFCCCCCC)
+        Text(
+            text = content,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = TextSecondary,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }
