@@ -344,9 +344,9 @@ private fun NeoAgentCard(
     onToggle: () -> Unit,
     onConfig: () -> Unit
 ) {
-    val isRunning = agent.status == "active"
-    val activity = activityInfo?.activity
-    val isThinking = activity?.contains("Thinking") == true || activity == "thinking"
+    val displayState = resolveDisplayState(agent.status, activityInfo?.activity)
+    val isRunning = displayState.isActive
+    val isThinking = displayState == AgentDisplayState.THINKING
     val avatarColor = when {
         !isRunning -> Color(0xFFEEEEEE)
         agent.name.orEmpty().startsWith("Z", ignoreCase = true) -> Cyan
@@ -444,21 +444,11 @@ private fun NeoAgentCard(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(
-                                when {
-                                    isThinking -> Yellow
-                                    isRunning -> Lime
-                                    else -> Color(0xFFCCCCCC)
-                                }
-                            )
+                            .background(displayState.dotColor)
                             .border(1.dp, Black, CircleShape)
                     )
                     Text(
-                        text = when {
-                            isThinking -> "Thinking..."
-                            isRunning -> "Working..."
-                            else -> "Hibernating"
-                        },
+                        text = displayState.statusText,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Black
@@ -489,7 +479,7 @@ private fun NeoAgentCard(
             )
             AgentActionButton(
                 icon = if (isRunning) "\u25A0" else "\u25B6",
-                label = if (isRunning) "Stop" else "Wake",
+                label = displayState.toggleLabel,
                 onClick = onToggle,
                 modifier = Modifier.weight(1f),
                 textColor = if (!isRunning) Color(0xFF22C55E) else Black
