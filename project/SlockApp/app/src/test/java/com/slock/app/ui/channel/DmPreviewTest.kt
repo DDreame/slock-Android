@@ -39,7 +39,6 @@ class DmPreviewTest {
     private fun createViewModel(): ChannelViewModel {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
         whenever(socketIOManager.connectionState).thenReturn(emptyFlow())
-        whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
         return ChannelViewModel(
             channelRepository = channelRepository,
             messageRepository = messageRepository,
@@ -50,10 +49,18 @@ class DmPreviewTest {
         )
     }
 
-    @Test
-    fun `loadDMs populates channelPreviews from cached messages`() = runTest {
+    private suspend fun stubDefaults() {
         whenever(channelRepository.getChannels(any())).thenReturn(Result.success(emptyList()))
         whenever(channelRepository.refreshChannels(any())).thenReturn(Result.success(emptyList()))
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
+        whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
+        whenever(messageRepository.getLatestMessagePerChannel(emptyList())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
+    }
+
+    @Test
+    fun `loadDMs populates channelPreviews from cached messages`() = runTest {
+        stubDefaults()
         whenever(channelRepository.getDMs("srv-1")).thenReturn(
             Result.success(listOf(
                 Channel(id = "dm-1", name = "Alice", type = "dm"),
@@ -63,8 +70,6 @@ class DmPreviewTest {
         whenever(messageRepository.getLatestMessagePerChannel(listOf("dm-1", "dm-2"))).thenReturn(
             mapOf("dm-1" to Message(id = "msg-1", channelId = "dm-1", content = "Hey there"))
         )
-        whenever(messageRepository.getLatestMessagePerChannel(emptyList())).thenReturn(emptyMap())
-        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
 
         val vm = createViewModel()
         vm.loadChannels("srv-1")
@@ -78,8 +83,7 @@ class DmPreviewTest {
 
     @Test
     fun `loadDMs fetches API preview for DMs not in cache`() = runTest {
-        whenever(channelRepository.getChannels(any())).thenReturn(Result.success(emptyList()))
-        whenever(channelRepository.refreshChannels(any())).thenReturn(Result.success(emptyList()))
+        stubDefaults()
         whenever(channelRepository.getDMs("srv-1")).thenReturn(
             Result.success(listOf(Channel(id = "dm-1", name = "Alice", type = "dm")))
         )
@@ -106,6 +110,7 @@ class DmPreviewTest {
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
         whenever(channelRepository.getChannels(any())).thenReturn(Result.success(emptyList()))
         whenever(channelRepository.refreshChannels(any())).thenReturn(Result.success(emptyList()))
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(channelRepository.getDMs("srv-1")).thenReturn(
             Result.success(listOf(Channel(id = "dm-1", name = "Alice", type = "dm")))
         )
@@ -148,6 +153,8 @@ class DmPreviewTest {
 
     @Test
     fun `DM preview not lost when channels also loaded`() = runTest {
+        whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(channelRepository.getChannels("srv-1")).thenReturn(
             Result.success(listOf(Channel(id = "ch-1", name = "general", type = "text")))
         )
