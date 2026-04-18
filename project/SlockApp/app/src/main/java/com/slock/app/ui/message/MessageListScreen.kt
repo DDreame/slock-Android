@@ -48,7 +48,6 @@ import coil.request.ImageRequest
 import com.slock.app.data.model.Agent
 import com.slock.app.data.model.Message
 import com.slock.app.ui.theme.*
-import com.slock.app.util.LogCollector
 import java.io.File
 import java.io.IOException
 import java.util.Locale
@@ -151,12 +150,11 @@ fun MessageListScreen(
                     NeoSkeletonMessageList()
                 }
                 state.error != null && state.messages.isEmpty() -> {
-                    val context = LocalContext.current
                     NeoErrorState(
                         message = "消息加载失败",
                         modifier = Modifier.align(Alignment.Center),
                         onRetry = { onRetryLoad() },
-                        onSendLog = { LogCollector.shareReport(context, state.error) }
+                        logContext = state.error
                     )
                 }
                 state.messages.isEmpty() -> {

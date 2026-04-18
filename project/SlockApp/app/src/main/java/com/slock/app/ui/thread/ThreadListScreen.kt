@@ -12,14 +12,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.ui.theme.*
-import com.slock.app.util.LogCollector
 
 @Composable
 fun ThreadListScreen(
@@ -53,12 +51,11 @@ fun ThreadListScreen(
                     NeoSkeletonCardList()
                 }
                 state.error != null -> {
-                    val context = LocalContext.current
                     NeoErrorState(
                         message = "讨论加载失败",
                         modifier = Modifier.align(Alignment.Center),
                         onRetry = onRetry,
-                        onSendLog = { LogCollector.shareReport(context, state.error) }
+                        logContext = state.error
                     )
                 }
                 state.threads.isEmpty() -> {

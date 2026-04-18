@@ -25,7 +25,6 @@ import androidx.compose.ui.unit.sp
 import com.slock.app.data.model.Machine
 import com.slock.app.data.model.MachineAgent
 import com.slock.app.ui.theme.*
-import com.slock.app.util.LogCollector
 
 @Composable
 fun MachineListScreen(
@@ -60,7 +59,7 @@ fun MachineListScreen(
                         message = "Machine 加载失败",
                         modifier = Modifier.align(Alignment.Center),
                         onRetry = onRetry,
-                        onSendLog = { LogCollector.shareReport(context, state.error) }
+                        logContext = state.error
                     )
                 }
                 state.machines.isEmpty() -> {
