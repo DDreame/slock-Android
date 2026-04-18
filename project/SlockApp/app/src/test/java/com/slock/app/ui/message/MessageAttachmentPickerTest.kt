@@ -29,16 +29,22 @@ import java.io.File
 
 class MessageAttachmentPickerStateTest {
 
+    private fun fakeUri(rawValue: String): Uri {
+        val uri: Uri = mock()
+        whenever(uri.toString()).thenReturn(rawValue)
+        return uri
+    }
+
     @Test
     fun `isPendingAttachmentImage distinguishes image and file mime types`() {
         val imageAttachment = PendingAttachment(
-            uri = Uri.parse("file:///tmp/photo.png"),
+            uri = fakeUri("file:///tmp/photo.png"),
             name = "photo.png",
             mimeType = "image/png",
             bytes = byteArrayOf(1)
         )
         val fileAttachment = PendingAttachment(
-            uri = Uri.parse("file:///tmp/report.pdf"),
+            uri = fakeUri("file:///tmp/report.pdf"),
             name = "report.pdf",
             mimeType = "application/pdf",
             bytes = byteArrayOf(2)
@@ -51,13 +57,13 @@ class MessageAttachmentPickerStateTest {
     @Test
     fun `pendingAttachmentTypeLabel prefers file extension and falls back to file`() {
         val pdfAttachment = PendingAttachment(
-            uri = Uri.parse("file:///tmp/report.pdf"),
+            uri = fakeUri("file:///tmp/report.pdf"),
             name = "report.pdf",
             mimeType = "application/pdf",
             bytes = byteArrayOf(1)
         )
         val unknownAttachment = PendingAttachment(
-            uri = Uri.parse("file:///tmp/blob"),
+            uri = fakeUri("file:///tmp/blob"),
             name = "blob",
             mimeType = "application/octet-stream",
             bytes = byteArrayOf(2)
@@ -80,6 +86,12 @@ class MessageAttachmentPickerExecutionTest {
     private val activeServerHolder: ActiveServerHolder = mock()
     private val presenceTracker = PresenceTracker()
 
+    private fun fakeUri(rawValue: String): Uri {
+        val uri: Uri = mock()
+        whenever(uri.toString()).thenReturn(rawValue)
+        return uri
+    }
+
     private fun createViewModel(): MessageViewModel {
         whenever(socketIOManager.events).thenReturn(emptyFlow())
         return MessageViewModel(messageRepository, channelRepository, socketIOManager, activeServerHolder, presenceTracker)
@@ -89,7 +101,7 @@ class MessageAttachmentPickerExecutionTest {
     fun `sendMessage uploads file attachment with original mime and forwards attachment id`() = runTest {
         val attachmentBytes = "pdf".toByteArray()
         val pendingAttachment = PendingAttachment(
-            uri = Uri.parse("file:///tmp/report.pdf"),
+            uri = fakeUri("file:///tmp/report.pdf"),
             name = "report.pdf",
             mimeType = "application/pdf",
             bytes = attachmentBytes
@@ -120,7 +132,7 @@ class MessageAttachmentPickerExecutionTest {
     @Test
     fun `sendMessage surfaces generic attachment error when all uploads fail without text`() = runTest {
         val pendingAttachment = PendingAttachment(
-            uri = Uri.parse("file:///tmp/report.pdf"),
+            uri = fakeUri("file:///tmp/report.pdf"),
             name = "report.pdf",
             mimeType = "application/pdf",
             bytes = "pdf".toByteArray()
