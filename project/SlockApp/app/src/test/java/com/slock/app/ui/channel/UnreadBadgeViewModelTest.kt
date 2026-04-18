@@ -56,7 +56,9 @@ class UnreadBadgeViewModelTest {
         whenever(channelRepository.refreshChannels(any())).thenReturn(
             Result.success(listOf(Channel(id = "ch-1", name = "General", type = "text")))
         )
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
     }
 
@@ -101,6 +103,7 @@ class UnreadBadgeViewModelTest {
         )
         whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
 
         val viewModel = createViewModel()
@@ -140,6 +143,7 @@ class UnreadBadgeViewModelTest {
         whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(channelRepository.getChannelMembers(any(), any())).thenReturn(Result.success(emptyList()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
 
         val viewModel = createViewModel()
@@ -204,6 +208,7 @@ class UnreadBadgeViewModelTest {
             Result.success(mapOf("ch-1" to 2))
         )
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
 
         val viewModel = createViewModel()
@@ -245,6 +250,7 @@ class UnreadBadgeViewModelTest {
         whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(channelRepository.markChannelRead(any(), any(), any())).thenReturn(Result.success(Unit))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
 
         val viewModel = createViewModel()
