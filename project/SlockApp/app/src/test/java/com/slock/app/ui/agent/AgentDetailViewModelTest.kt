@@ -239,6 +239,71 @@ class AgentDetailViewModelTest {
         assertEquals("Live event", state.activityLog[0].activity)
         assertEquals("Historical", state.activityLog[1].activity)
     }
+
+    @Test
+    fun `stopAgent clears latestActivity and latestActivityDetail`() = runTest {
+        val repo = FakeAgentRepository(
+            agentsResult = Result.success(listOf(testAgent)),
+            activityLogResult = Result.success(emptyList())
+        )
+        val vm = createViewModel(agentRepository = repo)
+        advanceUntilIdle()
+
+        assertEquals("Processing messages", vm.state.value.latestActivity)
+        assertEquals("Reading #general", vm.state.value.latestActivityDetail)
+
+        vm.stopAgent()
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.latestActivity)
+        assertNull(vm.state.value.latestActivityDetail)
+        assertEquals("stopped", vm.state.value.agent?.status)
+    }
+
+    @Test
+    fun `startAgent clears stale latestActivity`() = runTest {
+        val stoppedAgent = testAgent.copy(status = "stopped")
+        val repo = FakeAgentRepository(
+            agentsResult = Result.success(listOf(stoppedAgent)),
+            activityLogResult = Result.success(emptyList())
+        )
+        val vm = createViewModel(agentRepository = repo)
+        advanceUntilIdle()
+
+        assertEquals("Processing messages", vm.state.value.latestActivity)
+
+        vm.startAgent()
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.latestActivity)
+        assertNull(vm.state.value.latestActivityDetail)
+        assertEquals("active", vm.state.value.agent?.status)
+    }
+
+    @Test
+    fun `socket activity then stop then restart clears activity between transitions`() = runTest {
+        val repo = FakeAgentRepository(
+            agentsResult = Result.success(listOf(testAgent)),
+            activityLogResult = Result.success(emptyList())
+        )
+        val vm = createViewModel(agentRepository = repo)
+        advanceUntilIdle()
+
+        eventFlow.emit(SocketIOManager.SocketEvent.AgentActivity(
+            SocketIOManager.AgentActivityData("agent1", "Thinking", "Deep analysis")
+        ))
+        advanceUntilIdle()
+        assertEquals("Thinking", vm.state.value.latestActivity)
+
+        vm.stopAgent()
+        advanceUntilIdle()
+        assertNull(vm.state.value.latestActivity)
+
+        vm.startAgent()
+        advanceUntilIdle()
+        assertNull("After restart, stale activity should not reappear", vm.state.value.latestActivity)
+        assertEquals("active", vm.state.value.agent?.status)
+    }
 }
 
 private class FakeAgentRepository(

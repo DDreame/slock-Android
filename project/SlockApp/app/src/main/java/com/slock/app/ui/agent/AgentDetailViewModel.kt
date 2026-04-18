@@ -147,7 +147,11 @@ class AgentDetailViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.startAgent(serverId, agentId).onSuccess {
-                _state.update { it.copy(agent = it.agent?.copy(status = "active")) }
+                _state.update { it.copy(
+                    agent = it.agent?.copy(status = "active"),
+                    latestActivity = null,
+                    latestActivityDetail = null
+                ) }
             }
         }
     }
@@ -156,7 +160,11 @@ class AgentDetailViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.stopAgent(serverId, agentId).onSuccess {
-                _state.update { it.copy(agent = it.agent?.copy(status = "stopped")) }
+                _state.update { it.copy(
+                    agent = it.agent?.copy(status = "stopped"),
+                    latestActivity = null,
+                    latestActivityDetail = null
+                ) }
             }
         }
     }
