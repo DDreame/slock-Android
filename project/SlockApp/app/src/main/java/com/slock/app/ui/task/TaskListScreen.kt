@@ -134,6 +134,7 @@ fun TaskListScreen(
                                 NeoTaskCard(
                                     task = task,
                                     columnColor = column.color,
+                                    memberNames = state.memberNames,
                                     onAdvance = {
                                         val nextStatus = when (task.status) {
                                             "todo" -> "in_progress"
@@ -298,6 +299,7 @@ private fun EmptyColumnPlaceholder(column: StatusColumn) {
 private fun NeoTaskCard(
     task: Task,
     columnColor: Color,
+    memberNames: Map<String, String> = emptyMap(),
     onAdvance: () -> Unit,
     onDelete: () -> Unit
 ) {
@@ -368,6 +370,7 @@ private fun NeoTaskCard(
 
                 // Assignee avatar stub
                 task.assigneeId?.let { assignee ->
+                    val displayInitial = (memberNames[assignee] ?: assignee).take(1).uppercase()
                     Box(
                         modifier = Modifier
                             .size(22.dp)
@@ -376,7 +379,7 @@ private fun NeoTaskCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = assignee.take(1).uppercase(),
+                            text = displayInitial,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = Black
