@@ -53,7 +53,7 @@ class AgentCardNavigationTest {
     fun `NavHost wires onAgentClick to agent detail navigation`() {
         val navSource = java.io.File("src/main/java/com/slock/app/ui/navigation/NavHost.kt").readText()
         val agentListBlock = navSource.substringAfter("AgentListScreen(")
-            .substringBefore(")")
+            .substringBefore("onNavigateBack")
         assertTrue(
             "NavHost must wire onAgentClick to navigate to agent detail",
             agentListBlock.contains("onAgentClick")
