@@ -17,9 +17,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.platform.LocalContext
 import com.slock.app.ui.theme.*
-import com.slock.app.util.LogCollector
 
 @Composable
 fun MembersListScreen(
@@ -50,12 +48,11 @@ fun MembersListScreen(
                     NeoSkeletonCardList()
                 }
                 state.error != null && state.members.isEmpty() -> {
-                    val context = LocalContext.current
                     NeoErrorState(
                         message = "Members 加载失败",
                         modifier = Modifier.align(Alignment.Center),
                         onRetry = onRetry,
-                        onSendLog = { LogCollector.shareReport(context, state.error) }
+                        logContext = state.error
                     )
                 }
                 state.members.isEmpty() -> {

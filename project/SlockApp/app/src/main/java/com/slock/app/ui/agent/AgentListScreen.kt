@@ -40,7 +40,6 @@ import com.slock.app.data.model.DEFAULT_AGENT_RUNTIME_ID
 import com.slock.app.data.model.DEFAULT_AGENT_RUNTIME_OPTIONS
 import com.slock.app.data.model.supportsAgentReasoningEffort
 import com.slock.app.ui.theme.*
-import com.slock.app.util.LogCollector
 import android.widget.Toast
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,12 +113,11 @@ fun AgentListScreen(
                     NeoSkeletonCardList()
                 }
                 state.error != null && state.agents.isEmpty() -> {
-                    val context = LocalContext.current
                     NeoErrorState(
                         message = "Agent 加载失败",
                         modifier = Modifier.align(Alignment.Center),
                         onRetry = onRetry,
-                        onSendLog = { LogCollector.shareReport(context, state.error) }
+                        logContext = state.error
                     )
                 }
                 state.agents.isEmpty() -> {

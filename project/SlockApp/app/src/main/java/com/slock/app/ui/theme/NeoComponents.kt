@@ -54,6 +54,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -68,6 +70,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.slock.app.util.LogCollector
 
 // Shadow modifiers
 fun Modifier.neoShadow(
@@ -373,8 +376,20 @@ fun NeoErrorState(
     subtitle: String? = "请检查网络后重试",
     onRetry: (() -> Unit)? = null,
     onSendLog: (() -> Unit)? = null,
+    onCopyLog: (() -> Unit)? = null,
+    logContext: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val hasLogActions = onCopyLog != null || onSendLog != null || logContext != null
+    val copyLogAction = onCopyLog ?: {
+        clipboard.setText(AnnotatedString(LogCollector.buildReport(context, logContext)))
+    }
+    val sendLogAction = onSendLog ?: {
+        LogCollector.shareReport(context, logContext)
+    }
+
     Column(
         modifier = modifier.padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -396,19 +411,27 @@ fun NeoErrorState(
                 textAlign = TextAlign.Center
             )
         }
-        if (onRetry != null || onSendLog != null) {
+        if (onRetry != null || hasLogActions) {
             Spacer(modifier = Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 if (onRetry != null) {
                     NeoButton(
                         text = "重试",
                         onClick = onRetry
                     )
                 }
-                if (onSendLog != null) {
-                    NeoButton(
+                if (hasLogActions) {
+                    NeoButtonSecondary(
+                        text = "复制错误日志",
+                        onClick = copyLogAction,
+                        containerColor = White
+                    )
+                    NeoButtonSecondary(
                         text = "发送错误报告",
-                        onClick = onSendLog,
+                        onClick = sendLogAction,
                         containerColor = Cream
                     )
                 }
