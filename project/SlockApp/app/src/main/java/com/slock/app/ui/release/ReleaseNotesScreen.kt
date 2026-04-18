@@ -21,7 +21,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.slock.app.ui.theme.Cream
-import com.slock.app.ui.theme.Lime
 import com.slock.app.ui.theme.NeoCard
 import com.slock.app.ui.theme.NeoPressableBox
 import com.slock.app.ui.theme.Orange
@@ -96,7 +95,7 @@ fun ReleaseNotesScreen(
 
 @Composable
 private fun ReleaseNoteCard(entry: ReleaseNoteEntry) {
-    NeoCard(stripColor = Lime) {
+    NeoCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
