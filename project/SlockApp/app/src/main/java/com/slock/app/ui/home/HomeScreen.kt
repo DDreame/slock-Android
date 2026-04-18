@@ -661,7 +661,7 @@ private fun ChannelListContent(
     onDeleteChannel: (channelId: String) -> Unit = {},
     onLeaveChannel: (channelId: String) -> Unit = {}
 ) {
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(modifier = Modifier.fillMaxSize().testTag("channel_list")) {
         if (showFirstAgentGuidance) {
             item {
                 FirstAgentGuidanceCard(

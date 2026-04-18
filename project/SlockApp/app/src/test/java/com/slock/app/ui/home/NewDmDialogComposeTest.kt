@@ -2,12 +2,13 @@ package com.slock.app.ui.home
 
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import com.slock.app.data.model.Server
 import com.slock.app.ui.channel.ChannelUiState
 import com.slock.app.ui.member.MemberItem
@@ -72,8 +73,10 @@ class NewDmDialogComposeTest {
 
     private fun clickDmPlusButton() {
         composeTestRule
+            .onNodeWithTag("channel_list")
+            .performScrollToNode(hasTestTag("section_add_DIRECT MESSAGES"))
+        composeTestRule
             .onNodeWithTag("section_add_DIRECT MESSAGES")
-            .performScrollTo()
             .performClick()
         composeTestRule.waitForIdle()
     }
