@@ -55,3 +55,7 @@ data class ChannelMember(
     val user: User? = null,
     val agent: Agent? = null
 )
+
+data class ResumeAllAgentsRequest(
+    val prompt: String
+)

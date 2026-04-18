@@ -21,6 +21,8 @@ interface ChannelRepository {
     suspend fun getDMs(serverId: String): Result<List<Channel>>
     suspend fun createDM(serverId: String, agentId: String? = null, userId: String? = null): Result<Channel>
     suspend fun getChannelMembers(serverId: String, channelId: String): Result<List<ChannelMember>>
+    suspend fun stopAllChannelAgents(serverId: String, channelId: String): Result<Unit>
+    suspend fun resumeAllChannelAgents(serverId: String, channelId: String, prompt: String): Result<Unit>
     suspend fun getUnreadChannels(serverId: String): Result<List<Channel>>
     suspend fun getSavedChannels(serverId: String): Result<List<Channel>> = Result.failure(NotImplementedError())
     suspend fun saveChannel(serverId: String, channelId: String): Result<Unit> = Result.failure(NotImplementedError())
@@ -205,6 +207,34 @@ class ChannelRepositoryImpl @Inject constructor(
                 Result.success(response.body()!!)
             } else {
                 Result.failure(Exception("Get members failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun stopAllChannelAgents(serverId: String, channelId: String): Result<Unit> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.stopAllChannelAgents(channelId)
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Stop all agents failed: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun resumeAllChannelAgents(serverId: String, channelId: String, prompt: String): Result<Unit> {
+        return try {
+            activeServerHolder.serverId = serverId
+            val response = apiService.resumeAllChannelAgents(channelId, ResumeAllAgentsRequest(prompt))
+            if (response.isSuccessful) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Resume all agents failed: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

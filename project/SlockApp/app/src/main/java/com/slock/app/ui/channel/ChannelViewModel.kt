@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.slock.app.data.local.ActiveServerHolder
 import com.slock.app.data.local.PresenceTracker
+import com.slock.app.data.model.Agent
 import com.slock.app.data.model.Channel
 import com.slock.app.data.model.Message
 import com.slock.app.data.repository.AgentRepository
@@ -44,6 +45,9 @@ class ChannelViewModel @Inject constructor(
 
     private val _state = MutableStateFlow(ChannelUiState())
     val state: StateFlow<ChannelUiState> = _state.asStateFlow()
+
+    private val _channelAgents = MutableStateFlow<List<Agent>>(emptyList())
+    val channelAgents: StateFlow<List<Agent>> = _channelAgents.asStateFlow()
 
     private var socketEventsJob: Job? = null
     private var connectionJob: Job? = null
@@ -332,6 +336,55 @@ class ChannelViewModel @Inject constructor(
                 onFailure = { err ->
                     _state.update { it.copy(actionFeedbackMessage = "Leave failed: ${err.message}") }
                 }
+            )
+        }
+    }
+
+    fun loadChannelAgents(channelId: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        _currentChannelId = channelId
+        viewModelScope.launch {
+            channelRepository.getChannelMembers(serverId, channelId).fold(
+                onSuccess = { members ->
+                    _channelAgents.value = members
+                        .filter { it.agentId != null && it.agent != null }
+                        .map { it.agent!! }
+                },
+                onFailure = { _channelAgents.value = emptyList() }
+            )
+        }
+    }
+
+    private var _currentChannelId: String? = null
+
+    fun stopAllChannelAgents(onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
+        val serverId = activeServerHolder.serverId ?: return
+        val channelId = _currentChannelId ?: return
+        viewModelScope.launch {
+            channelRepository.stopAllChannelAgents(serverId, channelId).fold(
+                onSuccess = {
+                    _channelAgents.update { agents ->
+                        agents.map { a -> a.copy(status = "stopped") }
+                    }
+                    onSuccess()
+                },
+                onFailure = { err -> onError(err.message ?: "Failed to stop agents") }
+            )
+        }
+    }
+
+    fun resumeAllChannelAgents(prompt: String, onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
+        val serverId = activeServerHolder.serverId ?: return
+        val channelId = _currentChannelId ?: return
+        viewModelScope.launch {
+            channelRepository.resumeAllChannelAgents(serverId, channelId, prompt).fold(
+                onSuccess = {
+                    _channelAgents.update { agents ->
+                        agents.map { a -> a.copy(status = "active") }
+                    }
+                    onSuccess()
+                },
+                onFailure = { err -> onError(err.message ?: "Failed to resume agents") }
             )
         }
     }
