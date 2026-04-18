@@ -79,6 +79,8 @@ object Routes {
 
     private fun encodeQueryValue(value: String): String = java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
 
+    private fun encodePathSegment(value: String): String = java.net.URLEncoder.encode(value, "UTF-8").replace("+", "%20")
+
     fun buildContextLabel(vararg parts: String?): String? {
         val cleanedParts = parts.mapNotNull { part ->
             part?.trim()?.takeIf { it.isNotEmpty() }
@@ -87,7 +89,7 @@ object Routes {
     }
 
     fun messagesRoute(channelId: String, channelName: String, contextLabel: String? = null): String {
-        val encodedChannelId = Uri.encode(channelId)
+        val encodedChannelId = encodePathSegment(channelId)
         val encodedName = encodeQueryValue(channelName)
         val encodedContext = encodeQueryValue(contextLabel.orEmpty())
         return "channel/$encodedChannelId/messages?name=$encodedName&context=$encodedContext"

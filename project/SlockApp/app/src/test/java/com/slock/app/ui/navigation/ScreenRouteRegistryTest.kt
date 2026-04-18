@@ -1,6 +1,6 @@
 package com.slock.app.ui.navigation
 
-import android.net.Uri
+import java.net.URLDecoder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -104,7 +104,7 @@ class ScreenRouteRegistryTest {
         val encodedChannelId = route.substringAfter("channel/").substringBefore("/messages")
 
         assertEquals("dm%2Fuser%3A1%2Fuser%3A2", encodedChannelId)
-        assertEquals(channelId, Uri.decode(encodedChannelId))
+        assertEquals(channelId, URLDecoder.decode(encodedChannelId, "UTF-8"))
     }
 
     @Test
