@@ -49,6 +49,19 @@ class CrossNavStrategyTest {
     }
 
     @Test
+    fun `resolveMachineToAgentNav carries serverId fallback when provided`() {
+        val action = resolveMachineToAgentNav("agent-1", "srv-1")!!
+        assertTrue(action.route.contains("serverId=srv-1"))
+    }
+
+    @Test
+    fun `resolveAgentDetailServerId prefers route fallback over active holder`() {
+        assertEquals("route-srv", resolveAgentDetailServerId("route-srv", "active-srv"))
+        assertEquals("active-srv", resolveAgentDetailServerId(null, "active-srv"))
+        assertNull(resolveAgentDetailServerId("   ", null))
+    }
+
+    @Test
     fun `cross-nav cycle produces constant stack depth`() {
         val a2m = resolveAgentToMachineNav("srv-1")!!
         val m2a = resolveMachineToAgentNav("agent-2")!!
@@ -152,12 +165,33 @@ class NavBackSemanticsStructuralTest {
     }
 
     @Test
+    fun `AgentDetail shows explicit server context unavailable toast when machine fallback is missing`() {
+        val agentBlock = navHostSource
+            .substringAfter("// Agent Detail Screen")
+            .substringBefore("// Machine List Screen")
+        assertTrue(
+            "AgentDetail must show explicit server context unavailable feedback instead of silent fail",
+            agentBlock.contains("Server context unavailable")
+        )
+    }
+
+    @Test
     fun `MachineList to AgentDetail delegates to resolveMachineToAgentNav`() {
         val machineBlock = navHostSource
             .substringAfter("// Machine List Screen")
         assertTrue(
             "MachineList -> AgentDetail must use resolveMachineToAgentNav helper",
             machineBlock.contains("resolveMachineToAgentNav(")
+        )
+    }
+
+    @Test
+    fun `MachineList to AgentDetail passes serverId fallback into cross-nav helper`() {
+        val machineBlock = navHostSource
+            .substringAfter("// Machine List Screen")
+        assertTrue(
+            "MachineList -> AgentDetail must preserve serverId fallback when cross-navigating",
+            machineBlock.contains("resolveMachineToAgentNav(agentId, serverId)")
         )
     }
 

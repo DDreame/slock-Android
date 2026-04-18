@@ -59,7 +59,19 @@ class ScreenRouteRegistryTest {
 
     @Test
     fun `Routes agentDetailRoute produces correct path`() {
-        assertEquals("agent/test-agent-123?context=", Routes.agentDetailRoute("test-agent-123"))
+        assertEquals("agent/test-agent-123?context=&serverId=", Routes.agentDetailRoute("test-agent-123"))
+    }
+
+    @Test
+    fun `Routes agentDetailRoute appends encoded serverId`() {
+        assertEquals(
+            "agent/test-agent-123?context=Members&serverId=srv%201",
+            Routes.agentDetailRoute(
+                agentId = "test-agent-123",
+                contextLabel = "Members",
+                serverId = "srv 1"
+            )
+        )
     }
 
     @Test

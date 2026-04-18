@@ -58,6 +58,7 @@ import com.slock.app.util.LogCollector
 
 object Routes {
     private const val CONTEXT_ARG = "contextLabel"
+    private const val SERVER_ID_ARG = "serverId"
 
     const val SPLASH = "splash"
     const val LOGIN = "login"
@@ -69,7 +70,7 @@ object Routes {
     const val THREAD_LIST = "server/{serverId}/threads"
     const val THREAD_REPLY = "thread/{threadChannelId}/reply/{parentMessageJson}?channelName={threadChannelName}&context={$CONTEXT_ARG}"
     const val TASK_LIST = "server/{serverId}/tasks"
-    const val AGENT_DETAIL = "agent/{agentId}?context={$CONTEXT_ARG}"
+    const val AGENT_DETAIL = "agent/{agentId}?context={$CONTEXT_ARG}&serverId={$SERVER_ID_ARG}"
     const val MACHINE_LIST = "server/{serverId}/machines"
     const val SETTINGS = "settings"
     const val SAVED_CHANNELS = "saved_channels"
@@ -91,9 +92,10 @@ object Routes {
         return "channel/$channelId/messages?name=$encodedName&context=$encodedContext"
     }
 
-    fun agentDetailRoute(agentId: String, contextLabel: String? = null): String {
+    fun agentDetailRoute(agentId: String, contextLabel: String? = null, serverId: String? = null): String {
         val encodedContext = encodeQueryValue(contextLabel.orEmpty())
-        return "agent/$agentId?context=$encodedContext"
+        val encodedServerId = encodeQueryValue(serverId.orEmpty())
+        return "agent/$agentId?context=$encodedContext&serverId=$encodedServerId"
     }
 
     fun userProfileRoute(userId: String, contextLabel: String? = null): String {
@@ -344,7 +346,8 @@ fun SlockNavHost(
                         navController.navigate(
                             Routes.agentDetailRoute(
                                 agentId = agentId,
-                                contextLabel = Routes.buildContextLabel(selectedServer?.name, "Search Results")
+                                contextLabel = Routes.buildContextLabel(selectedServer?.name, "Search Results"),
+                                serverId = selectedServer?.id
                             )
                         )
                     }
@@ -402,7 +405,13 @@ fun SlockNavHost(
                         onMemberClick = { member ->
                             val contextLabel = Routes.buildContextLabel(selectedServer?.name, "Members")
                             if (member.isAgent && member.id.isNotBlank()) {
-                                navController.navigate(Routes.agentDetailRoute(member.id, contextLabel))
+                                navController.navigate(
+                                    Routes.agentDetailRoute(
+                                        agentId = member.id,
+                                        contextLabel = contextLabel,
+                                        serverId = selectedServer?.id
+                                    )
+                                )
                             } else if (!member.isAgent && !member.userId.isNullOrBlank()) {
                                 navController.navigate(Routes.userProfileRoute(member.userId, contextLabel))
                             }
@@ -630,7 +639,14 @@ fun SlockNavHost(
                         }
                     )
                 },
-                onAgentClick = { agentId -> navController.navigate(Routes.agentDetailRoute(agentId)) },
+                onAgentClick = { agentId ->
+                    navController.navigate(
+                        Routes.agentDetailRoute(
+                            agentId = agentId,
+                            serverId = serverId
+                        )
+                    )
+                },
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToMachines = { navController.navigate(Routes.machineListRoute(serverId)) },
                 onRetry = { viewModel.loadAgents(serverId) }
@@ -738,7 +754,8 @@ fun SlockNavHost(
             Routes.AGENT_DETAIL,
             arguments = listOf(
                 navArgument("agentId") { type = NavType.StringType },
-                navArgument("contextLabel") { type = NavType.StringType; defaultValue = "" }
+                navArgument("contextLabel") { type = NavType.StringType; defaultValue = "" },
+                navArgument("serverId") { type = NavType.StringType; defaultValue = "" }
             )
         ) { backStackEntry ->
             val viewModel: AgentDetailViewModel = hiltViewModel()
@@ -770,13 +787,17 @@ fun SlockNavHost(
                         }
                     )
                 },
-                onMachineClick = { machineId ->
+                onMachineClick = {
                     val serverId = viewModel.serverId.orEmpty()
                     resolveAgentToMachineNav(serverId)?.let { action ->
                         navController.navigate(action.route) {
                             popUpTo(action.popUpToRoute) { inclusive = action.inclusive }
                         }
-                    }
+                    } ?: android.widget.Toast.makeText(
+                        context,
+                        "Server context unavailable",
+                        android.widget.Toast.LENGTH_SHORT
+                    ).show()
                 },
                 onSelectTab = viewModel::selectTab,
                 onRetry = viewModel::retry
@@ -802,7 +823,7 @@ fun SlockNavHost(
                 state = state,
                 onDeleteMachine = viewModel::deleteMachine,
                 onAgentClick = { agentId ->
-                    resolveMachineToAgentNav(agentId)?.let { action ->
+                    resolveMachineToAgentNav(agentId, serverId)?.let { action ->
                         navController.navigate(action.route) {
                             popUpTo(action.popUpToRoute) { inclusive = action.inclusive }
                         }

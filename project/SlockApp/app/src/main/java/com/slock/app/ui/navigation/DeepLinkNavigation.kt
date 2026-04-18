@@ -33,6 +33,11 @@ data class CrossNavAction(
     val inclusive: Boolean
 )
 
+fun resolveAgentDetailServerId(routeServerId: String?, activeServerId: String?): String? {
+    return routeServerId?.trim()?.takeIf { it.isNotEmpty() }
+        ?: activeServerId?.trim()?.takeIf { it.isNotEmpty() }
+}
+
 fun resolveAgentToMachineNav(serverId: String): CrossNavAction? {
     if (serverId.isBlank()) return null
     return CrossNavAction(
@@ -42,10 +47,10 @@ fun resolveAgentToMachineNav(serverId: String): CrossNavAction? {
     )
 }
 
-fun resolveMachineToAgentNav(agentId: String): CrossNavAction? {
+fun resolveMachineToAgentNav(agentId: String, serverId: String? = null): CrossNavAction? {
     if (agentId.isBlank()) return null
     return CrossNavAction(
-        route = Routes.agentDetailRoute(agentId),
+        route = Routes.agentDetailRoute(agentId = agentId, serverId = serverId),
         popUpToRoute = Routes.MACHINE_LIST,
         inclusive = true
     )

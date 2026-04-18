@@ -8,6 +8,7 @@ import com.slock.app.data.model.ActivityLogEntry
 import com.slock.app.data.model.Agent
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.ui.navigation.resolveAgentDetailServerId
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,11 +38,13 @@ class AgentDetailViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val agentId: String = savedStateHandle["agentId"] ?: ""
+    private val routeServerId: String? = savedStateHandle["serverId"]
 
     private val _state = MutableStateFlow(AgentDetailUiState())
     val state: StateFlow<AgentDetailUiState> = _state.asStateFlow()
 
-    val serverId: String? get() = activeServerHolder.serverId
+    val serverId: String?
+        get() = resolveAgentDetailServerId(routeServerId, activeServerHolder.serverId)
 
     private var socketJob: Job? = null
     private var socketEntriesDuringLoad = 0
@@ -57,9 +60,9 @@ class AgentDetailViewModel @Inject constructor(
     }
 
     private fun loadAgent() {
-        val serverId = activeServerHolder.serverId
+        val serverId = serverId
         if (serverId.isNullOrBlank()) {
-            _state.update { it.copy(isLoading = false, error = "Server not selected") }
+            _state.update { it.copy(isLoading = false, error = "Server context unavailable") }
             return
         }
         if (agentId.isBlank()) {
@@ -88,7 +91,7 @@ class AgentDetailViewModel @Inject constructor(
     }
 
     private fun loadActivityLog() {
-        val serverId = activeServerHolder.serverId ?: return
+        val serverId = serverId ?: return
         if (agentId.isBlank()) return
         viewModelScope.launch {
             socketEntriesDuringLoad = 0
@@ -144,7 +147,7 @@ class AgentDetailViewModel @Inject constructor(
     }
 
     fun startAgent() {
-        val serverId = activeServerHolder.serverId ?: return
+        val serverId = serverId ?: return
         viewModelScope.launch {
             agentRepository.startAgent(serverId, agentId).onSuccess {
                 _state.update { it.copy(
@@ -157,7 +160,7 @@ class AgentDetailViewModel @Inject constructor(
     }
 
     fun stopAgent() {
-        val serverId = activeServerHolder.serverId ?: return
+        val serverId = serverId ?: return
         viewModelScope.launch {
             agentRepository.stopAgent(serverId, agentId).onSuccess {
                 _state.update { it.copy(

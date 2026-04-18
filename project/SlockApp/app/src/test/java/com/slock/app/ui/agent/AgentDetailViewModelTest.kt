@@ -58,10 +58,16 @@ class AgentDetailViewModelTest {
 
     private fun createViewModel(
         agentId: String = "agent1",
+        routeServerId: String? = null,
         agentRepository: AgentRepository = FakeAgentRepository()
     ): AgentDetailViewModel {
         return AgentDetailViewModel(
-            savedStateHandle = SavedStateHandle(mapOf("agentId" to agentId)),
+            savedStateHandle = SavedStateHandle(
+                buildMap {
+                    put("agentId", agentId)
+                    routeServerId?.let { put("serverId", it) }
+                }
+            ),
             agentRepository = agentRepository,
             socketIOManager = socketIOManager,
             activeServerHolder = activeServerHolder
@@ -201,6 +207,29 @@ class AgentDetailViewModelTest {
         advanceUntilIdle()
 
         assertEquals("Agent not found", vm.state.value.error)
+    }
+
+    @Test
+    fun `route serverId fallback loads agent when active server context is missing`() = runTest {
+        activeServerHolder.serverId = null
+        val repo = FakeAgentRepository(agentsResult = Result.success(listOf(testAgent)))
+
+        val vm = createViewModel(routeServerId = "server-from-route", agentRepository = repo)
+        advanceUntilIdle()
+
+        assertEquals("server-from-route", vm.serverId)
+        assertEquals("TestBot", vm.state.value.agent?.name)
+        assertNull(vm.state.value.error)
+    }
+
+    @Test
+    fun `missing active and route server context sets explicit error`() = runTest {
+        activeServerHolder.serverId = null
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        assertEquals("Server context unavailable", vm.state.value.error)
     }
 
     @Test
