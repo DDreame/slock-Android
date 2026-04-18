@@ -109,7 +109,21 @@ data class Machine(
     val lastSeen: String? = null,
     val meta: List<String>? = null,
     @SerializedName("runningAgents")
-    val runningAgents: List<MachineAgent>? = null
+    val runningAgents: List<MachineAgent>? = null,
+    val hostname: String? = null,
+    val os: String? = null,
+    @SerializedName("daemonVersion")
+    val daemonVersion: String? = null,
+    val runtimes: List<String>? = null
+)
+
+data class CreateMachineRequest(val name: String)
+
+data class RenameMachineRequest(val name: String)
+
+data class CreateMachineResponse(
+    val machine: Machine,
+    val apiKey: String
 )
 
 data class MachineAgent(

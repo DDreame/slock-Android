@@ -584,7 +584,8 @@ fun NeoConfirmDialog(
     confirmText: String = "确认",
     confirmColor: Color = Pink,
     onConfirm: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    showCancel: Boolean = true
 ) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         NeoCard(containerColor = White, modifier = Modifier.fillMaxWidth()) {
@@ -617,11 +618,13 @@ fun NeoConfirmDialog(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                NeoButtonSecondary(
-                    text = "取消",
-                    onClick = onDismiss,
-                    containerColor = Cream
-                )
+                if (showCancel) {
+                    NeoButtonSecondary(
+                        text = "取消",
+                        onClick = onDismiss,
+                        containerColor = Cream
+                    )
+                }
             }
         }
     }

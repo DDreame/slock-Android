@@ -229,6 +229,15 @@ interface ApiService {
     @GET("machines")
     suspend fun getMachines(): Response<List<Machine>>
 
+    @POST("machines")
+    suspend fun createMachine(@Body request: CreateMachineRequest): Response<CreateMachineResponse>
+
+    @PATCH("machines/{machineId}")
+    suspend fun renameMachine(
+        @Path("machineId") machineId: String,
+        @Body request: RenameMachineRequest
+    ): Response<Machine>
+
     @DELETE("machines/{machineId}")
     suspend fun deleteMachine(@Path("machineId") machineId: String): Response<Unit>
 

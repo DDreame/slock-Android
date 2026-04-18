@@ -868,7 +868,9 @@ fun SlockNavHost(
 
             MachineListScreen(
                 state = state,
-                onDeleteMachine = viewModel::deleteMachine,
+                onDeleteMachine = viewModel::requestDeleteMachine,
+                onConfirmDelete = viewModel::deleteMachine,
+                onDismissDeleteBlocked = viewModel::dismissDeleteBlocked,
                 onAgentClick = { agentId ->
                     resolveMachineToAgentNav(agentId, serverId)?.let { action ->
                         navController.navigate(action.route) {
@@ -877,7 +879,12 @@ fun SlockNavHost(
                     }
                 },
                 onNavigateBack = { navController.popBackStack() },
-                onRetry = { viewModel.loadMachines(serverId) }
+                onRetry = { viewModel.loadMachines(serverId) },
+                onAddMachine = viewModel::startAddMachine,
+                onCreateMachine = viewModel::createMachine,
+                onFinishAddMachine = viewModel::finishAddMachine,
+                onCancelAddMachine = viewModel::cancelAddMachine,
+                onActionFeedbackShown = viewModel::consumeActionFeedback
             )
         }
     }
