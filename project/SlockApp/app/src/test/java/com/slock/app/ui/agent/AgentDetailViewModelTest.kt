@@ -239,6 +239,27 @@ class AgentDetailViewModelTest {
         assertEquals("Live event", state.activityLog[0].activity)
         assertEquals("Historical", state.activityLog[1].activity)
     }
+    @Test
+    fun `stopAgent clears latestActivity and latestActivityDetail`() = runTest {
+        val repo = FakeAgentRepository(
+            agentsResult = Result.success(listOf(testAgent)),
+            activityLogResult = Result.success(emptyList())
+        )
+
+        val vm = createViewModel(agentRepository = repo)
+        advanceUntilIdle()
+
+        assertEquals("Processing messages", vm.state.value.latestActivity)
+        assertEquals("Reading #general", vm.state.value.latestActivityDetail)
+
+        vm.stopAgent()
+        advanceUntilIdle()
+
+        val state = vm.state.value
+        assertEquals("stopped", state.agent?.status)
+        assertNull(state.latestActivity)
+        assertNull(state.latestActivityDetail)
+    }
 }
 
 private class FakeAgentRepository(

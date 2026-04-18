@@ -135,6 +135,8 @@ fun AgentDetailScreen(
                 val agentName = agent.name.orEmpty().ifEmpty { "Agent" }
                 val agentModel = agent.model.orEmpty()
                 val isActive = agent.status == "active"
+                val detailActivity = state.latestActivity ?: agent.activity
+                val displayState = resolveDisplayState(agent.status, detailActivity)
 
                 Column(
                     modifier = Modifier
@@ -209,10 +211,10 @@ fun AgentDetailScreen(
                                     modifier = Modifier
                                         .size(10.dp)
                                         .border(1.5.dp, Color.Black, RectangleShape)
-                                        .background(if (isActive) NeoLime else Color.Gray)
+                                        .background(displayState.dotColor)
                                 )
                                 Text(
-                                    if (isActive) "Active" else "Stopped",
+                                    displayState.statusText,
                                     fontFamily = SpaceGrotesk,
                                     fontWeight = FontWeight.Bold,
                                     fontSize = 12.sp
@@ -254,7 +256,7 @@ fun AgentDetailScreen(
 
                     // ── Tab Content ──
                     if (state.selectedTab == 0) {
-                        OverviewContent(state, agent, agentModel, isActive, onDmClick, onStartAgent, onMachineClick) { showStopConfirm = true }
+                        OverviewContent(state, agent, agentModel, isActive, displayState, onDmClick, onStartAgent, onMachineClick) { showStopConfirm = true }
                     } else {
                         ActivityLogContent(state)
                     }
@@ -286,6 +288,7 @@ private fun OverviewContent(
     agent: com.slock.app.data.model.Agent,
     agentModel: String,
     isActive: Boolean,
+    displayState: AgentDisplayState,
     onDmClick: () -> Unit,
     onStartAgent: () -> Unit,
     onMachineClick: (String) -> Unit,
@@ -306,7 +309,7 @@ private fun OverviewContent(
     }
 
     val activity = state.latestActivity ?: agent.activity
-    if (activity != null) {
+    if (isActive && activity != null) {
         SectionTitle("Current Activity")
         NeoCard(stripColor = NeoLime) {
             Text(
