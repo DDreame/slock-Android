@@ -26,7 +26,9 @@ data class AgentDetailUiState(
     val latestActivityDetail: String? = null,
     val activityLog: List<ActivityLogEntry> = emptyList(),
     val isLoadingLog: Boolean = false,
-    val selectedTab: Int = 0
+    val selectedTab: Int = 0,
+    val isResetting: Boolean = false,
+    val resetFeedbackMessage: String? = null
 )
 
 @HiltViewModel
@@ -170,6 +172,35 @@ class AgentDetailViewModel @Inject constructor(
                 ) }
             }
         }
+    }
+
+    fun resetAgent() {
+        val serverId = serverId ?: return
+        viewModelScope.launch {
+            _state.update { it.copy(isResetting = true) }
+            agentRepository.resetAgent(serverId, agentId).fold(
+                onSuccess = {
+                    _state.update { it.copy(
+                        isResetting = false,
+                        resetFeedbackMessage = "Agent reset successful",
+                        latestActivity = null,
+                        latestActivityDetail = null,
+                        activityLog = emptyList()
+                    ) }
+                    loadActivityLog()
+                },
+                onFailure = { err ->
+                    _state.update { it.copy(
+                        isResetting = false,
+                        resetFeedbackMessage = err.message ?: "Reset failed"
+                    ) }
+                }
+            )
+        }
+    }
+
+    fun consumeResetFeedback() {
+        _state.update { it.copy(resetFeedbackMessage = null) }
     }
 
     fun retry() {
