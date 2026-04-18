@@ -31,6 +31,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.BaselineShift
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -45,6 +46,7 @@ private val taskListRegex = Regex("^\\s*[-*+]\\s+\\[([ xX])\\]\\s+(.+)$")
 private val orderedListRegex = Regex("^\\s*(\\d+)[.)]\\s+(.+)$")
 private val horizontalRuleRegex = Regex("^\\s{0,3}((\\*\\s*){3,}|(-\\s*){3,}|(_\\s*){3,})$")
 private val tableSeparatorRegex = Regex("^\\s*\\|?(\\s*:?-{3,}:?\\s*\\|)+\\s*:?-{3,}:?\\s*\\|?\\s*$")
+private val footnoteDefinitionRegex = Regex("""^\[\^([^\]\s]+)\]:\s+(.+)$""")
 private val markdownTokenChars = setOf('[', '*', '_', '`', '@', '~')
 private val LinkBlue = Color(0xFF0055FF)
 
@@ -65,6 +67,9 @@ sealed interface MarkdownBlock {
     data class Table(
         val headers: List<AnnotatedString>,
         val rows: List<List<AnnotatedString>>
+    ) : MarkdownBlock
+    data class Footnotes(
+        val items: List<Pair<String, AnnotatedString>>
     ) : MarkdownBlock
 }
 
@@ -107,6 +112,16 @@ private data class TaskListParseResult(
 private data class TableParseResult(
     val block: MarkdownBlock.Table,
     val nextIndex: Int
+)
+
+private data class FootnotesParseResult(
+    val block: MarkdownBlock.Footnotes,
+    val nextIndex: Int
+)
+
+private data class FootnoteReferenceToken(
+    val label: String,
+    val endIndex: Int
 )
 
 fun buildMentionAnnotatedString(content: String, highlightQuery: String = ""): AnnotatedString {
@@ -299,6 +314,49 @@ private fun MarkdownBlockView(
         is MarkdownBlock.Table -> {
             MarkdownTable(block = block, textColor = textColor)
         }
+
+        is MarkdownBlock.Footnotes -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(2.dp, Black, RectangleShape)
+                    .background(Cream.copy(alpha = 0.55f))
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                androidx.compose.material3.Text(
+                    text = "FOOTNOTES",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = textColor.copy(alpha = 0.75f)
+                )
+                block.items.forEach { (label, text) ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .padding(top = 2.dp, end = 8.dp)
+                                .background(Yellow.copy(alpha = 0.7f))
+                                .border(1.dp, Black, RectangleShape)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            androidx.compose.material3.Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Black
+                            )
+                        }
+                        MarkdownAnnotatedText(
+                            text = text,
+                            style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                            color = textColor,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -409,6 +467,13 @@ private fun parseTextBlocks(content: String, highlightQuery: String): List<Markd
         if (table != null) {
             blocks += table.block
             index = table.nextIndex
+            continue
+        }
+
+        val footnotes = parseFootnotes(lines, index, highlightQuery)
+        if (footnotes != null) {
+            blocks += footnotes.block
+            index = footnotes.nextIndex
             continue
         }
 
@@ -550,6 +615,27 @@ private fun parseTable(lines: List<String>, startIndex: Int, highlightQuery: Str
     )
 }
 
+private fun parseFootnotes(lines: List<String>, startIndex: Int, highlightQuery: String): FootnotesParseResult? {
+    if (footnoteDefinitionRegex.matchEntire(lines[startIndex].trim()) == null) return null
+
+    val items = mutableListOf<Pair<String, AnnotatedString>>()
+    var index = startIndex
+
+    while (index < lines.size) {
+        val match = footnoteDefinitionRegex.matchEntire(lines[index].trim()) ?: break
+        items += match.groupValues[1] to buildMentionAnnotatedString(match.groupValues[2].trim(), highlightQuery)
+        index++
+        if (index < lines.size && lines[index].isBlank()) {
+            break
+        }
+    }
+
+    return if (items.isEmpty()) null else FootnotesParseResult(
+        block = MarkdownBlock.Footnotes(items = items),
+        nextIndex = index
+    )
+}
+
 private fun splitTableRow(line: String): List<String> {
     return line.trim().trim('|').split('|').map { it.trim() }
 }
@@ -559,6 +645,7 @@ private fun startsNewBlock(lines: List<String>, index: Int): Boolean {
     return headingRegex.matches(line.trim()) ||
         horizontalRuleRegex.matches(line.trim()) ||
         line.trimStart().startsWith(">") ||
+        footnoteDefinitionRegex.matches(line.trim()) ||
         isListLine(line) ||
         parseTable(lines, index, "") != null
 }
@@ -574,6 +661,24 @@ private fun AnnotatedString.Builder.appendMarkdownInline(
 ) {
     var index = 0
     while (index < content.length) {
+        val footnoteReference = parseFootnoteReferenceAt(content, index)
+        if (footnoteReference != null) {
+            appendHighlighted(
+                text = "[${footnoteReference.label}]",
+                query = highlightQuery,
+                style = context.spanStyle(
+                    SpanStyle(
+                        baselineShift = BaselineShift.Superscript,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        background = Yellow.copy(alpha = 0.45f)
+                    )
+                )
+            )
+            index = footnoteReference.endIndex
+            continue
+        }
+
         val link = parseLinkAt(content, index)
         if (link != null) {
             pushStringAnnotation(MarkdownLinkTag, link.url)
@@ -693,6 +798,17 @@ private fun parseLinkAt(content: String, startIndex: Int): LinkToken? {
     if (url.isBlank()) return null
 
     return LinkToken(label = label, url = url, endIndex = urlEnd + 1)
+}
+
+private fun parseFootnoteReferenceAt(content: String, startIndex: Int): FootnoteReferenceToken? {
+    if (!content.startsWith("[^", startIndex)) return null
+    val labelEnd = content.indexOf(']', startIndex = startIndex + 2)
+    if (labelEnd <= startIndex + 2) return null
+
+    val label = content.substring(startIndex + 2, labelEnd)
+    if (label.isBlank() || label.any { it.isWhitespace() }) return null
+
+    return FootnoteReferenceToken(label = label, endIndex = labelEnd + 1)
 }
 
 private fun AnnotatedString.Builder.appendHighlighted(
