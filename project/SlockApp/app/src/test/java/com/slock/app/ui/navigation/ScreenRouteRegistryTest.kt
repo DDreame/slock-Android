@@ -1,5 +1,6 @@
 package com.slock.app.ui.navigation
 
+import java.net.URLDecoder
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -94,6 +95,16 @@ class ScreenRouteRegistryTest {
         val route = Routes.dmMessagesRoute("ch-123", "TestName")
         assertTrue("DM route must start with channel/ prefix", route.startsWith("channel/"))
         assertTrue("DM route must contain /messages?name=", route.contains("/messages?name="))
+    }
+
+    @Test
+    fun `Routes dmMessagesRoute preserves non simple channelId`() {
+        val channelId = "dm/user:1/user:2"
+        val route = Routes.dmMessagesRoute(channelId, "Claude")
+        val encodedChannelId = route.substringAfter("channel/").substringBefore("/messages")
+
+        assertEquals("dm%2Fuser%3A1%2Fuser%3A2", encodedChannelId)
+        assertEquals(channelId, URLDecoder.decode(encodedChannelId, "UTF-8"))
     }
 
     @Test

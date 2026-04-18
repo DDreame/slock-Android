@@ -139,6 +139,29 @@ class MessageErrorRecoveryExecutionTest {
     }
 
     @Test
+    fun `existing DM with non empty history opens successfully`() = runTest {
+        val channelId = "dm/user:1/user:2"
+        val history = listOf(Message(id = "m-1", channelId = channelId, content = "hello", seq = 1))
+
+        whenever(activeServerHolder.serverId).thenReturn("srv-1")
+        whenever(channelRepository.isChannelSaved("srv-1", channelId)).thenReturn(Result.success(false))
+        whenever(messageRepository.getMessages("srv-1", channelId, 50, null, null))
+            .thenReturn(Result.success(history))
+        whenever(messageRepository.refreshMessages("srv-1", channelId, 50))
+            .thenReturn(Result.success(history))
+
+        val vm = createViewModel()
+
+        vm.loadMessages(channelId)
+        advanceUntilIdle()
+
+        assertEquals(channelId, vm.state.value.channelId)
+        assertEquals(1, vm.state.value.messages.size)
+        assertEquals("hello", vm.state.value.messages.single().content)
+        assertNull("Existing-history DM should load without full-page error", vm.state.value.error)
+    }
+
+    @Test
     fun `failed first load then successful empty refresh clears error`() = runTest {
         whenever(activeServerHolder.serverId).thenReturn("srv-1")
         whenever(channelRepository.isChannelSaved("srv-1", "ch-1")).thenReturn(Result.success(false))
