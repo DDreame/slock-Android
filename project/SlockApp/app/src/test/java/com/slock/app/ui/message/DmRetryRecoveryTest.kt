@@ -52,21 +52,20 @@ class DmRetryRecoveryTest {
 
     @Test
     fun `retryLoadMessages resolves serverId from channel cache when null`() = runTest {
-        whenever(activeServerHolder.serverId).thenReturn(null)
+        // Chained returns: null for loadMessages, null for retryLoadMessages check, "srv-correct" for loadMessages inside retry
+        whenever(activeServerHolder.serverId).thenReturn(null, null, "srv-correct")
         whenever(channelRepository.getServerIdForChannel("dm-channel-1")).thenReturn("srv-correct")
+        whenever(channelRepository.isChannelSaved("srv-correct", "dm-channel-1")).thenReturn(Result.success(false))
+        whenever(messageRepository.getMessages("srv-correct", "dm-channel-1", 50, null, null))
+            .thenReturn(Result.success(emptyList()))
+        whenever(messageRepository.refreshMessages("srv-correct", "dm-channel-1", 50))
+            .thenReturn(Result.success(emptyList()))
 
         val vm = createViewModel()
         vm.loadMessages("dm-channel-1")
         advanceUntilIdle()
 
         assertEquals("Server not selected", vm.state.value.error)
-
-        whenever(activeServerHolder.serverId).thenReturn("srv-correct")
-        whenever(channelRepository.isChannelSaved("srv-correct", "dm-channel-1")).thenReturn(Result.success(false))
-        whenever(messageRepository.getMessages("srv-correct", "dm-channel-1", 50, null, null))
-            .thenReturn(Result.success(emptyList()))
-        whenever(messageRepository.refreshMessages("srv-correct", "dm-channel-1", 50))
-            .thenReturn(Result.success(emptyList()))
 
         vm.retryLoadMessages()
         advanceUntilIdle()
@@ -77,21 +76,20 @@ class DmRetryRecoveryTest {
 
     @Test
     fun `retryLoadMessages resolves correct server in multi-server scenario`() = runTest {
-        whenever(activeServerHolder.serverId).thenReturn(null)
+        // Channel belongs to srv-2, not srv-1. Chained returns simulate resolution.
+        whenever(activeServerHolder.serverId).thenReturn(null, null, "srv-2")
         whenever(channelRepository.getServerIdForChannel("dm-on-srv2")).thenReturn("srv-2")
+        whenever(channelRepository.isChannelSaved("srv-2", "dm-on-srv2")).thenReturn(Result.success(false))
+        whenever(messageRepository.getMessages("srv-2", "dm-on-srv2", 50, null, null))
+            .thenReturn(Result.success(emptyList()))
+        whenever(messageRepository.refreshMessages("srv-2", "dm-on-srv2", 50))
+            .thenReturn(Result.success(emptyList()))
 
         val vm = createViewModel()
         vm.loadMessages("dm-on-srv2")
         advanceUntilIdle()
 
         assertEquals("Server not selected", vm.state.value.error)
-
-        whenever(activeServerHolder.serverId).thenReturn("srv-2")
-        whenever(channelRepository.isChannelSaved("srv-2", "dm-on-srv2")).thenReturn(Result.success(false))
-        whenever(messageRepository.getMessages("srv-2", "dm-on-srv2", 50, null, null))
-            .thenReturn(Result.success(emptyList()))
-        whenever(messageRepository.refreshMessages("srv-2", "dm-on-srv2", 50))
-            .thenReturn(Result.success(emptyList()))
 
         vm.retryLoadMessages()
         advanceUntilIdle()
