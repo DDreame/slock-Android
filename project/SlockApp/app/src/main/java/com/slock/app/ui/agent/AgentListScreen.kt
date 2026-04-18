@@ -212,18 +212,18 @@ fun AgentListScreen(
         AgentSettingsSheet(
             agent = agent,
             onDismiss = { showSettingsAgent = null },
-            onSave = { runtime, reasoningEffort, envVars ->
+            onSave = { name, description, prompt, runtime, reasoningEffort, envVars ->
                 onUpdateAgent(
                     agent.id.orEmpty(),
-                    null,
-                    null,
-                    null,
+                    name,
+                    description,
+                    prompt,
                     runtime,
                     reasoningEffort,
                     envVars
                 )
                 showSettingsAgent = null
-                Toast.makeText(context, "${agent.name.orEmpty()} 配置已保存", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "${name ?: agent.name.orEmpty()} 配置已保存", Toast.LENGTH_SHORT).show()
             },
             onDelete = {
                 showSettingsAgent = null
@@ -651,20 +651,16 @@ internal fun resolveSelectedReasoningEffort(runtime: String?, reasoningEffort: S
 private fun AgentSettingsSheet(
     agent: Agent,
     onDismiss: () -> Unit,
-    onSave: (runtime: String, reasoningEffort: String?, envVars: Map<String, String>?) -> Unit,
+    onSave: (
+        name: String?,
+        description: String?,
+        prompt: String?,
+        runtime: String,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?
+    ) -> Unit,
     onDelete: () -> Unit
 ) {
-    var selectedRuntime by remember(agent.id, agent.runtime) {
-        mutableStateOf(resolveSelectedAgentRuntime(agent.runtime))
-    }
-    var selectedReasoningEffort by remember(agent.id, agent.runtime, agent.reasoningEffort) {
-        mutableStateOf(resolveSelectedReasoningEffort(agent.runtime, agent.reasoningEffort))
-    }
-    var envVarDrafts by remember(agent.id, agent.envVars) {
-        mutableStateOf(seedAgentEnvVarDrafts(agent.envVars))
-    }
-    val runtimeSupportsReasoning = supportsAgentReasoningEffort(selectedRuntime)
-
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = White,
@@ -679,128 +675,182 @@ private fun AgentSettingsSheet(
             )
         }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 24.dp)
-                .navigationBarsPadding()
-        ) {
-            Text(
-                text = "Agent Settings: ${agent.name}",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = Black,
-                modifier = Modifier.padding(bottom = 16.dp)
-            )
+        AgentSettingsContent(agent = agent, onSave = onSave, onDelete = onDelete)
+    }
+}
 
-            SettingsRow(label = "MODEL") {
-                Box(
-                    modifier = Modifier
-                        .background(White)
-                        .border(2.dp, Black, RectangleShape)
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        text = getModelShortName(agent.model.orEmpty()),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Black
-                    )
-                }
-            }
+@Composable
+internal fun AgentSettingsContent(
+    agent: Agent,
+    onSave: (
+        name: String?,
+        description: String?,
+        prompt: String?,
+        runtime: String,
+        reasoningEffort: String?,
+        envVars: Map<String, String>?
+    ) -> Unit,
+    onDelete: () -> Unit
+) {
+    var draftName by remember(agent.id) { mutableStateOf(agent.name.orEmpty()) }
+    var draftDescription by remember(agent.id) { mutableStateOf(agent.description.orEmpty()) }
+    var draftPrompt by remember(agent.id) { mutableStateOf(agent.prompt.orEmpty()) }
+    var selectedRuntime by remember(agent.id, agent.runtime) {
+        mutableStateOf(resolveSelectedAgentRuntime(agent.runtime))
+    }
+    var selectedReasoningEffort by remember(agent.id, agent.runtime, agent.reasoningEffort) {
+        mutableStateOf(resolveSelectedReasoningEffort(agent.runtime, agent.reasoningEffort))
+    }
+    var envVarDrafts by remember(agent.id, agent.envVars) {
+        mutableStateOf(seedAgentEnvVarDrafts(agent.envVars))
+    }
+    val runtimeSupportsReasoning = supportsAgentReasoningEffort(selectedRuntime)
 
-            SettingsRow(label = "ROLE") {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 24.dp)
+            .navigationBarsPadding()
+    ) {
+        Text(
+            text = "Agent Settings",
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = Black,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        NeoLabel("NAME")
+        NeoTextField(
+            value = draftName,
+            onValueChange = { draftName = it },
+            placeholder = "Agent name",
+            focusHighlight = Orange
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        SettingsRow(label = "MODEL") {
+            Box(
+                modifier = Modifier
+                    .background(White)
+                    .border(2.dp, Black, RectangleShape)
+                    .padding(horizontal = 12.dp, vertical = 6.dp)
+            ) {
                 Text(
-                    text = agent.description ?: "",
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
+                    text = getModelShortName(agent.model.orEmpty()),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
                     color = Black
                 )
             }
+        }
 
-            Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(14.dp))
 
-            NeoLabel("RUNTIME")
+        NeoLabel("ROLE DESCRIPTION")
+        NeoTextField(
+            value = draftDescription,
+            onValueChange = { draftDescription = it },
+            placeholder = "Describe what this agent does...",
+            focusHighlight = Orange
+        )
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        NeoLabel("SYSTEM PROMPT")
+        NeoTextField(
+            value = draftPrompt,
+            onValueChange = { draftPrompt = it },
+            placeholder = "Instructions for this agent...",
+            focusHighlight = Orange
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        NeoLabel("RUNTIME")
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            DEFAULT_AGENT_RUNTIME_OPTIONS.forEach { runtimeOption ->
+                ConfigOptionChip(
+                    label = runtimeOption.displayName,
+                    isSelected = selectedRuntime == runtimeOption.id,
+                    onClick = { selectedRuntime = runtimeOption.id }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        if (runtimeSupportsReasoning) {
+            NeoLabel("REASONING EFFORT")
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                DEFAULT_AGENT_RUNTIME_OPTIONS.forEach { runtimeOption ->
+                DEFAULT_AGENT_REASONING_OPTIONS.forEach { reasoningOption ->
                     ConfigOptionChip(
-                        label = runtimeOption.displayName,
-                        isSelected = selectedRuntime == runtimeOption.id,
-                        onClick = { selectedRuntime = runtimeOption.id }
+                        label = reasoningOption.label,
+                        isSelected = selectedReasoningEffort == reasoningOption.id,
+                        onClick = { selectedReasoningEffort = reasoningOption.id }
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(14.dp))
-
-            if (runtimeSupportsReasoning) {
-                NeoLabel("REASONING EFFORT")
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    DEFAULT_AGENT_REASONING_OPTIONS.forEach { reasoningOption ->
-                        ConfigOptionChip(
-                            label = reasoningOption.label,
-                            isSelected = selectedReasoningEffort == reasoningOption.id,
-                            onClick = { selectedReasoningEffort = reasoningOption.id }
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-            }
-
-            EnvVarEditorSection(
-                drafts = envVarDrafts,
-                onAddDraft = { envVarDrafts = envVarDrafts + AgentEnvVarDraft() },
-                onUpdateDraft = { index, key, value ->
-                    envVarDrafts = envVarDrafts.mapIndexed { currentIndex, draft ->
-                        if (currentIndex == index) {
-                            AgentEnvVarDraft(key = key, value = value)
-                        } else {
-                            draft
-                        }
-                    }
-                },
-                onRemoveDraft = { index ->
-                    envVarDrafts = envVarDrafts.filterIndexed { currentIndex, _ -> currentIndex != index }
-                }
-            )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            NeoButton(
-                text = "SAVE CONFIG",
-                onClick = {
-                    val normalizedEnvVars = normalizeAgentEnvVars(envVarDrafts)
-                    onSave(
-                        selectedRuntime,
-                        if (runtimeSupportsReasoning) selectedReasoningEffort else null,
-                        normalizedEnvVars.takeUnless { it.isEmpty() }
-                    )
-                },
-                containerColor = Yellow,
-                contentColor = Black
-            )
-
-            Spacer(modifier = Modifier.height(10.dp))
-
-            NeoButton(
-                text = "DELETE AGENT",
-                onClick = onDelete,
-                containerColor = Pink,
-                contentColor = Black
-            )
         }
+
+        EnvVarEditorSection(
+            drafts = envVarDrafts,
+            onAddDraft = { envVarDrafts = envVarDrafts + AgentEnvVarDraft() },
+            onUpdateDraft = { index, key, value ->
+                envVarDrafts = envVarDrafts.mapIndexed { currentIndex, draft ->
+                    if (currentIndex == index) {
+                        AgentEnvVarDraft(key = key, value = value)
+                    } else {
+                        draft
+                    }
+                }
+            },
+            onRemoveDraft = { index ->
+                envVarDrafts = envVarDrafts.filterIndexed { currentIndex, _ -> currentIndex != index }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(18.dp))
+
+        NeoButton(
+            text = "SAVE CONFIG",
+            onClick = {
+                val normalizedEnvVars = normalizeAgentEnvVars(envVarDrafts)
+                onSave(
+                    draftName.takeIf { it != agent.name.orEmpty() },
+                    draftDescription.takeIf { it != agent.description.orEmpty() },
+                    draftPrompt.takeIf { it != agent.prompt.orEmpty() },
+                    selectedRuntime,
+                    if (runtimeSupportsReasoning) selectedReasoningEffort else null,
+                    normalizedEnvVars.takeUnless { it.isEmpty() }
+                )
+            },
+            containerColor = Yellow,
+            contentColor = Black
+        )
+
+        Spacer(modifier = Modifier.height(10.dp))
+
+        NeoButton(
+            text = "DELETE AGENT",
+            onClick = onDelete,
+            containerColor = Pink,
+            contentColor = Black
+        )
     }
 }
 
