@@ -333,12 +333,70 @@ class AgentDetailViewModelTest {
         assertNull("After restart, stale activity should not reappear", vm.state.value.latestActivity)
         assertEquals("active", vm.state.value.agent?.status)
     }
+
+    @Test
+    fun `resetAgent clears activity and shows success feedback`() = runTest {
+        val repo = FakeAgentRepository(
+            agentsResult = Result.success(listOf(testAgent)),
+            activityLogResult = Result.success(emptyList()),
+            resetResult = Result.success(Unit)
+        )
+        val vm = createViewModel(agentRepository = repo)
+        advanceUntilIdle()
+
+        assertEquals("Processing messages", vm.state.value.latestActivity)
+
+        vm.resetAgent()
+        advanceUntilIdle()
+
+        assertNull(vm.state.value.latestActivity)
+        assertNull(vm.state.value.latestActivityDetail)
+        assertTrue(vm.state.value.activityLog.isEmpty())
+        assertFalse(vm.state.value.isResetting)
+        assertEquals("Agent reset successful", vm.state.value.resetFeedbackMessage)
+    }
+
+    @Test
+    fun `resetAgent failure sets error feedback`() = runTest {
+        val repo = FakeAgentRepository(
+            agentsResult = Result.success(listOf(testAgent)),
+            activityLogResult = Result.success(emptyList()),
+            resetResult = Result.failure(RuntimeException("reset failed"))
+        )
+        val vm = createViewModel(agentRepository = repo)
+        advanceUntilIdle()
+
+        vm.resetAgent()
+        advanceUntilIdle()
+
+        assertFalse(vm.state.value.isResetting)
+        assertEquals("reset failed", vm.state.value.resetFeedbackMessage)
+    }
+
+    @Test
+    fun `consumeResetFeedback clears feedback message`() = runTest {
+        val repo = FakeAgentRepository(
+            agentsResult = Result.success(listOf(testAgent)),
+            activityLogResult = Result.success(emptyList()),
+            resetResult = Result.success(Unit)
+        )
+        val vm = createViewModel(agentRepository = repo)
+        advanceUntilIdle()
+
+        vm.resetAgent()
+        advanceUntilIdle()
+        assertEquals("Agent reset successful", vm.state.value.resetFeedbackMessage)
+
+        vm.consumeResetFeedback()
+        assertNull(vm.state.value.resetFeedbackMessage)
+    }
 }
 
 private class FakeAgentRepository(
     private val agentsResult: Result<List<Agent>> = Result.success(emptyList()),
     private val activityLogResult: Result<List<ActivityLogEntry>> = Result.success(emptyList()),
-    private val activityLogGate: CompletableDeferred<Unit>? = null
+    private val activityLogGate: CompletableDeferred<Unit>? = null,
+    private val resetResult: Result<Unit> = Result.success(Unit)
 ) : AgentRepository {
     override suspend fun getAgents(serverId: String) = agentsResult
     override suspend fun refreshAgents(serverId: String) = agentsResult
@@ -366,7 +424,7 @@ private class FakeAgentRepository(
     override suspend fun deleteAgent(serverId: String, agentId: String) = Result.failure<Unit>(NotImplementedError())
     override suspend fun startAgent(serverId: String, agentId: String) = Result.success(Unit)
     override suspend fun stopAgent(serverId: String, agentId: String) = Result.success(Unit)
-    override suspend fun resetAgent(serverId: String, agentId: String, mode: String) = Result.failure<Unit>(NotImplementedError())
+    override suspend fun resetAgent(serverId: String, agentId: String, mode: String) = resetResult
     override suspend fun getActivityLog(serverId: String, agentId: String, limit: Int): Result<List<ActivityLogEntry>> {
         activityLogGate?.await()
         return activityLogResult

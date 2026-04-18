@@ -803,7 +803,9 @@ fun SlockNavHost(
                     ).show()
                 },
                 onSelectTab = viewModel::selectTab,
-                onRetry = viewModel::retry
+                onRetry = viewModel::retry,
+                onResetAgent = viewModel::resetAgent,
+                onConsumeResetFeedback = viewModel::consumeResetFeedback
             )
         }
 

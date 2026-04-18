@@ -54,7 +54,9 @@ fun AgentDetailScreen(
     onDmClick: () -> Unit = {},
     onMachineClick: (machineId: String) -> Unit = {},
     onSelectTab: (Int) -> Unit = {},
-    onRetry: () -> Unit = {}
+    onRetry: () -> Unit = {},
+    onResetAgent: () -> Unit = {},
+    onConsumeResetFeedback: () -> Unit = {}
 ) {
     val contentState = resolveAgentDetailContentState(state)
     val headerContextLabel = resolveAgentDetailHeaderContext(contextLabel)
@@ -132,6 +134,7 @@ fun AgentDetailScreen(
             is AgentDetailContentState.Content -> {
                 val agent = contentState.agent
                 var showStopConfirm by remember(agent.id) { mutableStateOf(false) }
+                var showResetConfirm by remember(agent.id) { mutableStateOf(false) }
                 val agentName = agent.name.orEmpty().ifEmpty { "Agent" }
                 val agentModel = agent.model.orEmpty()
                 val isActive = agent.status == "active"
@@ -256,7 +259,7 @@ fun AgentDetailScreen(
 
                     // ── Tab Content ──
                     if (state.selectedTab == 0) {
-                        OverviewContent(state, agent, agentModel, isActive, displayState, onDmClick, onStartAgent, onMachineClick) { showStopConfirm = true }
+                        OverviewContent(state, agent, agentModel, isActive, displayState, onDmClick, onStartAgent, onMachineClick, onStopClick = { showStopConfirm = true }, onResetClick = { showResetConfirm = true })
                     } else {
                         ActivityLogContent(state)
                     }
@@ -272,6 +275,20 @@ fun AgentDetailScreen(
                         confirmColor = NeoPink,
                         onConfirm = onStopAgent,
                         onDismiss = { showStopConfirm = false }
+                    )
+                }
+
+                if (showResetConfirm) {
+                    NeoConfirmDialog(
+                        title = "Reset Agent",
+                        message = "\u786E\u5B9A\u8981\u91CD\u7F6E ${agent.name.orEmpty()} \u5417\uFF1F\u8FD9\u5C06\u6E05\u9664 Agent \u7684\u5F53\u524D\u72B6\u6001\u548C\u4F1A\u8BDD\u8BB0\u5F55\u3002",
+                        confirmText = "RESET",
+                        confirmColor = NeoOrange,
+                        onConfirm = {
+                            onResetAgent()
+                            showResetConfirm = false
+                        },
+                        onDismiss = { showResetConfirm = false }
                     )
                 }
             }
@@ -292,7 +309,8 @@ private fun OverviewContent(
     onDmClick: () -> Unit,
     onStartAgent: () -> Unit,
     onMachineClick: (String) -> Unit,
-    onStopClick: () -> Unit
+    onStopClick: () -> Unit,
+    onResetClick: () -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -306,6 +324,7 @@ private fun OverviewContent(
         } else {
             ActionButton(displayState.toggleLabel, NeoLime, Modifier.weight(1f), onStartAgent)
         }
+        ActionButton("Reset", NeoOrange, Modifier.weight(1f), onResetClick)
     }
 
     val activity = state.latestActivity ?: agent.activity
