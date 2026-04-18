@@ -111,20 +111,22 @@ class MessageRepositoryImpl @Inject constructor(
         try {
             val response = apiService.getMessages(channelId, limit, before, after)
             if (response.isSuccessful && response.body() != null) {
-                val messages = response.body()!!.messages
-                if (messages.isNotEmpty()) return messages
+                return response.body()!!.messages
+            }
+            if (!response.isSuccessful) {
+                return null
             }
         } catch (e: Exception) {
             Log.d("MessageRepo", "Wrapped format failed for $channelId, trying raw", e)
-        }
-        // Fallback: plain array (JS: it.messages ?? it)
-        try {
-            val response = apiService.getMessagesRaw(channelId, limit, before, after)
-            if (response.isSuccessful && response.body() != null) {
-                return response.body()!!
+            // Fallback only when wrapped parsing/shape handling fails.
+            try {
+                val response = apiService.getMessagesRaw(channelId, limit, before, after)
+                if (response.isSuccessful && response.body() != null) {
+                    return response.body()!!
+                }
+            } catch (rawError: Exception) {
+                Log.e("MessageRepo", "Raw format also failed for $channelId", rawError)
             }
-        } catch (e: Exception) {
-            Log.e("MessageRepo", "Raw format also failed for $channelId", e)
         }
         return null
     }
