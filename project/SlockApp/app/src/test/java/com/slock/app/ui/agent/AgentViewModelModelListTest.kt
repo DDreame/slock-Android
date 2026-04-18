@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -151,6 +152,57 @@ class AgentViewModelModelListTest {
         assertEquals("codex", viewModel.state.value.agents.single().runtime)
         assertEquals("high", viewModel.state.value.agents.single().reasoningEffort)
         assertEquals("secret", viewModel.state.value.agents.single().envVars?.get("OPENAI_API_KEY"))
+        assertEquals(
+            "Agent created. Open a DM or configure it from the list.",
+            viewModel.state.value.createFeedbackMessage
+        )
+    }
+
+    @Test
+    fun `consumeCreateFeedback clears create feedback message`() = runTest {
+        val recentModelsFlow = MutableStateFlow(emptyList<String>())
+        val createdAgent = Agent(
+            id = "agent-1",
+            name = "Custom Agent",
+            model = "gpt-5.4-mini-custom",
+            status = "active"
+        )
+
+        whenever(socketIOManager.events).thenReturn(emptyFlow())
+        whenever(settingsPreferencesStore.recentAgentModelsFlow).thenReturn(recentModelsFlow)
+        whenever(
+            agentRepository.createAgent(
+                serverId = "server-1",
+                name = "Custom Agent",
+                description = "",
+                prompt = "Be precise",
+                model = "gpt-5.4-mini-custom",
+                runtime = null,
+                reasoningEffort = null,
+                envVars = null,
+                avatar = null
+            )
+        ).thenReturn(Result.success(createdAgent))
+
+        val viewModel = createViewModel()
+        activeServerHolder.serverId = "server-1"
+
+        viewModel.createAgent(
+            name = "Custom Agent",
+            description = "",
+            prompt = "Be precise",
+            model = "gpt-5.4-mini-custom",
+            runtime = null,
+            reasoningEffort = null,
+            envVars = null
+        )
+        advanceUntilIdle()
+
+        assertTrue(viewModel.state.value.createFeedbackMessage != null)
+
+        viewModel.consumeCreateFeedback()
+
+        assertNull(viewModel.state.value.createFeedbackMessage)
     }
 
     @Test
