@@ -181,6 +181,47 @@ class DmPreviewTest {
         assertEquals("Channel msg", vm.state.value.channelPreviews["ch-1"]?.content)
         assertEquals("DM msg", vm.state.value.channelPreviews["dm-1"]?.content)
     }
+
+    @Test
+    fun `refreshDMs via DMNew event populates channelPreviews`() = runTest {
+        val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
+        whenever(socketIOManager.events).thenReturn(events)
+        whenever(socketIOManager.connectionState).thenReturn(emptyFlow())
+        whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
+        whenever(channelRepository.getChannels(any())).thenReturn(Result.success(emptyList()))
+        whenever(channelRepository.refreshChannels(any())).thenReturn(Result.success(emptyList()))
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
+        whenever(channelRepository.getDMs("srv-1")).thenReturn(
+            Result.success(listOf(Channel(id = "dm-new", name = "Charlie", type = "dm")))
+        )
+        whenever(messageRepository.getLatestMessagePerChannel(listOf("dm-new"))).thenReturn(
+            mapOf("dm-new" to Message(id = "msg-refresh", channelId = "dm-new", content = "Refresh preview"))
+        )
+        whenever(messageRepository.getLatestMessagePerChannel(emptyList())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
+
+        val vm = ChannelViewModel(
+            channelRepository = channelRepository,
+            messageRepository = messageRepository,
+            agentRepository = agentRepository,
+            activeServerHolder = activeServerHolder,
+            socketIOManager = socketIOManager,
+            presenceTracker = presenceTracker
+        )
+        vm.loadChannels("srv-1")
+        advanceUntilIdle()
+
+        events.emit(
+            SocketIOManager.SocketEvent.DMNew(
+                SocketIOManager.DMNewData(id = "dm-new", name = "Charlie", type = "dm")
+            )
+        )
+        advanceUntilIdle()
+
+        val preview = vm.state.value.channelPreviews["dm-new"]
+        assertNotNull("refreshDMs path must populate channelPreviews for new DM", preview)
+        assertEquals("Refresh preview", preview?.content)
+    }
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
