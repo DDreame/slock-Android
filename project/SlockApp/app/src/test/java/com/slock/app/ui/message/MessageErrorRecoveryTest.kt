@@ -237,7 +237,7 @@ class MessageErrorRecoveryExecutionTest {
             refreshResults["old-channel"] = CompletableDeferred()
         }
 
-        val vm = createViewModel(repository, channels, socketManager)
+        val vm = createViewModel(repository = repository, channels = channels, socketManager = socketManager)
 
         vm.loadMessages("old-channel")
         advanceUntilIdle()
