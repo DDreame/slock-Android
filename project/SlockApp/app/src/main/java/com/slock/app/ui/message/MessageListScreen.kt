@@ -745,7 +745,7 @@ private fun NeoMessage(
             }
 
             // Thread preview
-            if (message.threadChannelId != null && onThreadClick != null) {
+            if (message.threadChannelId != null && message.replyCount > 0 && onThreadClick != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(
                     modifier = Modifier
@@ -756,16 +756,24 @@ private fun NeoMessage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     val count = message.replyCount
-                    val replyText = if (count > 0) {
-                        "$count ${if (count == 1) "reply" else "replies"}"
-                    } else {
-                        "replies"
+                    val replyText = when (count) {
+                        1 -> "1 reply"
+                        0 -> "0 replies"
+                        else -> "$count replies"
                     }
                     Text(
                         text = "\uD83D\uDCAC $replyText",
                         style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
                         color = Black
                     )
+                    val lastReplyLabel = formatMessageThreadTime(message.lastReplyAt)
+                    if (lastReplyLabel.isNotBlank()) {
+                        Text(
+                            text = " \u00B7 $lastReplyLabel",
+                            style = MessageTextStyles.timestampStyle(MaterialTheme.typography),
+                            color = MessageTextStyles.timestampColor
+                        )
+                    }
                     Text(
                         text = " \u00B7 tap to view",
                         style = MaterialTheme.typography.bodySmall,
@@ -796,6 +804,17 @@ private fun NeoMessage(
                 showMenu = false
             }
         )
+    }
+}
+
+private fun formatMessageThreadTime(isoTime: String?): String {
+    if (isoTime.isNullOrBlank()) return ""
+    val datePart = isoTime.substringBefore("T", "")
+    val timePart = isoTime.substringAfter("T", "").take(5)
+    return if (datePart.isNotBlank() && timePart.isNotBlank()) {
+        "$datePart $timePart"
+    } else {
+        timePart
     }
 }
 

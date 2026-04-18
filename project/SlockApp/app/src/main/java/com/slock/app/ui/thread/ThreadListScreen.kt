@@ -303,20 +303,20 @@ private fun ThreadCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Row(
-                    modifier = Modifier
-                        .background(Lavender)
-                        .border(1.dp, Black, RectangleShape)
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "\uD83D\uDCAC", fontSize = 11.sp)
-                    Text(
-                        text = "View thread",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Black
+                    ThreadIndicatorChip(
+                        text = threadReplySummary(thread.replyCount),
+                        testTag = "threadReplyCountChip"
                     )
+                    if (thread.unreadCount > 0) {
+                        ThreadIndicatorChip(
+                            text = threadUnreadSummary(thread.unreadCount),
+                            backgroundColor = Orange,
+                            testTag = "threadUnreadBadge"
+                        )
+                    }
                 }
 
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -356,6 +356,47 @@ private fun ThreadCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ThreadIndicatorChip(
+    text: String,
+    backgroundColor: Color = Lavender,
+    testTag: String? = null
+) {
+    Row(
+        modifier = Modifier
+            .background(backgroundColor)
+            .border(1.dp, Black, RectangleShape)
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(text = "\uD83D\uDCAC", fontSize = 11.sp)
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Black
+        )
+    }
+}
+
+private fun threadReplySummary(replyCount: Int): String {
+    return when (replyCount) {
+        1 -> "1 reply"
+        0 -> "0 replies"
+        else -> "$replyCount replies"
+    }
+}
+
+private fun threadUnreadSummary(unreadCount: Int): String {
+    return when {
+        unreadCount > 99 -> "99+ new"
+        unreadCount == 1 -> "1 new"
+        else -> "$unreadCount new"
     }
 }
 

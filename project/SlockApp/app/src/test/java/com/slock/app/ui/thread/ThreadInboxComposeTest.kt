@@ -26,6 +26,7 @@ class ThreadInboxComposeTest {
         channelName = "general",
         threadChannelId = "tc1",
         replyCount = 3,
+        unreadCount = 2,
         lastActivity = "2026-04-17T12:00:00Z"
     )
 
@@ -77,6 +78,23 @@ class ThreadInboxComposeTest {
         }
         composeTestRule.onNodeWithTag("markDoneButton").assertExists()
         composeTestRule.onNodeWithTag("unfollowButton").assertExists()
+    }
+
+    @Test
+    fun `Thread card shows reply count unread badge and last reply time`() {
+        composeTestRule.setContent {
+            ThreadListScreen(
+                state = stateWithThreads(ThreadInboxTab.FOLLOWING),
+                onThreadClick = { _, _, _ -> },
+                onNavigateBack = {},
+                showHeader = false
+            )
+        }
+        composeTestRule.onNodeWithTag("threadReplyCountChip", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithTag("threadUnreadBadge", useUnmergedTree = true).assertExists()
+        composeTestRule.onNodeWithText("3 replies", substring = true).assertExists()
+        composeTestRule.onNodeWithText("2 new", substring = true).assertExists()
+        composeTestRule.onNodeWithText("2026-04-17 12:00").assertExists()
     }
 
     @Test

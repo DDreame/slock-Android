@@ -126,6 +126,17 @@ class ThreadInboxViewModelTest {
     }
 
     @Test
+    fun `summaryToThreadItem carries unreadCount from ThreadSummary`() {
+        val method = viewModelSource
+            .substringAfter("private fun summaryToThreadItem(")
+            .substringBefore("override fun onCleared()")
+        assertTrue(
+            "summaryToThreadItem must map unreadCount from ThreadSummary into ThreadItem",
+            method.contains("unreadCount = summary.unreadCount")
+        )
+    }
+
+    @Test
     fun `markThreadDone has rollback on failure`() {
         assertTrue(
             "markThreadDone must have rollback mechanism",
