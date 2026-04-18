@@ -36,7 +36,7 @@ class ThreadEntryClickTest {
     @Test
     fun `onThreadClick is passed to NeoMessage based on threadChannelId`() {
         val callerBlock = source.substringAfter("NeoMessage(")
-            .substringBefore(")")
+            .substringBefore("isLoadingMore")
         assertTrue(
             "NeoMessage must receive onThreadClick based on threadChannelId != null",
             callerBlock.contains("onThreadClick") &&
