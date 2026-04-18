@@ -330,7 +330,7 @@ class MessageViewModel @Inject constructor(
                     recomputeSearchMatches(current.copy(
                         messages = current.messages.filter { it.id != pendingId },
                         isSending = false,
-                        sendError = "图片上传失败，消息未发送"
+                        sendError = "附件上传失败，消息未发送"
                     ))
                 }
                 return@launch
