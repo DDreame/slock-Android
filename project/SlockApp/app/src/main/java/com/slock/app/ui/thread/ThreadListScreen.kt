@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,10 @@ fun ThreadListScreen(
     onThreadClick: (threadChannelId: String, parentMessage: com.slock.app.data.model.Message, channelName: String) -> Unit,
     onNavigateBack: () -> Unit,
     onRetry: () -> Unit = {},
+    onTabSelected: (ThreadInboxTab) -> Unit = {},
+    onMarkDone: (threadChannelId: String) -> Unit = {},
+    onUndoDone: (threadChannelId: String) -> Unit = {},
+    onUnfollow: (threadChannelId: String) -> Unit = {},
     showHeader: Boolean = true
 ) {
     Column(
@@ -33,12 +38,15 @@ fun ThreadListScreen(
             .fillMaxSize()
             .background(Cream)
     ) {
-        // Lavender header
         if (showHeader) {
             ThreadListHeader(onBack = onNavigateBack)
         }
 
-        // Content
+        ThreadInboxTabStrip(
+            selectedTab = state.selectedTab,
+            onTabSelected = onTabSelected
+        )
+
         Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
             when {
                 state.isLoading -> {
@@ -54,6 +62,16 @@ fun ThreadListScreen(
                     )
                 }
                 state.threads.isEmpty() -> {
+                    val emptyMessage = when (state.selectedTab) {
+                        ThreadInboxTab.FOLLOWING -> "No followed threads"
+                        ThreadInboxTab.ALL -> "No threads yet"
+                        ThreadInboxTab.DONE -> "No done threads"
+                    }
+                    val emptyHint = when (state.selectedTab) {
+                        ThreadInboxTab.FOLLOWING -> "Threads you follow will appear here"
+                        ThreadInboxTab.ALL -> "Threads will appear here when conversations start"
+                        ThreadInboxTab.DONE -> "Threads you mark as done will appear here"
+                    }
                     Column(
                         modifier = Modifier.fillMaxSize(),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -61,16 +79,8 @@ fun ThreadListScreen(
                     ) {
                         Text(text = "\uD83E\uDDF5", fontSize = 48.sp)
                         Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "No threads yet",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Black
-                        )
-                        Text(
-                            "Threads will appear here when conversations start",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = TextSecondary
-                        )
+                        Text(emptyMessage, style = MaterialTheme.typography.titleMedium, color = Black)
+                        Text(emptyHint, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
                     }
                 }
                 else -> {
@@ -81,13 +91,17 @@ fun ThreadListScreen(
                         items(state.threads) { thread ->
                             ThreadCard(
                                 thread = thread,
+                                isDoneTab = state.selectedTab == ThreadInboxTab.DONE,
                                 onClick = {
                                     onThreadClick(
                                         thread.threadChannelId,
                                         thread.parentMessage,
                                         thread.channelName
                                     )
-                                }
+                                },
+                                onMarkDone = { onMarkDone(thread.threadChannelId) },
+                                onUndoDone = { onUndoDone(thread.threadChannelId) },
+                                onUnfollow = { onUnfollow(thread.threadChannelId) }
                             )
                         }
                     }
@@ -97,7 +111,45 @@ fun ThreadListScreen(
     }
 }
 
-// Lavender header
+@Composable
+fun ThreadInboxTabStrip(
+    selectedTab: ThreadInboxTab,
+    onTabSelected: (ThreadInboxTab) -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Cream)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .testTag("threadInboxTabStrip"),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        ThreadInboxTab.entries.forEach { tab ->
+            val isSelected = tab == selectedTab
+            val label = when (tab) {
+                ThreadInboxTab.FOLLOWING -> "Following"
+                ThreadInboxTab.ALL -> "All"
+                ThreadInboxTab.DONE -> "Done"
+            }
+            Box(
+                modifier = Modifier
+                    .background(if (isSelected) Black else White)
+                    .border(2.dp, Black, RectangleShape)
+                    .clickable { onTabSelected(tab) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .testTag("tab_$label")
+            ) {
+                Text(
+                    text = label,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    color = if (isSelected) White else Black
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ThreadListHeader(onBack: () -> Unit) {
     Surface(color = Lavender) {
@@ -108,7 +160,6 @@ private fun ThreadListHeader(onBack: () -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Back button
             NeoPressableBox(onClick = onBack) {
                 Text(text = "\u2190", fontSize = 18.sp, color = Black)
             }
@@ -125,11 +176,14 @@ private fun ThreadListHeader(onBack: () -> Unit) {
     Divider(thickness = 3.dp, color = Black)
 }
 
-// Thread card with left Lavender accent
 @Composable
 private fun ThreadCard(
     thread: ThreadItem,
-    onClick: () -> Unit
+    isDoneTab: Boolean,
+    onClick: () -> Unit,
+    onMarkDone: () -> Unit,
+    onUndoDone: () -> Unit,
+    onUnfollow: () -> Unit
 ) {
     val isAgent = thread.parentMessage.isAgent
 
@@ -142,12 +196,11 @@ private fun ThreadCard(
             .clickable(onClick = onClick)
             .height(IntrinsicSize.Min)
     ) {
-        // Left Lavender accent bar
         Box(
             modifier = Modifier
                 .width(4.dp)
                 .fillMaxHeight()
-                .background(Lavender)
+                .background(if (isDoneTab) Lime else Lavender)
         )
 
         Column(
@@ -155,13 +208,11 @@ private fun ThreadCard(
                 .weight(1f)
                 .padding(12.dp)
         ) {
-            // Channel tag + time
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Channel name tag
                 Box(
                     modifier = Modifier
                         .background(Lavender)
@@ -176,7 +227,6 @@ private fun ThreadCard(
                     )
                 }
 
-                // Time
                 Text(
                     text = formatThreadTime(thread.lastActivity),
                     style = MaterialTheme.typography.labelSmall,
@@ -186,12 +236,10 @@ private fun ThreadCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Author + content
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                // Avatar
                 Box(
                     modifier = Modifier
                         .size(30.dp)
@@ -208,7 +256,6 @@ private fun ThreadCard(
                 }
 
                 Column(modifier = Modifier.weight(1f)) {
-                    // Author name with agent badge
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -237,7 +284,6 @@ private fun ThreadCard(
 
                     Spacer(modifier = Modifier.height(2.dp))
 
-                    // Message preview
                     Text(
                         text = thread.parentMessage.content.orEmpty(),
                         style = MaterialTheme.typography.bodySmall,
@@ -251,7 +297,6 @@ private fun ThreadCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Bottom row: reply count + tap hint
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -273,6 +318,42 @@ private fun ThreadCard(
                         color = Black
                     )
                 }
+
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (isDoneTab) {
+                        Box(
+                            modifier = Modifier
+                                .background(Lime)
+                                .border(1.dp, Black, RectangleShape)
+                                .clickable(onClick = onUndoDone)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .testTag("undoDoneButton")
+                        ) {
+                            Text(text = "UNDO", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Black)
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .background(Lime)
+                                .border(1.dp, Black, RectangleShape)
+                                .clickable(onClick = onMarkDone)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .testTag("markDoneButton")
+                        ) {
+                            Text(text = "DONE", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Black)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xFFEEEEEE))
+                                .border(1.dp, Black, RectangleShape)
+                                .clickable(onClick = onUnfollow)
+                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                                .testTag("unfollowButton")
+                        ) {
+                            Text(text = "UNFOLLOW", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Black)
+                        }
+                    }
+                }
             }
         }
     }
@@ -280,7 +361,6 @@ private fun ThreadCard(
 
 private fun formatThreadTime(isoTime: String): String {
     if (isoTime.isBlank()) return ""
-    // Extract time portion from ISO string
     val timePart = isoTime.split("T").getOrNull(1)?.take(5) ?: ""
     val datePart = isoTime.split("T").getOrNull(0) ?: ""
     return if (datePart.isNotBlank() && timePart.isNotBlank()) {

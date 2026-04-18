@@ -19,6 +19,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class ThreadInboxTab { FOLLOWING, ALL, DONE }
+
 data class ThreadItem(
     val parentMessage: Message,
     val channelName: String,
@@ -30,7 +32,11 @@ data class ThreadItem(
 data class ThreadListUiState(
     val threads: List<ThreadItem> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val selectedTab: ThreadInboxTab = ThreadInboxTab.FOLLOWING,
+    val followingThreads: List<ThreadItem> = emptyList(),
+    val doneThreads: List<ThreadItem> = emptyList(),
+    val actionFeedback: String? = null
 )
 
 @HiltViewModel
@@ -67,15 +73,117 @@ class ThreadListViewModel @Inject constructor(
         }
     }
 
+    fun selectTab(tab: ThreadInboxTab) {
+        _state.update { state ->
+            val visibleThreads = when (tab) {
+                ThreadInboxTab.FOLLOWING -> state.followingThreads
+                ThreadInboxTab.ALL -> (state.followingThreads + state.doneThreads)
+                    .sortedByDescending { it.lastActivity }
+                ThreadInboxTab.DONE -> state.doneThreads
+            }
+            state.copy(selectedTab = tab, threads = visibleThreads)
+        }
+    }
+
+    fun markThreadDone(threadChannelId: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        _state.update { state ->
+            val thread = state.followingThreads.find { it.threadChannelId == threadChannelId }
+                ?: return@update state
+            val newFollowing = state.followingThreads.filter { it.threadChannelId != threadChannelId }
+            val newDone = (state.doneThreads + thread).sortedByDescending { it.lastActivity }
+            val visibleThreads = when (state.selectedTab) {
+                ThreadInboxTab.FOLLOWING -> newFollowing
+                ThreadInboxTab.ALL -> (newFollowing + newDone).sortedByDescending { it.lastActivity }
+                ThreadInboxTab.DONE -> newDone
+            }
+            state.copy(followingThreads = newFollowing, doneThreads = newDone, threads = visibleThreads)
+        }
+        viewModelScope.launch {
+            threadRepository.markThreadDone(serverId, threadChannelId).onFailure {
+                rollbackDone(threadChannelId)
+                _state.update { it.copy(actionFeedback = "Failed to mark done") }
+            }
+        }
+    }
+
+    fun undoThreadDone(threadChannelId: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        _state.update { state ->
+            val thread = state.doneThreads.find { it.threadChannelId == threadChannelId }
+                ?: return@update state
+            val newDone = state.doneThreads.filter { it.threadChannelId != threadChannelId }
+            val newFollowing = (state.followingThreads + thread).sortedByDescending { it.lastActivity }
+            val visibleThreads = when (state.selectedTab) {
+                ThreadInboxTab.FOLLOWING -> newFollowing
+                ThreadInboxTab.ALL -> (newFollowing + newDone).sortedByDescending { it.lastActivity }
+                ThreadInboxTab.DONE -> newDone
+            }
+            state.copy(followingThreads = newFollowing, doneThreads = newDone, threads = visibleThreads)
+        }
+        viewModelScope.launch {
+            threadRepository.undoThreadDone(serverId, threadChannelId).fold(
+                onSuccess = { loadThreads(serverId) },
+                onFailure = { _state.update { it.copy(actionFeedback = "Failed to undo done") } }
+            )
+        }
+    }
+
+    fun followThread(parentMessageId: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        viewModelScope.launch {
+            threadRepository.followThread(serverId, parentMessageId).fold(
+                onSuccess = { loadThreads(serverId) },
+                onFailure = { _state.update { it.copy(actionFeedback = "Failed to follow thread") } }
+            )
+        }
+    }
+
+    fun unfollowThread(threadChannelId: String) {
+        val serverId = activeServerHolder.serverId ?: return
+        _state.update { state ->
+            val newFollowing = state.followingThreads.filter { it.threadChannelId != threadChannelId }
+            val visibleThreads = when (state.selectedTab) {
+                ThreadInboxTab.FOLLOWING -> newFollowing
+                ThreadInboxTab.ALL -> (newFollowing + state.doneThreads).sortedByDescending { it.lastActivity }
+                ThreadInboxTab.DONE -> state.doneThreads
+            }
+            state.copy(followingThreads = newFollowing, threads = visibleThreads)
+        }
+        viewModelScope.launch {
+            threadRepository.unfollowThread(serverId, threadChannelId).onFailure {
+                loadThreads(serverId)
+                _state.update { it.copy(actionFeedback = "Failed to unfollow thread") }
+            }
+        }
+    }
+
+    fun consumeActionFeedback() {
+        _state.update { it.copy(actionFeedback = null) }
+    }
+
+    private fun rollbackDone(threadChannelId: String) {
+        _state.update { state ->
+            val thread = state.doneThreads.find { it.threadChannelId == threadChannelId }
+                ?: return@update state
+            val newDone = state.doneThreads.filter { it.threadChannelId != threadChannelId }
+            val newFollowing = (state.followingThreads + thread).sortedByDescending { it.lastActivity }
+            val visibleThreads = when (state.selectedTab) {
+                ThreadInboxTab.FOLLOWING -> newFollowing
+                ThreadInboxTab.ALL -> (newFollowing + newDone).sortedByDescending { it.lastActivity }
+                ThreadInboxTab.DONE -> newDone
+            }
+            state.copy(followingThreads = newFollowing, doneThreads = newDone, threads = visibleThreads)
+        }
+    }
+
     fun loadThreads(serverId: String) {
         activeServerHolder.serverId = serverId
         viewModelScope.launch {
-            _state.update { it.copy(isLoading = it.threads.isEmpty(), error = null) }
+            _state.update { it.copy(isLoading = it.followingThreads.isEmpty() && it.doneThreads.isEmpty(), error = null) }
 
-            // Build name lookup from server members and agents
             val nameLookup = mutableMapOf<String, String>()
 
-            // 1. Server members — map userId -> name using all available name fields
             try {
                 val membersResponse = apiService.getServerMembers(serverId)
                 if (membersResponse.isSuccessful && membersResponse.body() != null) {
@@ -85,25 +193,20 @@ class ThreadListViewModel @Inject constructor(
                             ?: member.name
                         if (resolvedName != null) {
                             nameLookup[member.userId.orEmpty()] = resolvedName
-                            // Also map by user.id in case it differs from member.userId
                             member.user?.let { nameLookup[it.id.orEmpty()] = resolvedName }
                         }
                     }
                 }
-                Log.d("ThreadListVM", "Members lookup: ${nameLookup.size} entries")
             } catch (e: Exception) {
                 Log.e("ThreadListVM", "Failed to load members for name lookup", e)
             }
 
-            // 2. Agents — use refreshAgents to ensure fresh data from API
             try {
                 agentRepository.refreshAgents(serverId).fold(
                     onSuccess = { agents ->
                         agents.forEach { nameLookup[it.id.orEmpty()] = it.name.orEmpty() }
-                        Log.d("ThreadListVM", "Agents lookup: added ${agents.size} agents")
                     },
                     onFailure = {
-                        // Fallback to cache
                         agentRepository.getAgents(serverId).fold(
                             onSuccess = { agents -> agents.forEach { nameLookup[it.id.orEmpty()] = it.name.orEmpty() } },
                             onFailure = { }
@@ -119,35 +222,48 @@ class ThreadListViewModel @Inject constructor(
                     val threads = summaries
                         .filter { it.threadChannelId?.isNotBlank() == true }
                         .sortedByDescending { it.lastReplyAt ?: "" }
-                        .map { summary ->
-                            val senderName = summary.parentMessageSenderName
-                                ?: nameLookup[summary.parentMessageSenderId]
-                                ?: run {
-                                    Log.w("ThreadListVM", "Unresolved sender: id=${summary.parentMessageSenderId}, type=${summary.parentMessageSenderType}, lookup keys=${nameLookup.keys}")
-                                    if (summary.parentMessageSenderType == "agent") "Agent" else "User"
-                                }
-                            ThreadItem(
-                                parentMessage = Message(
-                                    id = summary.parentMessageId.orEmpty(),
-                                    channelId = summary.parentChannelId.orEmpty(),
-                                    content = summary.parentMessagePreview,
-                                    senderId = summary.parentMessageSenderId,
-                                    senderName = senderName,
-                                    senderType = summary.parentMessageSenderType
-                                ),
-                                channelName = summary.channelName.orEmpty(),
-                                threadChannelId = summary.threadChannelId.orEmpty(),
-                                replyCount = summary.replyCount,
-                                lastActivity = summary.lastReplyAt ?: ""
-                            )
+                        .map { summary -> summaryToThreadItem(summary, nameLookup) }
+
+                    _state.update { state ->
+                        val doneIds = state.doneThreads.map { it.threadChannelId }.toSet()
+                        val newFollowing = threads.filter { it.threadChannelId !in doneIds }
+                        val visibleThreads = when (state.selectedTab) {
+                            ThreadInboxTab.FOLLOWING -> newFollowing
+                            ThreadInboxTab.ALL -> (newFollowing + state.doneThreads).sortedByDescending { it.lastActivity }
+                            ThreadInboxTab.DONE -> state.doneThreads
                         }
-                    _state.update { it.copy(threads = threads, isLoading = false) }
+                        state.copy(
+                            followingThreads = newFollowing,
+                            threads = visibleThreads,
+                            isLoading = false
+                        )
+                    }
                 },
                 onFailure = { err ->
                     _state.update { it.copy(isLoading = false, error = err.message) }
                 }
             )
         }
+    }
+
+    private fun summaryToThreadItem(summary: ThreadSummary, nameLookup: Map<String, String>): ThreadItem {
+        val senderName = summary.parentMessageSenderName
+            ?: nameLookup[summary.parentMessageSenderId]
+            ?: if (summary.parentMessageSenderType == "agent") "Agent" else "User"
+        return ThreadItem(
+            parentMessage = Message(
+                id = summary.parentMessageId.orEmpty(),
+                channelId = summary.parentChannelId.orEmpty(),
+                content = summary.parentMessagePreview,
+                senderId = summary.parentMessageSenderId,
+                senderName = senderName,
+                senderType = summary.parentMessageSenderType
+            ),
+            channelName = summary.channelName.orEmpty(),
+            threadChannelId = summary.threadChannelId.orEmpty(),
+            replyCount = summary.replyCount,
+            lastActivity = summary.lastReplyAt ?: ""
+        )
     }
 
     override fun onCleared() {
