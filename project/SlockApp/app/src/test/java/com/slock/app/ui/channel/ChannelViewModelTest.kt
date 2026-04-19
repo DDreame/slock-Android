@@ -223,6 +223,7 @@ class ChannelViewModelTest {
         whenever(channelRepository.getChannels(any())).thenReturn(Result.success(channels))
         whenever(channelRepository.refreshChannels(any())).thenReturn(Result.success(channels))
         whenever(channelRepository.getDMs(any())).thenReturn(Result.success(dms))
+        whenever(channelRepository.getUnreadChannels(any())).thenReturn(Result.success(emptyMap()))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
         whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
         whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
