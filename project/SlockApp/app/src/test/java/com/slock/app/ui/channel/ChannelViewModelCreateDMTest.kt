@@ -11,6 +11,7 @@ import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.ChannelStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -71,7 +72,8 @@ class ChannelViewModelCreateDMTest {
             agentRepository = agentRepository,
             activeServerHolder = activeServerHolder,
             socketIOManager = socketIOManager,
-            presenceTracker = presenceTracker
+            presenceTracker = presenceTracker,
+            channelStore = ChannelStore(socketIOManager)
         )
     }
 

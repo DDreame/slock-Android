@@ -8,6 +8,7 @@ import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.ChannelStore
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -43,7 +44,8 @@ class UnreadBadgeViewModelTest {
             agentRepository = agentRepository,
             activeServerHolder = activeServerHolder,
             socketIOManager = socketIOManager,
-            presenceTracker = presenceTracker
+            presenceTracker = presenceTracker,
+            channelStore = ChannelStore(socketIOManager)
         )
     }
 

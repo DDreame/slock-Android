@@ -722,6 +722,7 @@ private fun ChannelListContent(
                     isAgent = isAgent,
                     isOnline = isOnline,
                     lastMessage = preview?.content.orEmpty(),
+                    unreadCount = channelState.unreadCounts[dm.id.orEmpty()] ?: 0,
                     onClick = { onDmClick(dm.id.orEmpty(), dm.name.orEmpty()) }
                 )
             }
@@ -1125,6 +1126,7 @@ private fun DMItem(
     isAgent: Boolean = false,
     isOnline: Boolean = false,
     lastMessage: String = "",
+    unreadCount: Int = 0,
     onClick: () -> Unit = {}
 ) {
     Row(
@@ -1200,6 +1202,38 @@ private fun DMItem(
                     color = TextMuted,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+
+        if (unreadCount > 0) {
+            Spacer(modifier = Modifier.width(8.dp))
+            val scale = remember { androidx.compose.animation.core.Animatable(0f) }
+            LaunchedEffect(unreadCount) {
+                scale.snapTo(0f)
+                scale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = androidx.compose.animation.core.keyframes {
+                        durationMillis = 300
+                        0f at 0
+                        1.3f at 150
+                        1f at 300
+                    }
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .graphicsLayer(scaleX = scale.value, scaleY = scale.value)
+                    .size(24.dp)
+                    .background(Pink)
+                    .border(2.dp, Black, RectangleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = White
                 )
             }
         }
