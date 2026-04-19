@@ -83,6 +83,7 @@ android {
 }
 
 tasks.withType<Test> {
+    maxParallelForks = 1
     maxHeapSize = "2g"
     forkEvery = 100
 }

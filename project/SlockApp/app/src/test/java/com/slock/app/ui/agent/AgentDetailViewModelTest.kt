@@ -7,6 +7,7 @@ import com.slock.app.data.model.ActivityLogEntry
 import com.slock.app.data.model.Agent
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.AgentStore
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -61,6 +62,7 @@ class AgentDetailViewModelTest {
         routeServerId: String? = null,
         agentRepository: AgentRepository = FakeAgentRepository()
     ): AgentDetailViewModel {
+        val agentStore = AgentStore(socketIOManager)
         return AgentDetailViewModel(
             savedStateHandle = SavedStateHandle(
                 buildMap {
@@ -69,6 +71,7 @@ class AgentDetailViewModelTest {
                 }
             ),
             agentRepository = agentRepository,
+            agentStore = agentStore,
             socketIOManager = socketIOManager,
             activeServerHolder = activeServerHolder
         )

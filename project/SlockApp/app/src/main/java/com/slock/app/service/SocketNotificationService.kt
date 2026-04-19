@@ -42,6 +42,29 @@ internal object NotificationDecision {
     }
 }
 
+internal fun shouldSuppressForegroundChannelNotification(
+    isAppInForeground: Boolean,
+    currentVisibleChannelId: String?,
+    incomingChannelId: String
+): Boolean {
+    return isAppInForeground &&
+        incomingChannelId.isNotBlank() &&
+        currentVisibleChannelId == incomingChannelId
+}
+
+internal fun buildNotificationDeepLinkIntent(
+    context: Context,
+    channelId: String,
+    channelName: String
+): Intent {
+    return Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        putExtra("navigate_to", "channel")
+        putExtra("channelId", channelId)
+        putExtra("channelName", channelName)
+    }
+}
+
 internal suspend fun rejoinCachedChannelsForServer(
     serverId: String?,
     loadChannelIds: suspend (String) -> List<String>,
@@ -174,6 +197,15 @@ class SocketNotificationService : Service() {
         val currentUserId = secureTokenStorage.userId
         if (currentUserId != null && data.senderId == currentUserId) return
 
+        if (shouldSuppressForegroundChannelNotification(
+                isAppInForeground = lifecycleTracker.isAppInForeground,
+                currentVisibleChannelId = lifecycleTracker.currentVisibleChannelId,
+                incomingChannelId = data.channelId
+            )
+        ) {
+            return
+        }
+
         // Determine notification style: DM vs @mention vs regular channel message
         val isDm = isDmChannel(data.channelId)
         val isMentioned = if (currentUserId != null) {
@@ -231,12 +263,11 @@ class SocketNotificationService : Service() {
         }
 
         // Deep link intent to open the specific channel
-        val deepLinkIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra("navigate_to", "channel")
-            putExtra("channelId", data.channelId)
-            putExtra("channelName", resolveNotificationChannelName(isDm, data.senderName))
-        }
+        val deepLinkIntent = buildNotificationDeepLinkIntent(
+            context = this,
+            channelId = data.channelId,
+            channelName = resolveNotificationChannelName(isDm, data.senderName)
+        )
 
         val pendingIntent = PendingIntent.getActivity(
             this,

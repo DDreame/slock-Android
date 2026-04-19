@@ -21,6 +21,7 @@ import com.google.gson.Gson
 import com.slock.app.data.model.Message
 import com.slock.app.data.model.Server
 import com.slock.app.data.local.SecureTokenStorage
+import com.slock.app.service.AppLifecycleTracker
 import com.slock.app.service.SocketNotificationService
 import com.slock.app.ui.auth.LoginScreen
 import com.slock.app.ui.auth.RegisterScreen
@@ -129,6 +130,7 @@ object Routes {
 
 @Composable
 fun SlockNavHost(
+    lifecycleTracker: AppLifecycleTracker,
     navController: NavHostController = rememberNavController(),
     deepLinkChannelId: String? = null,
     deepLinkChannelName: String? = null,
@@ -563,6 +565,13 @@ fun SlockNavHost(
 
             DisposableEffect(channelId) {
                 onDispose { channelVM.clearCurrentChannel() }
+            }
+
+            DisposableEffect(channelId) {
+                lifecycleTracker.onChannelScreenVisible(channelId)
+                onDispose {
+                    lifecycleTracker.onChannelScreenHidden(channelId)
+                }
             }
 
             MessageListScreen(

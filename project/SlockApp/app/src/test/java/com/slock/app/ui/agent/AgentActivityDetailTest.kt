@@ -6,6 +6,7 @@ import com.slock.app.data.local.SettingsPreferencesStore
 import com.slock.app.data.model.Agent
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.AgentStore
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -36,9 +37,10 @@ class AgentActivityDetailTest {
     private fun createViewModel(): AgentViewModel {
         whenever(socketIOManager.events).thenReturn(eventFlow)
         whenever(settingsPreferencesStore.recentAgentModelsFlow).thenReturn(MutableStateFlow(emptyList()))
+        val agentStore = AgentStore(socketIOManager)
         return AgentViewModel(
             agentRepository = agentRepository,
-            socketIOManager = socketIOManager,
+            agentStore = agentStore,
             activeServerHolder = activeServerHolder,
             settingsPreferencesStore = settingsPreferencesStore
         )
