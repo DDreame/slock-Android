@@ -1,9 +1,11 @@
 package com.slock.app.ui.message
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.test.assertExists
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.longClick
 import com.slock.app.data.model.Message
@@ -115,7 +117,7 @@ class MarkReadUnreadComposeTest {
         composeTestRule.waitForIdle()
         composeTestRule.onNodeWithText("Hello world").performTouchInput { longClick() }
         composeTestRule.waitForIdle()
-        composeTestRule.onNodeWithText("Mark as Unread").performClick()
+        composeTestRule.onNodeWithText("Mark as Unread").performScrollTo().performClick()
         composeTestRule.waitForIdle()
         assertTrue("onMarkAsUnread must be called when Mark as Unread is clicked", unreadCalled)
     }

@@ -22,7 +22,7 @@ class CleanupRegressionTest {
     @Test
     fun `MessageListScreen does not contain removed inactive action sheet items`() {
         val source = readSource("message/MessageListScreen.kt")
-        val removedLabels = listOf("Pin Message", "Save Message")
+        val removedLabels = listOf("Pin Message")
         for (label in removedLabels) {
             assertFalse(
                 "MessageListScreen must not contain removed action '$label'",
