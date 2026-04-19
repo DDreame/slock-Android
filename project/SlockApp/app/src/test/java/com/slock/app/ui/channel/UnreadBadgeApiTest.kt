@@ -21,6 +21,11 @@ class UnreadBadgeApiTest {
         File("app/src/main/java/com/slock/app/ui/channel/ChannelViewModel.kt")
     ).first { it.exists() }.readText()
 
+    private val storeSource: String = listOf(
+        File("src/main/java/com/slock/app/data/store/ChannelStore.kt"),
+        File("app/src/main/java/com/slock/app/data/store/ChannelStore.kt")
+    ).first { it.exists() }.readText()
+
     private val homeScreenSource: String = listOf(
         File("src/main/java/com/slock/app/ui/home/HomeScreen.kt"),
         File("app/src/main/java/com/slock/app/ui/home/HomeScreen.kt")
@@ -79,30 +84,27 @@ class UnreadBadgeApiTest {
             loadBlock.contains("getUnreadChannels")
         )
         assertTrue(
-            "loadChannels must store unreadCounts in state",
-            loadBlock.contains("unreadCounts")
+            "loadChannels must delegate unread counts to store",
+            loadBlock.contains("channelStore.setUnreadCounts")
         )
     }
 
     @Test
-    fun `MessageNew handler increments unreadCounts`() {
-        val socketBlock = viewModelSource
-            .substringAfter("SocketEvent.MessageNew")
-            .substringBefore("SocketEvent.MessageUpdated")
+    fun `MessageNew unread increment handled by ChannelStore`() {
         assertTrue(
-            "MessageNew handler must update unreadCounts",
-            socketBlock.contains("unreadCounts")
+            "ChannelStore must handle MessageNew for unread increment",
+            storeSource.contains("MessageNew") && storeSource.contains("incrementUnread")
         )
     }
 
     @Test
-    fun `MessageNew handler skips increment for current channel`() {
-        val socketBlock = viewModelSource
-            .substringAfter("SocketEvent.MessageNew")
-            .substringBefore("SocketEvent.MessageUpdated")
+    fun `ChannelStore incrementUnread guards on currentChannelId`() {
+        val incrementBlock = storeSource
+            .substringAfter("fun incrementUnread(")
+            .substringBefore("}")
         assertTrue(
-            "MessageNew handler must check _currentChannelId",
-            socketBlock.contains("_currentChannelId")
+            "incrementUnread must check currentChannelId",
+            incrementBlock.contains("currentChannelId")
         )
     }
 
@@ -157,8 +159,8 @@ class UnreadBadgeApiTest {
             .substringAfter("fun clearCurrentChannel()")
             .substringBefore("fun loadChannelAgents(")
         assertTrue(
-            "clearCurrentChannel must set _currentChannelId to null",
-            method.contains("_currentChannelId = null")
+            "clearCurrentChannel must delegate to channelStore",
+            method.contains("channelStore.setCurrentChannel(null)")
         )
     }
 

@@ -11,6 +11,7 @@ import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.ChannelStore
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Job
@@ -41,7 +42,8 @@ class ChannelViewModel @Inject constructor(
     private val agentRepository: AgentRepository,
     private val activeServerHolder: ActiveServerHolder,
     private val socketIOManager: SocketIOManager,
-    private val presenceTracker: PresenceTracker
+    private val presenceTracker: PresenceTracker,
+    private val channelStore: ChannelStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ChannelUiState())
@@ -52,12 +54,22 @@ class ChannelViewModel @Inject constructor(
 
     private var socketEventsJob: Job? = null
     private var connectionJob: Job? = null
+    private var storeUnreadJob: Job? = null
     private var currentServerId: String? = null
     private var dmsLoaded = CompletableDeferred<Boolean>()
 
     init {
+        observeStore()
         observeSocketEvents()
         observeConnection()
+    }
+
+    private fun observeStore() {
+        storeUnreadJob = viewModelScope.launch {
+            channelStore.unreadCounts.collect { counts ->
+                _state.update { it.copy(unreadCounts = counts) }
+            }
+        }
     }
 
     private fun observeConnection() {
@@ -123,11 +135,6 @@ class ChannelViewModel @Inject constructor(
                                 current
                             } else {
                                 val channelId = event.data.channelId
-                                val updatedUnread = if (channelId != _currentChannelId) {
-                                    current.unreadCounts + (channelId to ((current.unreadCounts[channelId] ?: 0) + 1))
-                                } else {
-                                    current.unreadCounts
-                                }
                                 current.copy(
                                     channelPreviews = current.channelPreviews + (
                                         channelId to Message(
@@ -139,8 +146,7 @@ class ChannelViewModel @Inject constructor(
                                             senderType = event.data.senderType,
                                             createdAt = event.data.createdAt
                                         )
-                                    ),
-                                    unreadCounts = updatedUnread
+                                    )
                                 )
                             }
                         }
@@ -213,7 +219,7 @@ class ChannelViewModel @Inject constructor(
             )
             channelRepository.getUnreadChannels(serverId).fold(
                 onSuccess = { counts ->
-                    _state.update { it.copy(unreadCounts = counts) }
+                    channelStore.setUnreadCounts(counts)
                 },
                 onFailure = { /* keep existing counts */ }
             )
@@ -357,8 +363,8 @@ class ChannelViewModel @Inject constructor(
     }
 
     fun clearUnreadCount(channelId: String) {
-        _currentChannelId = channelId
-        _state.update { it.copy(unreadCounts = it.unreadCounts - channelId) }
+        channelStore.setCurrentChannel(channelId)
+        channelStore.clearUnread(channelId)
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             channelRepository.markChannelRead(serverId, channelId, Long.MAX_VALUE)
@@ -366,19 +372,16 @@ class ChannelViewModel @Inject constructor(
     }
 
     fun markAsRead(channelId: String) {
-        val previousCount = _state.value.unreadCounts[channelId]
-        _state.update { it.copy(unreadCounts = it.unreadCounts - channelId) }
+        val previousCount = channelStore.unreadCounts.value[channelId]
+        channelStore.clearUnread(channelId)
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             channelRepository.markChannelRead(serverId, channelId, Long.MAX_VALUE).onFailure { err ->
+                if (previousCount != null) {
+                    channelStore.restoreUnread(channelId, previousCount)
+                }
                 _state.update { current ->
-                    val rollback = if (previousCount != null) {
-                        current.unreadCounts + (channelId to previousCount)
-                    } else {
-                        current.unreadCounts
-                    }
                     current.copy(
-                        unreadCounts = rollback,
                         actionFeedbackMessage = "Mark as read failed: ${err.message}"
                     )
                 }
@@ -392,7 +395,7 @@ class ChannelViewModel @Inject constructor(
             channelRepository.markChannelUnread(serverId, channelId).fold(
                 onSuccess = {
                     channelRepository.getUnreadChannels(serverId).onSuccess { counts ->
-                        _state.update { it.copy(unreadCounts = counts) }
+                        channelStore.setUnreadCounts(counts)
                     }
                 },
                 onFailure = { err ->
@@ -403,12 +406,12 @@ class ChannelViewModel @Inject constructor(
     }
 
     fun clearCurrentChannel() {
-        _currentChannelId = null
+        channelStore.setCurrentChannel(null)
     }
 
     fun loadChannelAgents(channelId: String) {
         val serverId = activeServerHolder.serverId ?: return
-        _currentChannelId = channelId
+        channelStore.setCurrentChannel(channelId)
         viewModelScope.launch {
             channelRepository.getChannelMembers(serverId, channelId).fold(
                 onSuccess = { members ->
@@ -421,11 +424,9 @@ class ChannelViewModel @Inject constructor(
         }
     }
 
-    private var _currentChannelId: String? = null
-
     fun stopAllChannelAgents(onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
         val serverId = activeServerHolder.serverId ?: return
-        val channelId = _currentChannelId ?: return
+        val channelId = channelStore.currentChannelId.value ?: return
         viewModelScope.launch {
             channelRepository.stopAllChannelAgents(serverId, channelId).fold(
                 onSuccess = {
@@ -441,7 +442,7 @@ class ChannelViewModel @Inject constructor(
 
     fun resumeAllChannelAgents(prompt: String, onSuccess: () -> Unit = {}, onError: (String) -> Unit = {}) {
         val serverId = activeServerHolder.serverId ?: return
-        val channelId = _currentChannelId ?: return
+        val channelId = channelStore.currentChannelId.value ?: return
         viewModelScope.launch {
             channelRepository.resumeAllChannelAgents(serverId, channelId, prompt).fold(
                 onSuccess = {
@@ -489,5 +490,6 @@ class ChannelViewModel @Inject constructor(
         super.onCleared()
         socketEventsJob?.cancel()
         connectionJob?.cancel()
+        storeUnreadJob?.cancel()
     }
 }
