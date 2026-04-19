@@ -7,6 +7,7 @@ import com.slock.app.data.model.ActivityLogEntry
 import com.slock.app.data.model.Agent
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.AgentStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -56,9 +57,10 @@ class AgentActivityLifecycleTest {
     }
 
     private fun createViewModel(repo: AgentRepository): AgentViewModel {
+        val agentStore = AgentStore(socketIOManager)
         return AgentViewModel(
             agentRepository = repo,
-            socketIOManager = socketIOManager,
+            agentStore = agentStore,
             activeServerHolder = activeServerHolder,
             settingsPreferencesStore = settingsPreferencesStore
         )

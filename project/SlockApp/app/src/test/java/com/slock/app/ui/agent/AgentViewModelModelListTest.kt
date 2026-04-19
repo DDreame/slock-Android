@@ -7,6 +7,7 @@ import com.slock.app.data.model.Agent
 import com.slock.app.data.model.DEFAULT_AGENT_MODEL_OPTIONS
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.AgentStore
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,7 +63,6 @@ class AgentViewModelModelListTest {
             Agent(id = "agent-2", model = "claude-haiku-4-5-20251001")
         )
 
-        whenever(socketIOManager.events).thenReturn(emptyFlow())
         whenever(settingsPreferencesStore.recentAgentModelsFlow).thenReturn(recentModelsFlow)
         whenever(agentRepository.getAgents("server-1")).thenReturn(Result.success(agents))
         whenever(agentRepository.refreshAgents("server-1")).thenReturn(Result.success(agents))
@@ -100,7 +100,6 @@ class AgentViewModelModelListTest {
             status = "active"
         )
 
-        whenever(socketIOManager.events).thenReturn(emptyFlow())
         whenever(settingsPreferencesStore.recentAgentModelsFlow).thenReturn(recentModelsFlow)
         whenever(
             agentRepository.createAgent(
@@ -168,7 +167,6 @@ class AgentViewModelModelListTest {
             status = "active"
         )
 
-        whenever(socketIOManager.events).thenReturn(emptyFlow())
         whenever(settingsPreferencesStore.recentAgentModelsFlow).thenReturn(recentModelsFlow)
         whenever(
             agentRepository.createAgent(
@@ -217,7 +215,6 @@ class AgentViewModelModelListTest {
             status = "active"
         )
 
-        whenever(socketIOManager.events).thenReturn(emptyFlow())
         whenever(settingsPreferencesStore.recentAgentModelsFlow).thenReturn(recentModelsFlow)
         whenever(
             agentRepository.createAgent(
@@ -276,7 +273,6 @@ class AgentViewModelModelListTest {
             envVars = mapOf("TEAM" to "android")
         )
 
-        whenever(socketIOManager.events).thenReturn(emptyFlow())
         whenever(settingsPreferencesStore.recentAgentModelsFlow).thenReturn(recentModelsFlow)
         whenever(agentRepository.getAgents("server-1")).thenReturn(Result.success(listOf(existingAgent)))
         whenever(agentRepository.refreshAgents("server-1")).thenReturn(Result.success(listOf(existingAgent)))
@@ -325,9 +321,11 @@ class AgentViewModelModelListTest {
     }
 
     private fun createViewModel(): AgentViewModel {
+        whenever(socketIOManager.events).thenReturn(emptyFlow())
+        val agentStore = AgentStore(socketIOManager)
         return AgentViewModel(
             agentRepository = agentRepository,
-            socketIOManager = socketIOManager,
+            agentStore = agentStore,
             activeServerHolder = activeServerHolder,
             settingsPreferencesStore = settingsPreferencesStore
         )

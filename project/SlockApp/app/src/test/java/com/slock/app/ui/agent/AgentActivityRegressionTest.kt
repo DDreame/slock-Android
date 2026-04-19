@@ -21,6 +21,11 @@ class AgentActivityRegressionTest {
         "app/src/main/java/com/slock/app/ui/agent/AgentViewModel.kt"
     )
 
+    private val storeSource = readSource(
+        "src/main/java/com/slock/app/data/store/AgentStore.kt",
+        "app/src/main/java/com/slock/app/data/store/AgentStore.kt"
+    )
+
     @Test
     fun `AgentUiState agentActivities uses AgentActivityInfo not plain String`() {
         assertTrue(
@@ -64,13 +69,12 @@ class AgentActivityRegressionTest {
     }
 
     @Test
-    fun `socket event stores message in AgentActivityInfo`() {
-        val observeBlock = viewModelSource
-            .substringAfter("observeAgentActivities")
-            .substringBefore("override fun onCleared")
+    fun `AgentStore observes socket events and stores message in AgentActivityInfo`() {
+        val storeBlock = storeSource
+            .substringAfter("observeSocketEvents")
         assertTrue(
-            "observeAgentActivities must store event.data.message",
-            observeBlock.contains("event.data.message")
+            "AgentStore must store event.data.message",
+            storeBlock.contains("event.data.message") || storeBlock.contains("message = event.data.message")
         )
     }
 }

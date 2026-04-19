@@ -8,12 +8,14 @@ import com.slock.app.data.model.Agent
 import com.slock.app.data.model.DEFAULT_AGENT_MODEL_OPTIONS
 import com.slock.app.data.model.supportsAgentReasoningEffort
 import com.slock.app.data.repository.AgentRepository
-import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.AgentStore
+import com.slock.app.data.store.AgentRuntimeStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -58,7 +60,7 @@ internal fun deriveAvailableAgentModels(
 @HiltViewModel
 class AgentViewModel @Inject constructor(
     private val agentRepository: AgentRepository,
-    private val socketIOManager: SocketIOManager,
+    private val agentStore: AgentStore,
     private val activeServerHolder: ActiveServerHolder,
     private val settingsPreferencesStore: SettingsPreferencesStore
 ) : ViewModel() {
@@ -66,13 +68,13 @@ class AgentViewModel @Inject constructor(
     private val _state = MutableStateFlow(AgentUiState())
     val state: StateFlow<AgentUiState> = _state.asStateFlow()
 
-    private var socketEventsJob: Job? = null
+    private var storeObserverJob: Job? = null
     private var recentModelsJob: Job? = null
     private var recentModels: List<String> = emptyList()
 
     init {
         observeRecentAgentModels()
-        observeAgentActivities()
+        observeStore()
     }
 
     private fun observeRecentAgentModels() {
@@ -91,33 +93,28 @@ class AgentViewModel @Inject constructor(
         }
     }
 
-    private fun observeAgentActivities() {
-        socketEventsJob = viewModelScope.launch {
-            socketIOManager.events.collect { event ->
-                when (event) {
-                    is SocketIOManager.SocketEvent.AgentActivity -> {
-                        _state.update { current ->
-                            current.copy(
-                                agentActivities = current.agentActivities + (event.data.agentId to AgentActivityInfo(
-                                    activity = event.data.activity,
-                                    message = event.data.message
-                                ))
-                            )
-                        }
-                    }
-                    is SocketIOManager.SocketEvent.AgentDeleted -> {
-                        _state.update { current ->
-                            current.copy(
-                                agents = current.agents.filter { it.id != event.agentId },
-                                agentActivities = current.agentActivities - event.agentId
-                            )
-                        }
-                    }
-                    is SocketIOManager.SocketEvent.AgentCreated -> {
-                        val serverId = activeServerHolder.serverId ?: return@collect
-                        loadAgents(serverId)
-                    }
-                    else -> { /* ignore */ }
+    private fun observeStore() {
+        storeObserverJob = viewModelScope.launch {
+            combine(
+                agentStore.agentsById,
+                agentStore.activityByAgentId,
+                agentStore.runtimeStatus
+            ) { agentsMap, activitiesMap, runtimeMap ->
+                Triple(agentsMap, activitiesMap, runtimeMap)
+            }.collect { (agentsMap, activitiesMap, runtimeMap) ->
+                val mergedAgents = agentsMap.values.map { agent ->
+                    val override = runtimeMap[agent.id.orEmpty()]
+                    if (override != null) agent.copy(status = override.status) else agent
+                }
+                _state.update { current ->
+                    current.copy(
+                        agents = mergedAgents,
+                        agentActivities = activitiesMap,
+                        availableModels = deriveAvailableAgentModels(
+                            recentModels = recentModels,
+                            discoveredModels = agentsMap.values.mapNotNull { it.model }
+                        )
+                    )
                 }
             }
         }
@@ -125,7 +122,7 @@ class AgentViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        socketEventsJob?.cancel()
+        storeObserverJob?.cancel()
         recentModelsJob?.cancel()
     }
 
@@ -136,53 +133,17 @@ class AgentViewModel @Inject constructor(
         activeServerHolder.serverId = serverId
         viewModelScope.launch {
             _state.update { it.copy(isLoading = it.agents.isEmpty(), error = null) }
-            // Get cached data first
             agentRepository.getAgents(serverId).fold(
                 onSuccess = { agents ->
-                    val activities = agents.mapNotNull { agent ->
-                        agent.activity?.let {
-                            agent.id.orEmpty() to AgentActivityInfo(
-                                activity = it,
-                                message = agent.activityDetail
-                            )
-                        }
-                    }.toMap()
-                    _state.update {
-                        it.copy(
-                            agents = agents,
-                            agentActivities = activities,
-                            isLoading = false,
-                            availableModels = deriveAvailableAgentModels(
-                                recentModels = recentModels,
-                                discoveredModels = agents.mapNotNull { agent -> agent.model }
-                            )
-                        )
-                    }
+                    agentStore.setAgents(agents)
+                    _state.update { it.copy(isLoading = false) }
                 },
                 onFailure = { err -> _state.update { it.copy(isLoading = false, error = err.message) } }
             )
-            // Then refresh from cloud
             agentRepository.refreshAgents(serverId).fold(
                 onSuccess = { agents ->
-                    val activities = agents.mapNotNull { agent ->
-                        agent.activity?.let {
-                            agent.id.orEmpty() to AgentActivityInfo(
-                                activity = it,
-                                message = agent.activityDetail
-                            )
-                        }
-                    }.toMap()
-                    _state.update {
-                        it.copy(
-                            agents = agents,
-                            agentActivities = activities,
-                            error = null,
-                            availableModels = deriveAvailableAgentModels(
-                                recentModels = recentModels,
-                                discoveredModels = agents.mapNotNull { agent -> agent.model }
-                            )
-                        )
-                    }
+                    agentStore.setAgents(agents)
+                    _state.update { it.copy(error = null) }
                 },
                 onFailure = { /* keep cached data */ }
             )
@@ -222,16 +183,11 @@ class AgentViewModel @Inject constructor(
             ).fold(
                 onSuccess = { agent ->
                     settingsPreferencesStore.addRecentAgentModel(model)
+                    agentStore.upsertAgent(agent)
                     _state.update {
-                        val updatedAgents = it.agents + agent
                         it.copy(
-                            agents = updatedAgents,
                             isLoading = false,
-                            createFeedbackMessage = "Agent created. Open a DM or configure it from the list.",
-                            availableModels = deriveAvailableAgentModels(
-                                recentModels = recentModels,
-                                discoveredModels = updatedAgents.mapNotNull { existing -> existing.model } + model
-                            )
+                            createFeedbackMessage = "Agent created. Open a DM or configure it from the list."
                         )
                     }
                 },
@@ -244,10 +200,10 @@ class AgentViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.startAgent(serverId, agentId).fold(
-                onSuccess = { _state.update { it.copy(
-                    agents = it.agents.map { a -> if (a.id == agentId) a.copy(status = "active") else a },
-                    agentActivities = it.agentActivities - agentId
-                ) } },
+                onSuccess = {
+                    agentStore.updateRuntimeStatus(agentId, AgentRuntimeStatus(agentId = agentId, status = "active"))
+                    agentStore.clearActivity(agentId)
+                },
                 onFailure = { }
             )
         }
@@ -257,10 +213,10 @@ class AgentViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.stopAgent(serverId, agentId).fold(
-                onSuccess = { _state.update { it.copy(
-                    agents = it.agents.map { a -> if (a.id == agentId) a.copy(status = "stopped") else a },
-                    agentActivities = it.agentActivities - agentId
-                ) } },
+                onSuccess = {
+                    agentStore.updateRuntimeStatus(agentId, AgentRuntimeStatus(agentId = agentId, status = "stopped"))
+                    agentStore.clearActivity(agentId)
+                },
                 onFailure = { }
             )
         }
@@ -270,7 +226,7 @@ class AgentViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.resetAgent(serverId, agentId).fold(
-                onSuccess = { _state.update { it.copy(agentActivities = it.agentActivities - agentId) } },
+                onSuccess = { agentStore.clearActivity(agentId) },
                 onFailure = { }
             )
         }
@@ -280,7 +236,7 @@ class AgentViewModel @Inject constructor(
         val serverId = activeServerHolder.serverId ?: return
         viewModelScope.launch {
             agentRepository.deleteAgent(serverId, agentId).fold(
-                onSuccess = { _state.update { it.copy(agents = it.agents.filter { a -> a.id != agentId }) } },
+                onSuccess = { agentStore.removeAgent(agentId) },
                 onFailure = { }
             )
         }
@@ -309,7 +265,7 @@ class AgentViewModel @Inject constructor(
                 envVars = envVars
             ).fold(
                 onSuccess = { updatedAgent ->
-                    _state.update { it.copy(agents = it.agents.map { a -> if (a.id == agentId) updatedAgent else a }) }
+                    agentStore.upsertAgent(updatedAgent)
                 },
                 onFailure = { }
             )
