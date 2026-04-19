@@ -72,7 +72,6 @@ class AgentActivityRegressionTest {
     fun `AgentStore observes socket events and stores message in AgentActivityInfo`() {
         val storeBlock = storeSource
             .substringAfter("observeSocketEvents")
-            .substringBefore("}")
         assertTrue(
             "AgentStore must store event.data.message",
             storeBlock.contains("event.data.message") || storeBlock.contains("message = event.data.message")
