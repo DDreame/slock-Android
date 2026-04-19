@@ -96,6 +96,8 @@ class AgentDetailViewModel @Inject constructor(
                                 message = agent.activityDetail
                             )
                         )
+                    } else {
+                        agentStore.clearActivity(agentId)
                     }
                 },
                 onFailure = { err ->

@@ -120,4 +120,15 @@ class AgentDetailStoreSourceTest {
             loadBlock.contains("latestActivity = agent?.activity")
         )
     }
+
+    @Test
+    fun `loadAgent clears store activity when REST returns null activity`() {
+        val loadBlock = detailVmSource
+            .substringAfter("private fun loadAgent()")
+            .substringBefore("\n    private fun ")
+        assertTrue(
+            "loadAgent must call clearActivity when agent has no activity",
+            loadBlock.contains("clearActivity")
+        )
+    }
 }
