@@ -577,7 +577,7 @@ class MessageErrorRecoveryStructuralTest {
     fun `loadMessages success path clears error`() {
         val loadBlock = vmSource
             .substringAfter("fun loadMessages(channelId: String)")
-            .substringBefore("fun toggleSavedChannel()")
+            .substringBefore("fun toggleSavedMessage(message: Message)")
         assertTrue(
             "loadMessages success branches must clear error for empty successful responses",
             loadBlock.contains("error = null")
