@@ -16,6 +16,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import com.slock.app.service.AppLifecycleTracker
 import com.slock.app.data.local.SecureTokenStorage
 import com.slock.app.service.SocketNotificationService
 import com.slock.app.ui.navigation.SlockNavHost
@@ -28,6 +29,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
 
+    @Inject lateinit var lifecycleTracker: AppLifecycleTracker
     @Inject lateinit var secureTokenStorage: SecureTokenStorage
 
     private var deepLinkChannelId by mutableStateOf<String?>(null)
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     SlockNavHost(
+                        lifecycleTracker = lifecycleTracker,
                         deepLinkChannelId = deepLinkChannelId,
                         deepLinkChannelName = deepLinkChannelName,
                         onDeepLinkConsumed = {
