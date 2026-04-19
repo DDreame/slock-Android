@@ -8,6 +8,7 @@ import com.slock.app.data.model.ActivityLogEntry
 import com.slock.app.data.model.Agent
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.AgentStore
 import com.slock.app.ui.navigation.resolveAgentDetailServerId
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -37,6 +38,7 @@ data class AgentDetailUiState(
 class AgentDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val agentRepository: AgentRepository,
+    private val agentStore: AgentStore,
     private val socketIOManager: SocketIOManager,
     private val activeServerHolder: ActiveServerHolder
 ) : ViewModel() {
@@ -51,6 +53,7 @@ class AgentDetailViewModel @Inject constructor(
         get() = resolveAgentDetailServerId(routeServerId, activeServerHolder.serverId)
 
     private var socketJob: Job? = null
+    private var storeActivityJob: Job? = null
     private var socketEntriesDuringLoad = 0
 
     companion object {
@@ -59,6 +62,7 @@ class AgentDetailViewModel @Inject constructor(
 
     init {
         loadAgent()
+        observeStoreActivity()
         observeSocket()
         loadActivityLog()
     }
@@ -81,10 +85,19 @@ class AgentDetailViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             agent = agent,
-                            isLoading = false,
-                            latestActivity = agent?.activity,
-                            latestActivityDetail = agent?.activityDetail
+                            isLoading = false
                         )
+                    }
+                    if (agent?.activity != null) {
+                        agentStore.updateActivity(
+                            agentId,
+                            AgentActivityInfo(
+                                activity = agent.activity,
+                                message = agent.activityDetail
+                            )
+                        )
+                    } else {
+                        agentStore.clearActivity(agentId)
                     }
                 },
                 onFailure = { err ->
@@ -117,6 +130,20 @@ class AgentDetailViewModel @Inject constructor(
         }
     }
 
+    private fun observeStoreActivity() {
+        storeActivityJob = viewModelScope.launch {
+            agentStore.activityByAgentId.collect { activitiesMap ->
+                val info = activitiesMap[agentId]
+                _state.update {
+                    it.copy(
+                        latestActivity = info?.activity,
+                        latestActivityDetail = info?.message
+                    )
+                }
+            }
+        }
+    }
+
     private fun observeSocket() {
         socketJob = viewModelScope.launch {
             socketIOManager.events.collect { event ->
@@ -130,8 +157,6 @@ class AgentDetailViewModel @Inject constructor(
                             )
                             _state.update {
                                 it.copy(
-                                    latestActivity = event.data.activity,
-                                    latestActivityDetail = event.data.message,
                                     activityLog = (listOf(newEntry) + it.activityLog).take(MAX_LOG_ENTRIES)
                                 )
                             }
@@ -154,11 +179,8 @@ class AgentDetailViewModel @Inject constructor(
         val serverId = serverId ?: return
         viewModelScope.launch {
             agentRepository.startAgent(serverId, agentId).onSuccess {
-                _state.update { it.copy(
-                    agent = it.agent?.copy(status = "active"),
-                    latestActivity = null,
-                    latestActivityDetail = null
-                ) }
+                _state.update { it.copy(agent = it.agent?.copy(status = "active")) }
+                agentStore.clearActivity(agentId)
             }
         }
     }
@@ -167,11 +189,8 @@ class AgentDetailViewModel @Inject constructor(
         val serverId = serverId ?: return
         viewModelScope.launch {
             agentRepository.stopAgent(serverId, agentId).onSuccess {
-                _state.update { it.copy(
-                    agent = it.agent?.copy(status = "stopped"),
-                    latestActivity = null,
-                    latestActivityDetail = null
-                ) }
+                _state.update { it.copy(agent = it.agent?.copy(status = "stopped")) }
+                agentStore.clearActivity(agentId)
             }
         }
     }
@@ -182,11 +201,10 @@ class AgentDetailViewModel @Inject constructor(
             _state.update { it.copy(isResetting = true) }
             agentRepository.resetAgent(serverId, agentId).fold(
                 onSuccess = {
+                    agentStore.clearActivity(agentId)
                     _state.update { it.copy(
                         isResetting = false,
                         resetFeedbackMessage = "Agent reset successful",
-                        latestActivity = null,
-                        latestActivityDetail = null,
                         activityLog = emptyList()
                     ) }
                     loadActivityLog()
@@ -246,5 +264,6 @@ class AgentDetailViewModel @Inject constructor(
     override fun onCleared() {
         super.onCleared()
         socketJob?.cancel()
+        storeActivityJob?.cancel()
     }
 }
