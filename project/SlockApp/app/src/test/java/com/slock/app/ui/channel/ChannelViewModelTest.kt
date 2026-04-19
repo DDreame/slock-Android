@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.kotlin.any
@@ -209,6 +210,40 @@ class ChannelViewModelTest {
         advanceUntilIdle()
 
         verify(channelRepository, times(2)).getDMs("server-1")
+    }
+
+    @Test
+    fun `connected event reloads channel and dm state without duplicating items`() = runTest {
+        val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
+        val connectionStates = MutableSharedFlow<SocketIOManager.ConnectionState>()
+        whenever(socketIOManager.events).thenReturn(events)
+        whenever(socketIOManager.connectionState).thenReturn(connectionStates)
+        whenever(channelRepository.getChannels("server-1")).thenReturn(
+            Result.success(listOf(Channel(id = "channel-1", name = "General", type = "text")))
+        )
+        whenever(channelRepository.refreshChannels("server-1")).thenReturn(
+            Result.success(listOf(Channel(id = "channel-1", name = "General", type = "text")))
+        )
+        whenever(channelRepository.getDMs("server-1")).thenReturn(
+            Result.success(listOf(Channel(id = "dm-1", name = "Alice", type = "dm")))
+        )
+        whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
+        whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
+        whenever(agentRepository.getAgents("server-1")).thenReturn(Result.success(emptyList()))
+
+        val viewModel = createViewModel()
+        viewModel.loadChannels("server-1")
+        viewModel.loadDMs()
+        advanceUntilIdle()
+
+        connectionStates.emit(SocketIOManager.ConnectionState.CONNECTED)
+        advanceUntilIdle()
+
+        val state = viewModel.state.value
+        assertEquals(listOf("channel-1"), state.channels.mapNotNull { it.id })
+        assertEquals(listOf("dm-1"), state.dms.mapNotNull { it.id })
+        assertTrue(state.channels.mapNotNull { it.id }.distinct().size == state.channels.size)
+        assertTrue(state.dms.mapNotNull { it.id }.distinct().size == state.dms.size)
     }
 
     private fun createViewModel(): ChannelViewModel {

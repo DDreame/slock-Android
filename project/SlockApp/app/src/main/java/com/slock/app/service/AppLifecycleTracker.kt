@@ -13,8 +13,22 @@ class AppLifecycleTracker @Inject constructor() : DefaultLifecycleObserver {
     var isAppInForeground: Boolean = false
         private set
 
+    @Volatile
+    var currentVisibleChannelId: String? = null
+        private set
+
     fun init() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
+    }
+
+    fun onChannelScreenVisible(channelId: String) {
+        currentVisibleChannelId = channelId
+    }
+
+    fun onChannelScreenHidden(channelId: String? = null) {
+        if (channelId == null || currentVisibleChannelId == channelId) {
+            currentVisibleChannelId = null
+        }
     }
 
     override fun onStart(owner: LifecycleOwner) {
