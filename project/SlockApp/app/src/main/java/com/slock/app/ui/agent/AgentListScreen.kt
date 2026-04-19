@@ -70,6 +70,7 @@ fun AgentListScreen(
     ) -> Unit,
     onDmAgent: (agentId: String) -> Unit,
     onAgentClick: (agentId: String) -> Unit,
+    onConsumeCreateFeedback: () -> Unit = {},
     onNavigateBack: () -> Unit,
     onNavigateToMachines: () -> Unit = {},
     onRetry: () -> Unit = {},
@@ -81,6 +82,13 @@ fun AgentListScreen(
     var confirmDeleteAgent by remember { mutableStateOf<Agent?>(null) }
     var confirmStopAll by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    LaunchedEffect(state.createFeedbackMessage) {
+        state.createFeedbackMessage?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+            onConsumeCreateFeedback()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -137,6 +145,13 @@ fun AgentListScreen(
                             "Create an AI agent to get started",
                             style = MaterialTheme.typography.bodyMedium,
                             color = TextSecondary
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            "You can edit prompts, runtime, and model after creation.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = TextSecondary,
+                            modifier = Modifier.padding(horizontal = 32.dp)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         NeoButton(

@@ -121,6 +121,7 @@ object Routes {
         return "thread/$threadChannelId/reply/$parentMessageJson?channelName=$encodedChannelName&context=$encodedContext"
     }
 
+    fun agentListRoute(serverId: String) = "server/$serverId/agents"
     fun machineListRoute(serverId: String) = "server/$serverId/machines"
     fun dmMessagesRoute(channelId: String, channelName: String, contextLabel: String? = null): String =
         messagesRoute(channelId = channelId, channelName = channelName, contextLabel = contextLabel)
@@ -304,6 +305,8 @@ fun SlockNavHost(
                 serverState = serverState,
                 channelState = channelState,
                 selectedServer = selectedServer,
+                agentCount = agentState.agents.size,
+                isAgentListLoading = agentState.isLoading,
                 searchState = searchState,
                 onSearchQueryChange = searchViewModel::onQueryChange,
                 onClearSearch = searchViewModel::clearSearch,
@@ -327,6 +330,11 @@ fun SlockNavHost(
                 },
                 onCreateChannel = channelViewModel::createChannel,
                 onCreateServer = serverViewModel::createServer,
+                onOpenAgents = {
+                    selectedServer?.id?.let { serverId ->
+                        navController.navigate(Routes.agentListRoute(serverId))
+                    }
+                },
                 onEditChannel = channelViewModel::updateChannel,
                 onDeleteChannel = channelViewModel::deleteChannel,
                 onLeaveChannel = channelViewModel::leaveChannel,
@@ -690,6 +698,7 @@ fun SlockNavHost(
                         )
                     )
                 },
+                onConsumeCreateFeedback = viewModel::consumeCreateFeedback,
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToMachines = { navController.navigate(Routes.machineListRoute(serverId)) },
                 onRetry = { viewModel.loadAgents(serverId) }
