@@ -99,16 +99,19 @@ interface ApiService {
     suspend fun getUnreadChannels(): Response<Map<String, Int>>
 
     @GET("channels/saved")
-    suspend fun getSavedChannels(): Response<List<Channel>>
+    suspend fun getSavedMessages(
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int
+    ): Response<SavedMessagesPageResponse>
 
     @POST("channels/saved")
-    suspend fun saveChannel(@Body request: SaveChannelRequest): Response<Unit>
+    suspend fun saveMessage(@Body request: SaveMessageRequest): Response<Unit>
 
     @POST("channels/saved/check")
-    suspend fun checkSavedChannel(@Body request: SaveChannelRequest): Response<SavedChannelCheckResponse>
+    suspend fun checkSavedMessages(@Body request: SavedMessagesCheckRequest): Response<SavedMessagesCheckResponse>
 
-    @DELETE("channels/saved/{channelId}")
-    suspend fun removeSavedChannel(@Path("channelId") channelId: String): Response<Unit>
+    @DELETE("channels/saved/{messageId}")
+    suspend fun removeSavedMessage(@Path("messageId") messageId: String): Response<Unit>
 
     // Billing
     @GET("billing/subscription")
