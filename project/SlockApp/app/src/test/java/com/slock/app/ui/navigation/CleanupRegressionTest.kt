@@ -77,11 +77,15 @@ class CleanupRegressionTest {
     }
 
     @Test
-    fun `MachineListScreen does not contain AddMachineCard`() {
+    fun `MachineListScreen uses AddMachineButton not old AddMachineCard`() {
         val source = readSource("machine/MachineListScreen.kt")
         assertFalse(
-            "MachineListScreen must not contain AddMachineCard",
+            "MachineListScreen must not contain old AddMachineCard",
             source.contains("AddMachineCard")
+        )
+        assertTrue(
+            "MachineListScreen must contain AddMachineButton for #84",
+            source.contains("AddMachineButton")
         )
     }
 
