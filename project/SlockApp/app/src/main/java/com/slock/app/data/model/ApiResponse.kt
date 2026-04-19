@@ -18,6 +18,26 @@ data class SearchMessagesResponse(
     val hasMore: Boolean = false
 )
 
+data class SavedMessageItem(
+    val messageId: String = "",
+    val channelId: String? = null,
+    val channelName: String? = null,
+    val channelType: String? = null,
+    val content: String? = null,
+    val senderId: String? = null,
+    val senderName: String? = null,
+    val senderType: String? = null,
+    val attachments: List<Attachment> = emptyList(),
+    val createdAt: String? = null,
+    val threadChannelId: String? = null,
+    val parentMessageId: String? = null
+)
+
+data class SavedMessagesPageResponse(
+    val saved: List<SavedMessageItem> = emptyList(),
+    val hasMore: Boolean = false
+)
+
 /**
  * Wrapper for GET /tasks/channel/{id}
  * API returns: { "tasks": [...] }
