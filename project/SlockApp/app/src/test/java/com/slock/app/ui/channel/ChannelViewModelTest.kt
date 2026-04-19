@@ -216,20 +216,16 @@ class ChannelViewModelTest {
     fun `connected event reloads channel and dm state without duplicating items`() = runTest {
         val events = MutableSharedFlow<SocketIOManager.SocketEvent>()
         val connectionStates = MutableSharedFlow<SocketIOManager.ConnectionState>()
+        val channels = listOf(Channel(id = "channel-1", name = "General", type = "text"))
+        val dms = listOf(Channel(id = "dm-1", name = "Alice", type = "dm"))
         whenever(socketIOManager.events).thenReturn(events)
         whenever(socketIOManager.connectionState).thenReturn(connectionStates)
-        whenever(channelRepository.getChannels("server-1")).thenReturn(
-            Result.success(listOf(Channel(id = "channel-1", name = "General", type = "text")))
-        )
-        whenever(channelRepository.refreshChannels("server-1")).thenReturn(
-            Result.success(listOf(Channel(id = "channel-1", name = "General", type = "text")))
-        )
-        whenever(channelRepository.getDMs("server-1")).thenReturn(
-            Result.success(listOf(Channel(id = "dm-1", name = "Alice", type = "dm")))
-        )
+        whenever(channelRepository.getChannels(any())).thenReturn(Result.success(channels))
+        whenever(channelRepository.refreshChannels(any())).thenReturn(Result.success(channels))
+        whenever(channelRepository.getDMs(any())).thenReturn(Result.success(dms))
         whenever(messageRepository.getLatestMessagePerChannel(any())).thenReturn(emptyMap())
         whenever(messageRepository.refreshMessages(any(), any(), any())).thenReturn(Result.success(emptyList()))
-        whenever(agentRepository.getAgents("server-1")).thenReturn(Result.success(emptyList()))
+        whenever(agentRepository.getAgents(any())).thenReturn(Result.success(emptyList()))
 
         val viewModel = createViewModel()
         viewModel.loadChannels("server-1")

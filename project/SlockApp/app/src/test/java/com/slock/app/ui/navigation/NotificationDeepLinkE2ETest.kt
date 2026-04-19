@@ -222,23 +222,30 @@ class NotificationDeepLinkChainStructuralTest {
     // Step 1: Service builds intent with channelId and channelName
     @Test
     fun `service puts channelId extra into deep link intent`() {
-        val intentBlock = serviceSource
-            .substringAfter("Deep link intent")
-            .substringBefore("PendingIntent")
+        val helperBlock = serviceSource
+            .substringAfter("internal fun buildNotificationDeepLinkIntent")
+            .substringBefore("internal suspend fun rejoinCachedChannelsForServer")
         assertTrue(
-            "Service must put channelId into intent extras",
-            intentBlock.contains("putExtra(\"channelId\"")
+            "Deep-link helper must put channelId into intent extras",
+            helperBlock.contains("putExtra(\"channelId\"")
         )
     }
 
     @Test
     fun `service puts channelName extra using resolveNotificationChannelName`() {
-        val intentBlock = serviceSource
-            .substringAfter("Deep link intent")
-            .substringBefore("PendingIntent")
+        val notificationBlock = serviceSource
+            .substringAfter("private fun showMessageNotification")
+            .substringBefore("private fun buildServiceNotification()")
+        val helperBlock = serviceSource
+            .substringAfter("internal fun buildNotificationDeepLinkIntent")
+            .substringBefore("internal suspend fun rejoinCachedChannelsForServer")
         assertTrue(
-            "Service must use resolveNotificationChannelName for channelName extra",
-            intentBlock.contains("resolveNotificationChannelName(")
+            "Notification builder must route channelName through buildNotificationDeepLinkIntent",
+            notificationBlock.contains("buildNotificationDeepLinkIntent(")
+        )
+        assertTrue(
+            "Deep-link helper must put channelName into intent extras",
+            helperBlock.contains("putExtra(\"channelName\"")
         )
     }
 
