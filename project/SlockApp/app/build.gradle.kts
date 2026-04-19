@@ -82,6 +82,11 @@ android {
     }
 }
 
+tasks.withType<Test> {
+    maxHeapSize = "2g"
+    forkEvery = 100
+}
+
 dependencies {
     // Core Android
     implementation("androidx.core:core-ktx:1.12.0")
