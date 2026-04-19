@@ -49,6 +49,7 @@ class AgentStore @Inject constructor(
             }
         }.toMap()
         _activityByAgentId.value = activities
+        _runtimeStatus.value = emptyMap()
     }
 
     fun removeAgent(agentId: String) {

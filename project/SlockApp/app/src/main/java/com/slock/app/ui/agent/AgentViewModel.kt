@@ -9,6 +9,7 @@ import com.slock.app.data.model.DEFAULT_AGENT_MODEL_OPTIONS
 import com.slock.app.data.model.supportsAgentReasoningEffort
 import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.store.AgentStore
+import com.slock.app.data.store.AgentRuntimeStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -96,13 +97,18 @@ class AgentViewModel @Inject constructor(
         storeObserverJob = viewModelScope.launch {
             combine(
                 agentStore.agentsById,
-                agentStore.activityByAgentId
-            ) { agentsMap, activitiesMap ->
-                agentsMap to activitiesMap
-            }.collect { (agentsMap, activitiesMap) ->
+                agentStore.activityByAgentId,
+                agentStore.runtimeStatus
+            ) { agentsMap, activitiesMap, runtimeMap ->
+                Triple(agentsMap, activitiesMap, runtimeMap)
+            }.collect { (agentsMap, activitiesMap, runtimeMap) ->
+                val mergedAgents = agentsMap.values.map { agent ->
+                    val override = runtimeMap[agent.id.orEmpty()]
+                    if (override != null) agent.copy(status = override.status) else agent
+                }
                 _state.update { current ->
                     current.copy(
-                        agents = agentsMap.values.toList(),
+                        agents = mergedAgents,
                         agentActivities = activitiesMap,
                         availableModels = deriveAvailableAgentModels(
                             recentModels = recentModels,
@@ -195,8 +201,7 @@ class AgentViewModel @Inject constructor(
         viewModelScope.launch {
             agentRepository.startAgent(serverId, agentId).fold(
                 onSuccess = {
-                    val existing = agentStore.agentsById.value[agentId]
-                    if (existing != null) agentStore.upsertAgent(existing.copy(status = "active"))
+                    agentStore.updateRuntimeStatus(agentId, AgentRuntimeStatus(agentId = agentId, status = "active"))
                     agentStore.clearActivity(agentId)
                 },
                 onFailure = { }
@@ -209,8 +214,7 @@ class AgentViewModel @Inject constructor(
         viewModelScope.launch {
             agentRepository.stopAgent(serverId, agentId).fold(
                 onSuccess = {
-                    val existing = agentStore.agentsById.value[agentId]
-                    if (existing != null) agentStore.upsertAgent(existing.copy(status = "stopped"))
+                    agentStore.updateRuntimeStatus(agentId, AgentRuntimeStatus(agentId = agentId, status = "stopped"))
                     agentStore.clearActivity(agentId)
                 },
                 onFailure = { }
