@@ -9,6 +9,7 @@ import com.slock.app.data.repository.AgentRepository
 import com.slock.app.data.repository.ChannelRepository
 import com.slock.app.data.repository.MessageRepository
 import com.slock.app.data.socket.SocketIOManager
+import com.slock.app.data.store.ChannelStore
 import com.slock.app.testutil.MainDispatcherRule
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -45,7 +46,8 @@ class DmPreviewTest {
             agentRepository = agentRepository,
             activeServerHolder = activeServerHolder,
             socketIOManager = socketIOManager,
-            presenceTracker = presenceTracker
+            presenceTracker = presenceTracker,
+            channelStore = ChannelStore(socketIOManager)
         )
     }
 
@@ -123,7 +125,8 @@ class DmPreviewTest {
             agentRepository = agentRepository,
             activeServerHolder = activeServerHolder,
             socketIOManager = socketIOManager,
-            presenceTracker = presenceTracker
+            presenceTracker = presenceTracker,
+            channelStore = ChannelStore(socketIOManager)
         )
         vm.loadChannels("srv-1")
         vm.loadDMs()
@@ -206,7 +209,8 @@ class DmPreviewTest {
             agentRepository = agentRepository,
             activeServerHolder = activeServerHolder,
             socketIOManager = socketIOManager,
-            presenceTracker = presenceTracker
+            presenceTracker = presenceTracker,
+            channelStore = ChannelStore(socketIOManager)
         )
         vm.loadChannels("srv-1")
         advanceUntilIdle()

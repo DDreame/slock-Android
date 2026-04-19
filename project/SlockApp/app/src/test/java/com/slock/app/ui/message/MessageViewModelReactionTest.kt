@@ -40,6 +40,7 @@ class MessageViewModelReactionTest {
     fun stubCacheFreshness() {
         runBlocking {
             whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false)
+            whenever(channelRepository.checkSavedMessages(any(), any())).thenReturn(Result.success(emptyList()))
         }
     }
 

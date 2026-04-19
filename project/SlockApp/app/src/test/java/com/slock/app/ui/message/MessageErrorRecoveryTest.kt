@@ -100,6 +100,9 @@ class MessageErrorRecoveryExecutionTest {
         socketManager: SocketIOManager = socketIOManager
     ): MessageViewModel {
         whenever(socketManager.events).thenReturn(emptyFlow())
+        runBlocking {
+            whenever(channels.checkSavedMessages(any(), any())).thenReturn(Result.success(emptyList()))
+        }
         if (repository === messageRepository) {
             runBlocking { whenever(messageRepository.isCachedMessagesFresh(any(), any())).thenReturn(false) }
         }
@@ -577,7 +580,7 @@ class MessageErrorRecoveryStructuralTest {
     fun `loadMessages success path clears error`() {
         val loadBlock = vmSource
             .substringAfter("fun loadMessages(channelId: String)")
-            .substringBefore("fun toggleSavedChannel()")
+            .substringBefore("fun toggleSavedMessage(message: Message)")
         assertTrue(
             "loadMessages success branches must clear error for empty successful responses",
             loadBlock.contains("error = null")

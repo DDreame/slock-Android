@@ -116,8 +116,8 @@ class MarkReadUnreadSourceTest {
             .substringAfter("fun markAsRead(")
             .substringBefore("fun markAsUnread(")
         assertTrue(
-            "markAsRead must remove channelId from unreadCounts",
-            markReadBlock.contains("unreadCounts = it.unreadCounts - channelId")
+            "markAsRead must delegate unread clear to channelStore",
+            markReadBlock.contains("channelStore.clearUnread(channelId)")
         )
     }
 
@@ -183,11 +183,11 @@ class MarkReadUnreadSourceTest {
             .substringBefore("fun markAsUnread(")
         assertTrue(
             "markAsRead failure must restore previous unread count",
-            markReadBlock.contains("rollback") || markReadBlock.contains("previousCount")
+            markReadBlock.contains("previousCount")
         )
         assertTrue(
-            "markAsRead failure block must re-add channelId to unreadCounts",
-            markReadBlock.contains("current.unreadCounts + (channelId to previousCount)")
+            "markAsRead failure block must restore via channelStore",
+            markReadBlock.contains("channelStore.restoreUnread(channelId, previousCount)")
         )
     }
 

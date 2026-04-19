@@ -34,14 +34,19 @@ data class CreateDMRequest(
     val userId: String? = null
 )
 
-data class SaveChannelRequest(
-    @SerializedName("channelId")
-    val channelId: String
+data class SaveMessageRequest(
+    @SerializedName("messageId")
+    val messageId: String
 )
 
-data class SavedChannelCheckResponse(
-    @SerializedName(value = "isSaved", alternate = ["saved", "exists"])
-    val isSaved: Boolean = false
+data class SavedMessagesCheckRequest(
+    @SerializedName("messageIds")
+    val messageIds: List<String>
+)
+
+data class SavedMessagesCheckResponse(
+    @SerializedName("savedIds")
+    val savedIds: List<String> = emptyList()
 )
 
 data class ChannelMember(

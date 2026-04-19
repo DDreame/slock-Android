@@ -13,6 +13,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -89,8 +91,8 @@ fun MessageListScreen(
     onNextSearchResult: () -> Unit = {},
     onPreviousSearchResult: () -> Unit = {},
     onToggleReaction: (Message, String) -> Unit = { _, _ -> },
-    onToggleSavedChannel: () -> Unit = {},
-    onSavedChannelFeedbackShown: () -> Unit = {},
+    onToggleSavedMessage: (Message) -> Unit = {},
+    onSavedMessageFeedbackShown: () -> Unit = {},
     onSendErrorShown: () -> Unit = {},
     channelAgents: List<Agent> = emptyList(),
     channelName_raw: String = "",
@@ -110,10 +112,10 @@ fun MessageListScreen(
     val context = LocalContext.current
     var showAgentBatchSheet by remember { mutableStateOf(false) }
 
-    LaunchedEffect(state.savedChannelFeedbackMessage) {
-        val message = state.savedChannelFeedbackMessage ?: return@LaunchedEffect
+    LaunchedEffect(state.savedMessageFeedbackMessage) {
+        val message = state.savedMessageFeedbackMessage ?: return@LaunchedEffect
         android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_SHORT).show()
-        onSavedChannelFeedbackShown()
+        onSavedMessageFeedbackShown()
     }
 
     LaunchedEffect(state.sendError) {
@@ -145,9 +147,6 @@ fun MessageListScreen(
             contextLabel = resolveChannelHeaderContext(contextLabel),
             onBack = onNavigateBack,
             onSearchClick = onToggleSearch,
-            isSaved = state.isCurrentChannelSaved,
-            isSavedStatusLoading = state.isSavedStatusLoading,
-            onToggleSavedChannel = onToggleSavedChannel,
             hasAgents = channelAgents.isNotEmpty(),
             onAgentControlClick = { showAgentBatchSheet = true }
         )
@@ -257,6 +256,8 @@ fun MessageListScreen(
                                             message = message,
                                             reactionOverride = state.reactionOverridesByMessageId[message.id]
                                         ),
+                                        isSaved = message.id in state.savedMessageIds,
+                                        isSaveActionLoading = message.id in state.savingMessageIds,
                                         highlightQuery = if (state.isSearchActive) state.searchQuery else "",
                                         isCurrentSearchMatch = isCurrentMatch,
                                         onThreadClick = if (message.threadChannelId != null) {
@@ -264,6 +265,7 @@ fun MessageListScreen(
                                         } else null,
                                         onReply = { onReplyTo(message) },
                                         onToggleReaction = { emoji -> onToggleReaction(message, emoji) },
+                                        onToggleSavedMessage = { onToggleSavedMessage(message) },
                                         onConvertToTask = { onShowConvertToTask(message, channelName) },
                                         onImageClick = onImageClick,
                                         onMarkAsRead = onMarkAsRead,
@@ -468,9 +470,6 @@ private fun ChannelHeader(
     contextLabel: String?,
     onBack: () -> Unit,
     onSearchClick: () -> Unit = {},
-    isSaved: Boolean = false,
-    isSavedStatusLoading: Boolean = false,
-    onToggleSavedChannel: () -> Unit = {},
     hasAgents: Boolean = false,
     onAgentControlClick: () -> Unit = {}
 ) {
@@ -514,14 +513,6 @@ private fun ChannelHeader(
                 if (hasAgents) {
                     MiniIconButton(icon = "\uD83E\uDD16", onClick = onAgentControlClick)
                 }
-                MiniIconButton(
-                    icon = when {
-                        isSavedStatusLoading -> "…"
-                        isSaved -> "★"
-                        else -> "☆"
-                    },
-                    onClick = onToggleSavedChannel
-                )
                 MiniIconButton(icon = "\uD83D\uDD0D", onClick = onSearchClick)
             }
         }
@@ -617,11 +608,14 @@ private fun NeoMessage(
     quotedMessage: Message? = null,
     isOnline: Boolean = false,
     reactions: List<MessageReactionUiModel> = emptyList(),
+    isSaved: Boolean = false,
+    isSaveActionLoading: Boolean = false,
     highlightQuery: String = "",
     isCurrentSearchMatch: Boolean = false,
     onThreadClick: (() -> Unit)? = null,
     onReply: () -> Unit = {},
     onToggleReaction: (String) -> Unit = {},
+    onToggleSavedMessage: () -> Unit = {},
     onConvertToTask: () -> Unit = {},
     onImageClick: (String) -> Unit = {},
     onMarkAsRead: () -> Unit = {},
@@ -633,6 +627,7 @@ private fun NeoMessage(
     val alpha = if (isPending) 0.5f else 1f
     var showMenu by remember { mutableStateOf(false) }
     val copyTargets = remember(message) { buildMessageCopyTargets(message) }
+    val canToggleSavedMessage = !isPending && !message.id.isNullOrBlank()
 
     val messageBgColor = when {
         isCurrentSearchMatch -> Yellow.copy(alpha = 0.3f)
@@ -854,9 +849,13 @@ private fun NeoMessage(
             hasThread = onThreadClick != null,
             canCopyLink = copyTargets.link != null,
             canConvertToTask = !message.isTask,
+            canToggleSavedMessage = canToggleSavedMessage,
+            isSaved = isSaved,
+            isSaveActionLoading = isSaveActionLoading,
             reactions = reactions,
             onDismiss = { showMenu = false },
             onToggleReaction = { emoji -> showMenu = false; onToggleReaction(emoji) },
+            onToggleSavedMessage = { showMenu = false; onToggleSavedMessage() },
             onReplyThread = { showMenu = false; onThreadClick?.invoke() },
             onQuoteReply = { showMenu = false; onReply() },
             onConvertToTask = { showMenu = false; onConvertToTask() },
@@ -925,9 +924,13 @@ private fun MessageActionSheet(
     hasThread: Boolean,
     canCopyLink: Boolean,
     canConvertToTask: Boolean,
+    canToggleSavedMessage: Boolean,
+    isSaved: Boolean,
+    isSaveActionLoading: Boolean,
     reactions: List<MessageReactionUiModel>,
     onDismiss: () -> Unit,
     onToggleReaction: (String) -> Unit,
+    onToggleSavedMessage: () -> Unit,
     onReplyThread: () -> Unit,
     onQuoteReply: () -> Unit,
     onConvertToTask: () -> Unit,
@@ -953,6 +956,7 @@ private fun MessageActionSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 8.dp)
                 .navigationBarsPadding()
         ) {
@@ -961,6 +965,18 @@ private fun MessageActionSheet(
                 onToggleReaction = onToggleReaction
             )
             Spacer(modifier = Modifier.height(4.dp))
+            if (canToggleSavedMessage) {
+                ActionSheetItem(
+                    icon = if (isSaved) "★" else "☆",
+                    label = when {
+                        isSaveActionLoading && isSaved -> "Unsaving Message..."
+                        isSaveActionLoading -> "Saving Message..."
+                        isSaved -> "Unsave Message"
+                        else -> "Save Message"
+                    },
+                    onClick = onToggleSavedMessage
+                )
+            }
             ActionSheetItem(
                 icon = "\u21A9\uFE0F",
                 label = "Quote Reply",
@@ -1249,39 +1265,6 @@ private fun ActionSheetItem(icon: String, label: String, onClick: () -> Unit) {
             style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
             color = Black
         )
-    }
-}
-
-// Pinned message banner
-@Composable
-private fun PinnedBanner(pinnedText: String?, onTap: () -> Unit) {
-    if (pinnedText != null) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Yellow)
-                .border(width = 0.dp, color = Color.Transparent)
-                .clickable(onClick = onTap)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(text = "\uD83D\uDCCC", fontSize = 14.sp)
-            Text(
-                text = "Pinned: $pinnedText",
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "tap to view",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
-        }
-        Divider(thickness = 2.dp, color = Black)
     }
 }
 

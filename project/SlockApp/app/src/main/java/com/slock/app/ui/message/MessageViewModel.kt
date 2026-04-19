@@ -62,18 +62,18 @@ data class MessageUiState(
     val currentSearchMatchMessageId: String? = null,
     val reactionOverridesByMessageId: Map<String, List<MessageReactionUiModel>> = emptyMap(),
     val onlineIds: Set<String> = emptySet(),
-    val isCurrentChannelSaved: Boolean = false,
-    val isSavedStatusLoading: Boolean = false,
-    val savedChannelFeedbackMessage: String? = null,
+    val savedMessageIds: Set<String> = emptySet(),
+    val savingMessageIds: Set<String> = emptySet(),
+    val savedMessageFeedbackMessage: String? = null,
     val convertToTaskDraft: ConvertToTaskDraft? = null,
     val convertTaskFeedbackMessage: String? = null
 )
 
-private fun saveChannelFailureMessage(isRemoving: Boolean, error: Throwable): String {
+private fun toggleSavedMessageFailureMessage(isRemoving: Boolean, error: Throwable): String {
     val fallback = if (isRemoving) {
-        "Failed to remove saved channel"
+        "Failed to unsave message"
     } else {
-        "Failed to save channel"
+        "Failed to save message"
     }
     return error.message?.takeIf { it.isNotBlank() } ?: fallback
 }
@@ -235,9 +235,9 @@ class MessageViewModel @Inject constructor(
                     channelId = channelId,
                     isLoading = false,
                     error = "Server not selected",
-                    savedChannelFeedbackMessage = null,
-                    isSavedStatusLoading = false,
-                    isCurrentChannelSaved = false
+                    savedMessageFeedbackMessage = null,
+                    savedMessageIds = emptySet(),
+                    savingMessageIds = emptySet()
                 )
             }
             return
@@ -251,13 +251,11 @@ class MessageViewModel @Inject constructor(
                     channelId = channelId,
                     isLoading = it.messages.isEmpty(),
                     error = null,
-                    savedChannelFeedbackMessage = null,
-                    isSavedStatusLoading = true,
-                    isCurrentChannelSaved = false
+                    savedMessageFeedbackMessage = null,
+                    savedMessageIds = emptySet(),
+                    savingMessageIds = emptySet()
                 )
             }
-
-            refreshSavedChannelState(serverId, channelId, loadToken)
 
             if (!isActiveLoad(channelId, loadToken)) return@launch
 
@@ -271,6 +269,9 @@ class MessageViewModel @Inject constructor(
                             recomputeSearchMatches(
                                 it.copy(messages = messages.reversed(), isLoading = false, error = null)
                             )
+                        }
+                        refreshSavedMessageIds(serverId, _state.value.messages) {
+                            isActiveLoad(channelId, loadToken)
                         }
                         shouldRefresh = !messageRepository.isCachedMessagesFresh(channelId, MESSAGE_CACHE_TTL_MS)
                     }
@@ -294,6 +295,9 @@ class MessageViewModel @Inject constructor(
                                     it.copy(messages = messages.reversed(), error = null)
                                 )
                             }
+                            refreshSavedMessageIds(serverId, _state.value.messages) {
+                                isActiveLoad(channelId, loadToken)
+                            }
                         }
                     },
                     onFailure = { /* keep cached data */ }
@@ -305,36 +309,50 @@ class MessageViewModel @Inject constructor(
         }
     }
 
-    fun toggleSavedChannel() {
+    fun toggleSavedMessage(message: Message) {
         val serverId = activeServerHolder.serverId
-        val channelId = _state.value.channelId
-        if (serverId.isNullOrBlank() || channelId.isBlank() || _state.value.isSavedStatusLoading) return
+        val messageId = message.id?.takeIf { it.isNotBlank() } ?: return
+        if (serverId.isNullOrBlank() || messageId in _state.value.savingMessageIds) return
 
         viewModelScope.launch {
-            val currentlySaved = _state.value.isCurrentChannelSaved
-            _state.update { it.copy(isSavedStatusLoading = true, savedChannelFeedbackMessage = null) }
+            val currentlySaved = messageId in _state.value.savedMessageIds
+            _state.update { current ->
+                current.copy(
+                    savedMessageIds = if (currentlySaved) {
+                        current.savedMessageIds - messageId
+                    } else {
+                        current.savedMessageIds + messageId
+                    },
+                    savingMessageIds = current.savingMessageIds + messageId,
+                    savedMessageFeedbackMessage = null
+                )
+            }
 
             val result = if (currentlySaved) {
-                channelRepository.removeSavedChannel(serverId, channelId)
+                channelRepository.removeSavedMessage(serverId, messageId)
             } else {
-                channelRepository.saveChannel(serverId, channelId)
+                channelRepository.saveMessage(serverId, messageId)
             }
 
             result.fold(
                 onSuccess = {
                     _state.update {
                         it.copy(
-                            isCurrentChannelSaved = !currentlySaved,
-                            isSavedStatusLoading = false,
-                            savedChannelFeedbackMessage = null
+                            savingMessageIds = it.savingMessageIds - messageId,
+                            savedMessageFeedbackMessage = null
                         )
                     }
                 },
                 onFailure = { error ->
-                    _state.update {
-                        it.copy(
-                            isSavedStatusLoading = false,
-                            savedChannelFeedbackMessage = saveChannelFailureMessage(currentlySaved, error)
+                    _state.update { current ->
+                        current.copy(
+                            savedMessageIds = if (currentlySaved) {
+                                current.savedMessageIds + messageId
+                            } else {
+                                current.savedMessageIds - messageId
+                            },
+                            savingMessageIds = current.savingMessageIds - messageId,
+                            savedMessageFeedbackMessage = toggleSavedMessageFailureMessage(currentlySaved, error)
                         )
                     }
                 }
@@ -342,8 +360,8 @@ class MessageViewModel @Inject constructor(
         }
     }
 
-    fun consumeSavedChannelFeedback() {
-        _state.update { it.copy(savedChannelFeedbackMessage = null) }
+    fun consumeSavedMessageFeedback() {
+        _state.update { it.copy(savedMessageFeedbackMessage = null) }
     }
 
     fun showConvertToTask(message: Message, channelName: String) {
@@ -445,21 +463,41 @@ class MessageViewModel @Inject constructor(
         }
     }
 
-    private suspend fun refreshSavedChannelState(serverId: String, channelId: String, loadToken: Long) {
-        channelRepository.isChannelSaved(serverId, channelId).fold(
-            onSuccess = { isSaved ->
-                if (isActiveLoad(channelId, loadToken)) {
-                    _state.update {
-                        it.copy(
-                            isCurrentChannelSaved = isSaved,
-                            isSavedStatusLoading = false
-                        )
+    private suspend fun refreshSavedMessageIds(
+        serverId: String,
+        messages: List<Message>,
+        shouldApply: () -> Boolean = { true }
+    ) {
+        val messageIds = messages.mapNotNull { message ->
+            message.id?.takeIf { it.isNotBlank() && !it.startsWith("pending-") }
+        }.distinct()
+
+        if (messageIds.isEmpty()) {
+            if (shouldApply()) {
+                _state.update { it.copy(savedMessageIds = emptySet()) }
+            }
+            return
+        }
+
+        channelRepository.checkSavedMessages(serverId, messageIds).fold(
+            onSuccess = { savedIds ->
+                if (shouldApply()) {
+                    _state.update { current ->
+                        val visibleMessageIds = current.messages.mapNotNull { message ->
+                            message.id?.takeIf { it.isNotBlank() && !it.startsWith("pending-") }
+                        }.toSet()
+                        current.copy(savedMessageIds = savedIds.filter { it in visibleMessageIds }.toSet())
                     }
                 }
             },
             onFailure = {
-                if (isActiveLoad(channelId, loadToken)) {
-                    _state.update { it.copy(isSavedStatusLoading = false) }
+                if (shouldApply()) {
+                    _state.update { current ->
+                        val visibleMessageIds = current.messages.mapNotNull { message ->
+                            message.id?.takeIf { it.isNotBlank() && !it.startsWith("pending-") }
+                        }.toSet()
+                        current.copy(savedMessageIds = current.savedMessageIds.filter { it in visibleMessageIds }.toSet())
+                    }
                 }
             }
         )
@@ -601,6 +639,7 @@ class MessageViewModel @Inject constructor(
                             hasMoreMessages = olderMessages.size >= 50
                         ))
                     }
+                    refreshSavedMessageIds(serverId, _state.value.messages)
                 },
                 onFailure = {
                     _state.update { it.copy(isLoadingMore = false) }
