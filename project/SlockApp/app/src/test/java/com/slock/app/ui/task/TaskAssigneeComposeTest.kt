@@ -19,64 +19,9 @@ class TaskAssigneeComposeTest {
     val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
     @Test
-    fun `TaskListScreen shows member name initial instead of UUID initial`() {
-        val task = Task(
-            id = "t1",
-            assigneeId = "zz-uuid-999",
-            title = "Fix the widget",
-            status = "in_progress"
-        )
-        val memberNames = mapOf("zz-uuid-999" to "Alice")
-
-        composeTestRule.setContent {
-            TaskListScreen(
-                channelId = "ch1",
-                state = TaskUiState(
-                    tasks = listOf(task),
-                    memberNames = memberNames
-                ),
-                onCreateTask = { _, _ -> },
-                onUpdateStatus = { _, _ -> },
-                onDeleteTask = {},
-                onNavigateBack = {}
-            )
-        }
-
-        composeTestRule.onNodeWithText("Fix the widget").assertIsDisplayed()
-        composeTestRule.onNodeWithText("A").assertIsDisplayed()
-    }
-
-    @Test
-    fun `TaskListScreen falls back to UUID initial when memberNames is empty`() {
-        val task = Task(
-            id = "t2",
-            assigneeId = "zz-uuid-999",
-            title = "Fallback task",
-            status = "todo"
-        )
-
-        composeTestRule.setContent {
-            TaskListScreen(
-                channelId = "ch1",
-                state = TaskUiState(
-                    tasks = listOf(task),
-                    memberNames = emptyMap()
-                ),
-                onCreateTask = { _, _ -> },
-                onUpdateStatus = { _, _ -> },
-                onDeleteTask = {},
-                onNavigateBack = {}
-            )
-        }
-
-        composeTestRule.onNodeWithText("Fallback task").assertIsDisplayed()
-        composeTestRule.onNodeWithText("Z").assertIsDisplayed()
-    }
-
-    @Test
     fun `ServerTasksScreen shows member name initial instead of UUID initial`() {
         val task = Task(
-            id = "t3",
+            id = "t1",
             assigneeId = "zz-uuid-888",
             title = "Server widget fix",
             status = "in_progress"
@@ -105,7 +50,7 @@ class TaskAssigneeComposeTest {
     @Test
     fun `ServerTasksScreen falls back to UUID initial when memberNames is empty`() {
         val task = Task(
-            id = "t4",
+            id = "t2",
             assigneeId = "zz-uuid-888",
             title = "Server fallback",
             status = "in_review"

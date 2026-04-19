@@ -1252,39 +1252,6 @@ private fun ActionSheetItem(icon: String, label: String, onClick: () -> Unit) {
     }
 }
 
-// Pinned message banner
-@Composable
-private fun PinnedBanner(pinnedText: String?, onTap: () -> Unit) {
-    if (pinnedText != null) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(Yellow)
-                .border(width = 0.dp, color = Color.Transparent)
-                .clickable(onClick = onTap)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(text = "\uD83D\uDCCC", fontSize = 14.sp)
-            Text(
-                text = "Pinned: $pinnedText",
-                style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.SemiBold),
-                color = Black,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
-            Text(
-                text = "tap to view",
-                style = MaterialTheme.typography.labelSmall,
-                color = TextSecondary
-            )
-        }
-        Divider(thickness = 2.dp, color = Black)
-    }
-}
-
 // Compose Bar
 @Composable
 private fun NeoComposeBar(

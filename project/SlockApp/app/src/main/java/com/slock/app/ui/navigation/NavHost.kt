@@ -44,8 +44,6 @@ import com.slock.app.ui.member.MembersListScreen
 import com.slock.app.ui.member.MembersViewModel
 import com.slock.app.ui.machine.MachineListScreen
 import com.slock.app.ui.machine.MachineViewModel
-import com.slock.app.ui.task.TaskListScreen
-import com.slock.app.ui.task.TaskViewModel
 import com.slock.app.ui.task.ServerTasksScreen
 import com.slock.app.ui.task.ServerTasksViewModel
 import com.slock.app.ui.thread.ThreadReplyScreen
